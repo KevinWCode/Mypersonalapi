@@ -14,6 +14,8 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.lifecycle.lifecycleScope
@@ -35,9 +37,28 @@ class MainActivity : AppCompatActivity() {
         settings = Settings(this)
         manual = ManualLog(this)
         root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(48, 48, 48, 48) }
-        setContentView(ScrollView(this).apply { addView(root) })
+        val scroll = ScrollView(this).apply { addView(root) }
+        setContentView(scroll)
+        // Android 15 draws apps under the status and navigation bars, so pad the content clear of them
+        // (and of the keyboard while typing).
+        ViewCompat.setOnApplyWindowInsetsListener(scroll) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime())
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            WindowInsetsCompat.CONSUMED
+        }
 
-        status = TextView(this).also { root.addView(it) }
+        root.addView(TextView(this).apply {
+            text = "Personal API"
+            textSize = 26f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(0, 0, 0, 24)
+        })
+
+        status = TextView(this).apply {
+            textSize = 18f
+            setLineSpacing(0f, 1.2f)
+            setPadding(0, 0, 0, 24)
+        }.also { root.addView(it) }
 
         heading("Connection")
         val url = field("Server address", settings.serverUrl)
@@ -120,15 +141,16 @@ class MainActivity : AppCompatActivity() {
                 appendLine("Health Connect: $health")
                 appendLine("Screen time access: ${if (ScreenTime.hasAccess(this@MainActivity)) "allowed" else "not allowed"}")
                 appendLine("Today's manual entries: ${manual.today().size}")
-                append("Last sync: ${settings.lastSync}")
+                append("Last sync: ${settings.lastSync.replace(", ", "\n  ")}")
             }
         }
     }
 
     private fun heading(text: String) = root.addView(TextView(this).apply {
         this.text = text
-        textSize = 18f
-        setPadding(0, 40, 0, 8)
+        textSize = 20f
+        setTypeface(typeface, android.graphics.Typeface.BOLD)
+        setPadding(0, 48, 0, 8)
     })
 
     private fun field(hint: String, value: String, secret: Boolean = false, number: Boolean = false) =
