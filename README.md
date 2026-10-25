@@ -21,7 +21,12 @@ phone app  ── POST /ingest ┼──> observations table (SQLite) ──> GE
 | Metric | Source | Automatic? |
 |---|---|---|
 | `github.commits` | GitHub GraphQL, hourly | Yes |
-| `screen.tiktok_minutes`, `screen.instagram_minutes`, `screen.social_media_minutes` | Phone app (Android usage stats) | Yes, once the phone app exists |
+| `screen.tiktok_minutes`, `screen.instagram_minutes`, `screen.social_media_minutes` | Phone app (Android usage stats) | Yes |
+| `sleep.total_minutes`, `sleep.deep_minutes`, `sleep.rem_minutes`, `sleep.light_minutes`, `sleep.awake_minutes` | Galaxy Watch → Samsung Health → Health Connect → phone app. Sleep counts toward the day you wake up. | Yes |
+| `health.steps`, `health.heart_rate_avg`, `health.resting_heart_rate`, `health.hrv_rmssd` | Health Connect via the phone app | Yes |
+| `workout.sessions`, `workout.minutes` | Workouts started on the watch | Yes |
+| `kb.<move>.reps`, `kb.<move>.sets`, `kb.<move>.top_weight_lb` | Quick entry in the phone app | No, about 10 seconds per set |
+| `football.max_catch_yards` | Quick entry in the phone app | No |
 
 ## Run it
 
@@ -32,6 +37,8 @@ curl localhost:8000/days
 ```
 
 Server setup for the spare computer: [docs/server-setup.md](docs/server-setup.md).
+
+Phone app (in `android/`): [docs/phone-app.md](docs/phone-app.md). CI builds the APK on every PR, and every push to `main` publishes it as the `latest` release.
 
 ## Develop
 
