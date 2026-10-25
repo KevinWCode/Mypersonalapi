@@ -37,7 +37,11 @@ class MainActivity : AppCompatActivity() {
         root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(48, 48, 48, 48) }
         setContentView(ScrollView(this).apply { addView(root) })
 
-        status = TextView(this).also { root.addView(it) }
+        status = TextView(this).apply {
+            textSize = 18f
+            setLineSpacing(0f, 1.2f)
+            setPadding(0, 0, 0, 24)
+        }.also { root.addView(it) }
 
         heading("Connection")
         val url = field("Server address", settings.serverUrl)
@@ -120,15 +124,16 @@ class MainActivity : AppCompatActivity() {
                 appendLine("Health Connect: $health")
                 appendLine("Screen time access: ${if (ScreenTime.hasAccess(this@MainActivity)) "allowed" else "not allowed"}")
                 appendLine("Today's manual entries: ${manual.today().size}")
-                append("Last sync: ${settings.lastSync}")
+                append("Last sync: ${settings.lastSync.replace(", ", "\n  ")}")
             }
         }
     }
 
     private fun heading(text: String) = root.addView(TextView(this).apply {
         this.text = text
-        textSize = 18f
-        setPadding(0, 40, 0, 8)
+        textSize = 20f
+        setTypeface(typeface, android.graphics.Typeface.BOLD)
+        setPadding(0, 48, 0, 8)
     })
 
     private fun field(hint: String, value: String, secret: Boolean = false, number: Boolean = false) =
