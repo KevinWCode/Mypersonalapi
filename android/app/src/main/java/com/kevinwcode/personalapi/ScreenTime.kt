@@ -10,6 +10,14 @@ import java.time.ZoneId
 
 /** Minutes each app was on screen per day, from Android's usage events. */
 object ScreenTime {
+    // Not real phone use: the screensaver, the home screen and system UI.
+    private val IGNORED_PREFIXES = listOf(
+        "com.android.dreams.",
+        "com.sec.android.app.launcher",
+        "com.android.systemui",
+        "com.kevinwcode.personalapi",
+    )
+
     fun hasAccess(context: Context): Boolean {
         val ops = context.getSystemService(AppOpsManager::class.java)
         val mode = ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
@@ -23,6 +31,7 @@ object ScreenTime {
             val start = day.atStartOfDay(zone).toInstant().toEpochMilli()
             val end = minOf(day.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli(), System.currentTimeMillis())
             foregroundMillis(usm.queryEvents(start, end), end)
+                .filterKeys { pkg -> IGNORED_PREFIXES.none { pkg.startsWith(it) } }
                 .filterValues { it >= 60_000 }
                 .map { (pkg, ms) -> Observation(day, "screen.app.$pkg", ms / 60_000.0, "minutes") }
         }
