@@ -41,7 +41,9 @@ def connect(path: str | None = None) -> sqlite3.Connection:
     path = path or config.DB_PATH
     if path != ":memory:":
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path)
+    # FastAPI may open, use and close one request's connection on different worker threads. Each connection still
+    # serves only one request at a time, so turning off sqlite's same-thread check is safe.
+    conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
     return conn
@@ -66,3 +68,9 @@ def fetch_range(conn: sqlite3.Connection, start: str, end: str) -> list[sqlite3.
         "SELECT date, metric, value, unit, source FROM observations WHERE date BETWEEN ? AND ? ORDER BY date, metric",
         (start, end),
     ).fetchall()
+
+
+def last_updates(conn: sqlite3.Connection) -> dict[str, str]:
+    """Most recent write time (UTC) per source."""
+    rows = conn.execute("SELECT source, MAX(updated_at) FROM observations GROUP BY source").fetchall()
+    return {source: at for source, at in rows}

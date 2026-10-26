@@ -69,6 +69,7 @@ def test_collect_and_summary():
     assert s["last_sell"]["symbol"] == "NVDA"  # a short sale counts as a sell
     assert s["last_buy"]["price"] == 230.0
     assert [p["symbol"] for p in s["top_positions"]] == ["MSFT", "AAPL"]
+    assert [t["symbol"] for t in s["recent_trades"]] == ["NVDA", "GMEX", "AAPL", "MSFT"]
 
     # A week later the oldest P/L days fall out of the 7-day window.
     assert alpaca.summary(conn, "2026-10-29")["pl_7d"] == 25.0
