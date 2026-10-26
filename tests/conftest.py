@@ -9,3 +9,5 @@ def tmp_db(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "INGEST_TOKEN", "secret")
     monkeypatch.setattr(config, "GITHUB_USER", "someone")
     monkeypatch.setattr(config, "GITHUB_TOKEN", "tok")
+    monkeypatch.setattr(config, "ALPACA_KEY_ID", "key")
+    monkeypatch.setattr(config, "ALPACA_SECRET_KEY", "secret")

@@ -4,18 +4,22 @@ import logging
 import time
 
 from app import config, db
-from app.collectors import github
+from app.collectors import alpaca, github
 
-COLLECTORS = {"github": github.fetch}
+# Each collector takes the database connection and returns how many rows it stored.
+COLLECTORS = {
+    "github": lambda conn: db.upsert(conn, github.fetch()),
+    "alpaca": alpaca.collect,
+}
 
 log = logging.getLogger("collect")
 
 
 def run_once() -> None:
     conn = db.connect()
-    for name, fetch in COLLECTORS.items():
+    for name, collect in COLLECTORS.items():
         try:
-            n = db.upsert(conn, fetch())
+            n = collect(conn)
             log.info("%s: stored %d rows", name, n)
         except Exception:
             # One broken source shouldn't stop the others.

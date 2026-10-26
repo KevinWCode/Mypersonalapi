@@ -15,6 +15,25 @@ CREATE TABLE IF NOT EXISTS observations (
     updated_at TEXT NOT NULL,
     PRIMARY KEY (date, metric, source)
 );
+
+-- Filled stock orders from Alpaca, for "last bought / last sold".
+CREATE TABLE IF NOT EXISTS trades (
+    id        TEXT PRIMARY KEY,  -- Alpaca order id
+    filled_at TEXT NOT NULL,     -- ISO time, UTC
+    symbol    TEXT NOT NULL,
+    side      TEXT NOT NULL,     -- buy or sell
+    qty       REAL NOT NULL,
+    price     REAL NOT NULL
+);
+
+-- Current Alpaca positions, replaced on every collect.
+CREATE TABLE IF NOT EXISTS positions (
+    symbol        TEXT PRIMARY KEY,
+    qty           REAL NOT NULL,
+    market_value  REAL NOT NULL,
+    unrealized_pl REAL NOT NULL,
+    updated_at    TEXT NOT NULL
+);
 """
 
 

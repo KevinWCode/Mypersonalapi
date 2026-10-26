@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from app import config, db
+from app.collectors import alpaca
 from app.metrics import build_days
 
 app = FastAPI(title="Personal API")
@@ -42,6 +43,11 @@ def days(start: date | None = None, end: date | None = None, conn=Depends(get_co
     if start > end:
         raise HTTPException(400, "start must be on or before end")
     return {"days": build_days(db.fetch_range(conn, start.isoformat(), end.isoformat()))}
+
+
+@app.get("/trading")
+def trading(conn=Depends(get_conn)):
+    return alpaca.summary(conn, date.today().isoformat())
 
 
 @app.post("/ingest")
