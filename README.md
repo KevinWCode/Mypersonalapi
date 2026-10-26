@@ -23,7 +23,10 @@ phone app  ── POST /ingest ┼──> observations table (SQLite) ──> GE
 | `github.commits` | GitHub GraphQL, hourly | Yes |
 | `screen.tiktok_minutes`, `screen.instagram_minutes`, `screen.social_media_minutes` | Phone app (Android usage stats) | Yes |
 | `sleep.total_minutes`, `sleep.deep_minutes`, `sleep.rem_minutes`, `sleep.light_minutes`, `sleep.awake_minutes` | Galaxy Watch → Samsung Health → Health Connect → phone app. Sleep counts toward the day you wake up. | Yes |
-| `health.steps`, `health.heart_rate_avg`, `health.resting_heart_rate`, `health.hrv_rmssd` | Health Connect via the phone app | Yes |
+| `health.steps`, `health.heart_rate_avg` (average across the whole day) | Health Connect via the phone app | Yes |
+| `health.resting_heart_rate` | Samsung doesn't share a resting heart rate, so the app uses the lowest 5-minute average during sleep | Yes |
+| `health.spo2_avg` | Blood oxygen from the watch, averaged per day | Yes |
+| `health.hrv_rmssd` | Only from devices that share HRV with Health Connect. Samsung doesn't, so it stays empty with the Galaxy Watch. | Yes, if the device shares it |
 | `workout.sessions`, `workout.minutes` | Workouts started on the watch | Yes |
 | `kb.<move>.reps`, `kb.<move>.sets`, `kb.<move>.top_weight_lb` | Quick entry in the phone app | No, about 10 seconds per set |
 | `football.max_catch_yards` | Quick entry in the phone app | No |

@@ -6,6 +6,7 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.HeartRateVariabilityRmssdRecord
+import androidx.health.connect.client.records.OxygenSaturationRecord
 import androidx.health.connect.client.records.RestingHeartRateRecord
 import androidx.health.connect.client.records.SleepSessionRecord
 import androidx.health.connect.client.records.StepsRecord
@@ -27,6 +28,7 @@ object Health {
         HealthPermission.getReadPermission(RestingHeartRateRecord::class),
         HealthPermission.getReadPermission(HeartRateVariabilityRmssdRecord::class),
         HealthPermission.getReadPermission(ExerciseSessionRecord::class),
+        HealthPermission.getReadPermission(OxygenSaturationRecord::class),
         // Lets the hourly sync read while the app is closed (Android 14+).
         "android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND",
     )
@@ -54,11 +56,15 @@ object Health {
                 timeRangeSlicer = Period.ofDays(1),
             )
         )
+        val restingFromRecords = mutableSetOf<LocalDate>()
         for (g in groups) {
             val day = g.startTime.toLocalDate()
             g.result[StepsRecord.COUNT_TOTAL]?.let { out += Observation(day, "health.steps", it.toDouble(), "count") }
             g.result[HeartRateRecord.BPM_AVG]?.let { out += Observation(day, "health.heart_rate_avg", it.toDouble(), "bpm") }
-            g.result[RestingHeartRateRecord.BPM_AVG]?.let { out += Observation(day, "health.resting_heart_rate", it.toDouble(), "bpm") }
+            g.result[RestingHeartRateRecord.BPM_AVG]?.let {
+                out += Observation(day, "health.resting_heart_rate", it.toDouble(), "bpm")
+                restingFromRecords += day
+            }
             g.result[ExerciseSessionRecord.EXERCISE_DURATION_TOTAL]?.let {
                 out += Observation(day, "workout.minutes", it.toMinutes().toDouble(), "minutes")
             }
@@ -71,6 +77,21 @@ object Health {
         val sleep = client.readRecords(ReadRecordsRequest(SleepSessionRecord::class, TimeRangeFilter.between(start, end))).records
         sleep.groupBy { it.endTime.atZone(zone).toLocalDate() }.forEach { (day, sessions) ->
             out += sleepObservations(day, sessions)
+            // Samsung doesn't share resting heart rate, so use the calmest 5 minutes of the night instead.
+            if (day !in restingFromRecords) {
+                val samples = sessions.flatMap { s ->
+                    client.readRecords(ReadRecordsRequest(HeartRateRecord::class, TimeRangeFilter.between(s.startTime, s.endTime)))
+                        .records.flatMap { r -> r.samples.map { it.time to it.beatsPerMinute } }
+                }
+                HeartMath.lowestRollingAverage(samples)?.let {
+                    out += Observation(day, "health.resting_heart_rate", it, "bpm")
+                }
+            }
+        }
+
+        val spo2 = client.readRecords(ReadRecordsRequest(OxygenSaturationRecord::class, TimeRangeFilter.between(start, end))).records
+        spo2.groupBy { it.time.atZone(zone).toLocalDate() }.forEach { (day, rs) ->
+            out += Observation(day, "health.spo2_avg", rs.map { it.percentage.value }.average(), "percent")
         }
 
         val hrv = client.readRecords(ReadRecordsRequest(HeartRateVariabilityRmssdRecord::class, TimeRangeFilter.between(start, end))).records
