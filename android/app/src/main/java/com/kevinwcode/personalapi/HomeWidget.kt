@@ -20,10 +20,12 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.time.ZoneId
 
 /**
- * Home screen widget: time reclaimed from social media, food, sleep and steps, from the server's GET /summary.
+ * Home screen widget: time reclaimed from social media, food, sleep, steps, heart rate, workouts, study and reading,
+ * trading P/L and the last trade, from the server's GET /summary.
  * It refreshes after each phone sync (every 15 minutes) and when you tap the refresh arrow. Tapping anywhere else
  * opens the dashboard. When the server can't be reached it keeps showing the last numbers it got.
  */
@@ -53,6 +55,15 @@ class HomeWidget : AppWidgetProvider() {
 
     companion object {
         private const val ACTION_REFRESH = "com.kevinwcode.personalapi.REFRESH_WIDGET"
+        // In WidgetLines.tiles order: food, protein, sleep, steps, resting HR, workouts, study, reading, P/L.
+        private val TILE_VALUES = intArrayOf(
+            R.id.tile0_value, R.id.tile1_value, R.id.tile2_value, R.id.tile3_value, R.id.tile4_value,
+            R.id.tile5_value, R.id.tile6_value, R.id.tile7_value, R.id.tile8_value,
+        )
+        private val TILE_SUBS = intArrayOf(
+            R.id.tile0_sub, R.id.tile1_sub, R.id.tile2_sub, R.id.tile3_sub, R.id.tile4_sub,
+            R.id.tile5_sub, R.id.tile6_sub, R.id.tile7_sub, R.id.tile8_sub,
+        )
 
         private fun refreshSoon(context: Context, policy: ExistingWorkPolicy) {
             WorkManager.getInstance(context).enqueueUniqueWork("widget-now", policy, OneTimeWorkRequestBuilder<RefreshWorker>().build())
@@ -96,6 +107,16 @@ class HomeWidget : AppWidgetProvider() {
                 proteinG = o.num("protein_g"),
                 sleepMinutes = o.num("sleep_minutes"),
                 steps = o.num("steps"),
+                stepsPerDay = o.num("steps_per_day"),
+                restingHr = o.num("resting_hr"),
+                workoutsWeek = o.num("workouts_week"),
+                studyHoursWeek = o.num("study_hours_week"),
+                readingHoursWeek = o.num("reading_hours_week"),
+                pl7d = o.num("pl_7d"),
+                lastTrade = o.optJSONObject("last_trade")?.let {
+                    Trade(it.getString("symbol"), it.getString("side"), it.getDouble("qty"), it.getDouble("price"),
+                        runCatching { OffsetDateTime.parse(it.getString("filled_at")).toInstant() }.getOrNull())
+                },
             )
         }
 
@@ -112,12 +133,13 @@ class HomeWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.label, t.label)
             views.setTextViewText(R.id.headline, t.headline)
             views.setTextViewText(R.id.note, t.note)
-            views.setTextViewText(R.id.food, t.food)
-            views.setTextViewText(R.id.protein, t.protein)
-            views.setTextViewText(R.id.sleep, t.sleep)
-            views.setTextViewText(R.id.sleep_when, t.sleepWhen)
-            views.setTextViewText(R.id.steps, t.steps)
-            views.setTextViewText(R.id.steps_when, t.stepsWhen)
+            t.tiles.forEachIndexed { i, tile ->
+                views.setTextViewText(TILE_VALUES[i], tile.value)
+                views.setTextViewText(TILE_SUBS[i], tile.sub)
+            }
+            val pl = when (t.plUp) { true -> R.color.widget_good; false -> R.color.widget_warn; null -> R.color.widget_text }
+            views.setTextColor(TILE_VALUES[8], ContextCompat.getColor(context, pl))
+            views.setTextViewText(R.id.trade, t.trade)
             views.setTextViewText(R.id.updated, if (updating) "Updating…" else t.updated)
             views.setTextColor(R.id.updated, ContextCompat.getColor(context, if (t.offline && !updating) R.color.widget_warn else R.color.widget_sub))
 
