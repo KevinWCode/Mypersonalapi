@@ -17,6 +17,8 @@ def build_days(rows) -> list[dict]:
         metric, value = r["metric"], r["value"]
         day = days[r["date"]]
         if metric.startswith(APP_PREFIX):
+            # Every app counts toward total screen time, which also tells the dashboard the phone synced that day.
+            day["screen.total_minutes"] = day.get("screen.total_minutes", 0) + value
             package = metric[len(APP_PREFIX):]
             name = SOCIAL_MEDIA_APPS.get(package)
             if name is None:

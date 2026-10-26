@@ -73,7 +73,8 @@ def collect(conn: sqlite3.Connection, client: httpx.Client | None = None) -> int
 
 
 def summary(conn: sqlite3.Connection, today: str) -> dict:
-    """What the dashboard shows: rolling P/L over 7 and 30 days, last buy and sell, and the biggest positions."""
+    """What the dashboard shows: rolling P/L over 7 and 30 days, last buy and sell, recent fills and the biggest
+    positions."""
     def pl_since(days: int) -> float:
         row = conn.execute(
             "SELECT COALESCE(SUM(value), 0) FROM observations WHERE metric = 'trading.pl_day' "
@@ -93,6 +94,9 @@ def summary(conn: sqlite3.Connection, today: str) -> dict:
     equity = conn.execute(
         "SELECT value FROM observations WHERE metric = 'trading.equity' ORDER BY date DESC LIMIT 1"
     ).fetchone()
+    recent = conn.execute(
+        "SELECT symbol, side, qty, price, filled_at FROM trades ORDER BY filled_at DESC LIMIT 5"
+    ).fetchall()
     top = conn.execute(
         "SELECT symbol, qty, market_value, unrealized_pl FROM positions ORDER BY market_value DESC LIMIT 5"
     ).fetchall()
@@ -102,5 +106,6 @@ def summary(conn: sqlite3.Connection, today: str) -> dict:
         "pl_30d": pl_since(30),
         "last_buy": last("buy"),
         "last_sell": last("sell"),
+        "recent_trades": [dict(r) for r in recent],
         "top_positions": [dict(r) for r in top],
     }

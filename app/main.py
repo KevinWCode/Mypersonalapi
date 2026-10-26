@@ -1,7 +1,9 @@
 import hmac
 from datetime import date, timedelta
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
 from app import config, db
@@ -9,6 +11,7 @@ from app.collectors import alpaca
 from app.metrics import build_days
 
 app = FastAPI(title="Personal API")
+DASHBOARD = Path(__file__).parent / "static" / "dashboard.html"
 
 
 def get_conn():
@@ -31,9 +34,26 @@ class IngestBody(BaseModel):
     observations: list[Observation] = Field(max_length=5000)
 
 
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse("/dashboard")
+
+
+@app.get("/dashboard", include_in_schema=False)
+def dashboard():
+    """The dashboard page. It's plain HTML and JavaScript that reads /days, /trading and /status."""
+    return FileResponse(DASHBOARD)
+
+
 @app.get("/health")
 def health():
     return {"ok": True}
+
+
+@app.get("/status")
+def status(conn=Depends(get_conn)):
+    """When each source last sent data, e.g. the phone's last sync."""
+    return {"last_update": db.last_updates(conn)}
 
 
 @app.get("/days")
