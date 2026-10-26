@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The dashboard's dark headline card. -->
+    <color name="widget_bg">#16191D</color>
+    <color name="widget_text">#FFFFFF</color>
+    <color name="widget_sub">#C5CAD1</color>
+    <color name="widget_warn">#F2A36B</color>
+</resources>

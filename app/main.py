@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
-from app import config, db, food
+from app import config, db, food, summary
 from app.collectors import alpaca
 from app.metrics import build_days
 
@@ -91,6 +91,13 @@ def days(start: date | None = None, end: date | None = None, conn=Depends(get_co
     if start > end:
         raise HTTPException(400, "start must be on or before end")
     return {"days": build_days(db.fetch_range(conn, start.isoformat(), end.isoformat()))}
+
+
+@app.get("/summary")
+def today_summary(day: date | None = Query(default=None, alias="date"), conn=Depends(get_conn)):
+    """Time reclaimed this week, calories, protein, sleep and steps for one day, for the phone widget.
+    The phone sends its own date so the day matches the phone's clock."""
+    return summary.build(conn, day or date.today())
 
 
 @app.get("/trading")
