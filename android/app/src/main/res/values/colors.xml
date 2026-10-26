@@ -5,4 +5,5 @@
     <color name="widget_text">#FFFFFF</color>
     <color name="widget_sub">#C5CAD1</color>
     <color name="widget_warn">#F2A36B</color>
+    <color name="widget_good">#7BD88F</color>
 </resources>

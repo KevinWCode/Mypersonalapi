@@ -31,12 +31,13 @@ Tailscale has to be switched on for syncs to reach the server.
 
 ## Home screen widget
 
-Long-press an empty spot on the home screen, tap **Widgets**, find **Personal API** and drag **Personal API today** onto the screen. It shows:
+Long-press an empty spot on the home screen, tap **Widgets**, find **Personal API** and drag **Personal API today** onto the screen. It's 4 x 4 by default and can be resized. It shows:
 
 - time reclaimed from social media this week (the dashboard's headline)
-- calories and protein today
-- last night's sleep
-- steps today
+- calories and protein today, and last night's sleep
+- steps per day, resting heart rate and workouts over the last 7 days
+- study and reading hours over the last 7 days
+- trading P/L over the last 7 days (green when up) and your last trade
 
 It updates after every sync and when you tap the refresh arrow, and tapping anywhere else opens the dashboard. The time in its corner is when it last got numbers. If the server is off (the PC is shut down) it says **Offline** and keeps the last numbers, with the day they're from.
 

@@ -102,6 +102,11 @@ def test_summary_for_the_widget():
         {"date": "2026-10-26", "metric": "sleep.total_minutes", "value": 432, "unit": "minutes"},
         {"date": "2026-10-26", "metric": "health.steps", "value": 2100, "unit": "count"},
         {"date": "2026-10-26", "metric": "food.protein_g", "value": 25, "unit": "g"},
+        {"date": "2026-10-25", "metric": "health.steps", "value": 9900, "unit": "count"},
+        {"date": "2026-10-26", "metric": "health.resting_heart_rate", "value": 58, "unit": "bpm"},
+        {"date": "2026-10-24", "metric": "workout.sessions", "value": 1, "unit": "count"},
+        {"date": "2026-10-25", "metric": "study.minutes", "value": 90, "unit": "minutes"},
+        {"date": "2026-10-19", "metric": "study.minutes", "value": 60, "unit": "minutes"},
     ]
     post(obs)
     client.post("/meals", json={"date": "2026-10-26", "meals": [{"meal": "breakfast", "kcal": 260, "protein_g": 9}]}, headers=AUTH)
@@ -110,6 +115,10 @@ def test_summary_for_the_widget():
     assert s["social"] == {"reclaimed_minutes": 120, "week_minutes": 240, "week_per_day": 40, "last_week_per_day": 60}
     # Protein adds the meal to the +25 g Quick log tap, like the dashboard.
     assert (s["kcal"], s["protein_g"], s["sleep_minutes"], s["steps"]) == (260, 34, 432, 2100)
+    # Week tiles cover the last 7 days, like the dashboard (the 19th is 8 days back).
+    assert (s["steps_per_day"], s["resting_hr"], s["workouts_week"]) == (6000, 58, 1)
+    assert (s["study_hours_week"], s["reading_hours_week"], s["pl_7d"], s["last_trade"]) == (1.5, 0, 0, None)
 
     empty = client.get("/summary", params={"date": "2026-01-01"}).json()
     assert empty["social"]["reclaimed_minutes"] is None and empty["kcal"] is None and empty["steps"] is None
+    assert empty["workouts_week"] is None and empty["resting_hr"] is None
