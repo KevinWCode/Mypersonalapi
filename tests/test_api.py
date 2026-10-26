@@ -89,3 +89,27 @@ def test_log_needs_the_token_and_only_takes_dashboard_metrics():
     assert log([]).json() == {"values": {}}
     assert log([{"metric": "health.steps", "value": 99999, "unit": "count"}]).status_code == 422
     assert log([{"metric": "food.kcal", "value": 10, "unit": "kcal"}]).status_code == 422  # meals go through /meals
+
+
+def test_summary_for_the_widget():
+    obs = []
+    for i in range(14):
+        d = f"2026-10-{26 - i:02d}"
+        # 60 min of TikTok a day last week, 40 this week; one day this week the phone didn't sync.
+        if i != 3:
+            obs.append({"date": d, "metric": "screen.app.com.zhiliaoapp.musically", "value": 40 if i < 7 else 60, "unit": "minutes"})
+    obs += [
+        {"date": "2026-10-26", "metric": "sleep.total_minutes", "value": 432, "unit": "minutes"},
+        {"date": "2026-10-26", "metric": "health.steps", "value": 2100, "unit": "count"},
+        {"date": "2026-10-26", "metric": "food.protein_g", "value": 25, "unit": "g"},
+    ]
+    post(obs)
+    client.post("/meals", json={"date": "2026-10-26", "meals": [{"meal": "breakfast", "kcal": 260, "protein_g": 9}]}, headers=AUTH)
+
+    s = client.get("/summary", params={"date": "2026-10-26"}).json()
+    assert s["social"] == {"reclaimed_minutes": 120, "week_minutes": 240, "week_per_day": 40, "last_week_per_day": 60}
+    # Protein adds the meal to the +25 g Quick log tap, like the dashboard.
+    assert (s["kcal"], s["protein_g"], s["sleep_minutes"], s["steps"]) == (260, 34, 432, 2100)
+
+    empty = client.get("/summary", params={"date": "2026-01-01"}).json()
+    assert empty["social"]["reclaimed_minutes"] is None and empty["kcal"] is None and empty["steps"] is None

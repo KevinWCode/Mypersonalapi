@@ -3,6 +3,7 @@ package com.kevinwcode.personalapi
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings as AndroidSettings
 import android.text.InputType
 import android.view.View
@@ -61,7 +62,11 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 0, 0, 24)
         }.also { root.addView(it) }
 
-        button("Open dashboard") { openDashboard() }
+        button("Open dashboard") { startActivity(OpenDashboardActivity.browserIntent(settings)) }
+        root.addView(TextView(this).apply {
+            text = "Tip: for today's numbers on your home screen, long-press an empty spot, tap Widgets, then Personal API."
+            setPadding(0, 8, 0, 0)
+        })
 
         heading("Connection")
         val url = field("Server address", settings.serverUrl)
@@ -79,6 +84,11 @@ class MainActivity : AppCompatActivity() {
         }
         button("Allow usage access (screen time)") {
             startActivity(Intent(AndroidSettings.ACTION_USAGE_ACCESS_SETTINGS))
+        }
+        // Samsung pauses background work for apps it is saving battery on, so the automatic syncs would go missing.
+        button("Keep syncing in the background") {
+            if (backgroundAllowed()) toast("Already allowed")
+            else startActivity(Intent(AndroidSettings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
         }
 
         heading("Kettlebell set")
@@ -123,16 +133,6 @@ class MainActivity : AppCompatActivity() {
         refresh()
     }
 
-    /**
-     * Opens the dashboard in the browser with the upload token after the #. Browsers never send that part to the
-     * server; the dashboard keeps the token so its Quick log buttons can save, then clears it from the address bar.
-     */
-    private fun openDashboard() {
-        val token = settings.token
-        val url = "${settings.serverUrl}/dashboard" + if (token.isEmpty()) "" else "#token=${Uri.encode(token)}"
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-    }
-
     private fun syncNow() {
         status.text = "Syncing…"
         lifecycleScope.launch {
@@ -141,6 +141,7 @@ class MainActivity : AppCompatActivity() {
                     .getOrElse { "just now: failed, ${it.message}" }
             }
             refresh()
+            HomeWidget.refresh(this@MainActivity)
         }
     }
 
@@ -153,11 +154,14 @@ class MainActivity : AppCompatActivity() {
             status.text = buildString {
                 appendLine("Health Connect: $health")
                 appendLine("Screen time access: ${if (ScreenTime.hasAccess(this@MainActivity)) "allowed" else "not allowed"}")
+                appendLine("Background sync: ${if (backgroundAllowed()) "every 15 min" else "may be paused, tap Keep syncing in the background"}")
                 appendLine("Today's manual entries: ${manual.today().size}")
                 append("Last sync: ${settings.lastSync.replace(", ", "\n  ")}")
             }
         }
     }
+
+    private fun backgroundAllowed() = getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)
 
     private fun heading(text: String) = root.addView(TextView(this).apply {
         this.text = text

@@ -13,26 +13,30 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
-/** Runs every hour in the background: reads screen time and health data, uploads the last 3 days. */
+/** Runs every 15 minutes (the most often Android allows) in the background: reads screen time and health data, uploads the last 3 days. */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val settings = Settings(applicationContext)
-        return try {
+        val result = try {
             settings.lastSync = "${now()}: ${syncAll(applicationContext)}"
             Result.success()
         } catch (e: Exception) {
             settings.lastSync = "${now()}: failed, ${e.message}"
             Result.retry()
         }
+        // The server has the new numbers now, so show them on the home screen widget too.
+        HomeWidget.refresh(applicationContext)
+        return result
     }
 
     companion object {
         fun schedule(context: Context) {
-            val request = PeriodicWorkRequestBuilder<SyncWorker>(1, TimeUnit.HOURS)
+            val request = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .build()
+            // UPDATE so phones that already had the old hourly schedule switch to the new one.
             WorkManager.getInstance(context)
-                .enqueueUniquePeriodicWork("sync", ExistingPeriodicWorkPolicy.KEEP, request)
+                .enqueueUniquePeriodicWork("sync", ExistingPeriodicWorkPolicy.UPDATE, request)
         }
 
         /** Returns a short summary for the status line. Each source fails on its own. */

@@ -12,8 +12,9 @@ phone app  ── POST /ingest ┼──> observations table (SQLite) ──> GE
 ```
 
 - **`observations` table**: one row per day, metric and source. Re-running a collector overwrites that day instead of duplicating it.
-- **`GET /dashboard`** (and `/`): the dashboard page. Plain HTML and JavaScript in `app/static/dashboard.html` that reads `/days`, `/trading` and `/status`, with 7, 30 and 90-day views. It refreshes every 5 minutes.
+- **`GET /dashboard`** (and `/`): the dashboard page. Plain HTML and JavaScript in `app/static/dashboard.html` that reads `/days`, `/trading` and `/status`, with 7, 30 and 90-day views. It re-reads today every minute while open, everything every 5 minutes, and reloads when you switch back to it.
 - **`GET /days?start=YYYY-MM-DD&end=YYYY-MM-DD`**: per-day metrics (the last 7 days by default).
+- **`GET /summary?date=YYYY-MM-DD`**: the phone widget's numbers for one day: time reclaimed from social media this week, calories, protein, sleep and steps.
 - **`GET /trading`**: rolling P/L over 7 and 30 days, last stock bought and sold, the 5 most recent fills and the 5 biggest positions, from Alpaca.
 - **`GET /status`**: when each source (phone, manual, github, alpaca, food, dashboard) last sent data.
 - **`POST /log`**: the dashboard's Quick log buttons and kettlebell ticks. Each entry adds to the day's value (or sets it), with `Authorization: Bearer $INGEST_TOKEN`.
