@@ -25,6 +25,10 @@ Each sync re-sends the last 3 days, so a missed sync fixes itself next time. No 
 
 Tailscale has to be switched on for syncs to reach the server.
 
+## Open dashboard
+
+**Open dashboard** opens the dashboard in your browser and passes it the upload token once, so its Quick log buttons, food box and kettlebell ticks can save. Bookmark the page afterwards; you only need the button again if the dashboard asks for the token.
+
 ## Manual entries
 
 - **Kettlebell set:** pick the move, enter reps and weight in lb, and tap **Add set**. Reps and sets add up for the day, and the heaviest weight is kept.

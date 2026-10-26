@@ -62,3 +62,30 @@ def test_parallel_requests_like_the_dashboard_makes():
     with ThreadPoolExecutor(6) as pool:
         codes = list(pool.map(lambda path: client.get(path).status_code, ["/days", "/trading", "/status"] * 10))
     assert set(codes) == {200}
+
+
+def log(entries, day="2026-10-26", headers=AUTH):
+    return client.post("/log", json={"date": day, "entries": entries}, headers=headers)
+
+
+def test_log_adds_up_taps():
+    log([{"metric": "water.ml", "value": 250, "unit": "ml"}])
+    log([{"metric": "water.ml", "value": 250, "unit": "ml"}])
+    body = log([{"metric": "study.minutes", "value": 30, "unit": "minutes"}, {"metric": "food.protein_g", "value": 25, "unit": "g"}]).json()
+    assert body["values"] == {"study.minutes": 30, "food.protein_g": 25}
+    day = client.get("/days", params={"start": "2026-10-26", "end": "2026-10-26"}).json()["days"][0]["metrics"]
+    assert day["water.ml"] == 500
+
+
+def test_log_undo_and_set_never_go_below_zero():
+    log([{"metric": "coffee.cups", "value": 1, "unit": "cups"}])
+    assert log([{"metric": "coffee.cups", "value": -3, "unit": "cups"}]).json()["values"] == {"coffee.cups": 0}
+    assert log([{"metric": "kb.swing.done", "value": 1, "unit": "count", "mode": "set"}]).json()["values"] == {"kb.swing.done": 1}
+    assert log([{"metric": "kb.swing.done", "value": 0, "unit": "count", "mode": "set"}]).json()["values"] == {"kb.swing.done": 0}
+
+
+def test_log_needs_the_token_and_only_takes_dashboard_metrics():
+    assert log([], headers={"Authorization": "Bearer nope"}).status_code == 401
+    assert log([]).json() == {"values": {}}
+    assert log([{"metric": "health.steps", "value": 99999, "unit": "count"}]).status_code == 422
+    assert log([{"metric": "food.kcal", "value": 10, "unit": "kcal"}]).status_code == 422  # meals go through /meals
