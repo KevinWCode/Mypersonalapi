@@ -186,14 +186,17 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     <div class="track" style="height:12px" role="img" id="kcal-track"><div class="fill" id="kcal-bar"></div></div>
     <p class="note" id="kcal-note" style="font-size:14px"></p>
     <ul class="meal-list" id="meal-list" aria-label="Today's meals"></ul>
-    <form id="paste-form" style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
-      <label for="paste" class="note">Meals saved by your food AI into the inbox folder appear here within a minute. Or paste its line:</label>
-      <div class="row">
-        <textarea id="paste" rows="2" placeholder='{"meal":"lunch","kcal":640,"protein_g":42,"carbs_g":55,"fat_g":20}'></textarea>
-        <button class="btn" type="submit" id="paste-btn">Add meal</button>
-      </div>
-      <p class="note" id="paste-msg" role="status"></p>
-    </form>
+    <details id="paste-box" style="margin-top:6px">
+      <summary>Add a meal by pasting instead</summary>
+      <form id="paste-form" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+        <label for="paste" class="note">Only needed if a meal didn't reach the inbox folder. Paste the line from your food AI:</label>
+        <div class="row">
+          <textarea id="paste" rows="2" placeholder="Paste a meal line here"></textarea>
+          <button class="btn" type="submit" id="paste-btn">Add meal</button>
+        </div>
+        <p class="note" id="paste-msg" role="status"></p>
+      </form>
+    </details>
   </div>
   <div class="meters" id="meters"></div>
 </section>
@@ -225,7 +228,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   </div>
 </section>
 
-<section aria-label="Training" class="grid">
+<section aria-label="Training" class="grid two">
   <div class="card">
     <div class="card-head">
       <h2>Kettlebell this week</h2>
@@ -233,10 +236,6 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     </div>
     <div class="scroll"><table class="kb" id="kb"></table></div>
     <p class="note">Ticks come from Workout done, a tap on the next box, or sets logged in the phone app.</p>
-  </div>
-  <div class="card">
-    <h2>Workout minutes</h2>
-    <div id="ch-workout"></div>
   </div>
   <div class="card">
     <div class="card-head">
@@ -293,7 +292,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     <span class="chip auto"><span class="dot"></span>Phone usage stats · TikTok + Instagram</span>
     <span class="chip auto"><span class="dot"></span>GitHub · commits</span>
     <span class="chip auto"><span class="dot"></span>Alpaca paper · P/L, positions, trades</span>
-    <span class="chip manual"><span class="dot"></span>Food AI, pasted here · calories, protein, carbs, fat (manual)</span>
+    <span class="chip manual"><span class="dot"></span>Food AI via the inbox folder · calories, protein, carbs, fat (you take the photo)</span>
     <span class="chip manual"><span class="dot"></span>Quick log buttons · water, reading, study, coffee, workout done (manual)</span>
     <span class="chip manual"><span class="dot"></span>Phone app · kettlebell sets, catch distance (manual)</span>
   </div>
@@ -321,7 +320,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   };
   // Enough history for 90 days plus the 90 before it, and five 3-week catch blocks.
   var HISTORY_DAYS = 180;
-  var REFRESH_MS = 5 * 60 * 1000;
+  var REFRESH_MS = 5 * 60 * 1000, TODAY_MS = 60 * 1000, lastLoad = 0;
   var WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   var state = { range: 7, byDate: {}, trading: null, status: null, today: new Date(), token: '', meals: [] };
@@ -509,7 +508,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 
   function renderHeader() {
     var r = RANGES[state.range];
-    $('eyebrow').textContent = 'Personal API · ' + r.eyebrow;
+    $('eyebrow').textContent = 'Personal API · ' + r.eyebrow + (state.fetchedAt ? ' · updated ' + clock(state.fetchedAt) : '');
     $('title').textContent = r.title;
     document.querySelectorAll('#range button').forEach(function (b) { b.setAttribute('aria-pressed', String(+b.dataset.days === state.range)); });
   }
@@ -606,18 +605,17 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     }));
     barChart($('ch-sleep'), { series: sleepSeries, points: sleepPoints, fmt: hm, note: perDay, xName: xName });
 
-    function single(host, key, name, color, agg, fmt, tipFmt, note, read) {
+    function single(host, key, name, color, agg, fmt, tipFmt, note) {
       barChart(host, {
         series: [{ name: name, color: color }], fmt: fmt, note: note, xName: xName,
         points: bs.map(function (b) {
-          var v = agg(b, (read || metric)(key));
+          var v = agg(b, metric(key));
           return { label: b.label, title: b.title, values: v === null ? null : [v], rows: v === null ? [] : [{ text: tipFmt(v), name: name.toLowerCase() }] };
         })
       });
     }
     single($('ch-steps'), 'health.steps', 'Steps', COLOR.accent, bucketAvg, function (v) { return (v / 1000).toFixed(1) + 'k'; }, int, perDay);
     single($('ch-commits'), 'github.commits', 'Commits', COLOR.ink, bucketSum, int, int, perWeek);
-    single($('ch-workout'), 'workout.minutes', 'Minutes', COLOR.accent, bucketSum, function (v) { return Math.round(v) + ''; }, function (v) { return Math.round(v) + ' min'; }, perWeek, workout);
 
     function hours(b, key) { return bucketSum(b, function (d) { return m(d, key) || 0; }) / 60; }
     function h1(v) { return +v.toFixed(1) + ' h'; }
@@ -775,6 +773,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     return Promise.all([getJSON('/days?start=' + day + '&end=' + day), getJSON('/meals?date=' + day)]).then(function (res) {
       state.byDate[day] = res[0].days.length ? res[0].days[0].metrics : {};
       state.meals = res[1].meals;
+      state.fetchedAt = new Date();
       render();
     });
   }
@@ -876,7 +875,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       .map(function (ml) { return (ml === 'snack' ? 'snacks' : ml) + ' ' + int(tv('food.' + ml + '.kcal')); });
     var macros = ['carbs_g', 'fat_g'].filter(function (k) { return tv('food.' + k) > 0; })
       .map(function (k) { return (k === 'carbs_g' ? 'carbs ' : 'fat ') + Math.round(tv('food.' + k)) + ' g'; });
-    $('kcal-note').textContent = kcal === 0 ? 'Nothing logged yet today. Paste a meal from your food AI below.'
+    $('kcal-note').textContent = kcal === 0 ? 'Nothing logged yet today. Meals your food AI saves to the inbox show up here within a minute.'
       : [over ? int(kcal - GOALS.kcal) + ' kcal over' : int(GOALS.kcal - kcal) + ' kcal left'].concat(meals, macros).join(' · ');
 
     $('meal-list').replaceChildren.apply($('meal-list'), state.meals.map(function (ml) {
@@ -991,11 +990,14 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     renderSync();
   }
 
+  function clock(d) { return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+
   function getJSON(url) {
     return fetch(url, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error(url + ' ' + r.status); return r.json(); });
   }
 
   function load() {
+    lastLoad = Date.now();
     $('wrap').classList.add('loading');
     state.today = new Date();
     var start = iso(addDays(state.today, -(HISTORY_DAYS - 1))), end = iso(state.today);
@@ -1008,6 +1010,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       if (res[1].status === 'fulfilled') state.trading = res[1].value; else problems.push('trading');
       if (res[2].status === 'fulfilled') state.status = res[2].value; else problems.push('sync status');
       if (res[3].status === 'fulfilled') state.meals = res[3].value.meals; else problems.push("today's meals");
+      if (!problems.length) state.fetchedAt = new Date();
       $('banner').hidden = !problems.length;
       $('banner').textContent = problems.length ? "Couldn't load " + problems.join(', ') + ' from the server. Showing what loaded; it retries every 5 minutes.' : '';
       render();
@@ -1056,7 +1059,16 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   var saved = +store('range');
   if (RANGES[saved]) state.range = saved;
   load();
-  setInterval(load, REFRESH_MS);
+  function tick() {
+    if (document.hidden) return;
+    if (Date.now() - lastLoad >= REFRESH_MS || iso(new Date()) !== iso(state.today)) load();
+    else refreshToday().catch(function () {});
+  }
+  setInterval(tick, TODAY_MS);
+  function onShow() { if (!document.hidden && Date.now() - lastLoad > 30 * 1000) load(); }
+  document.addEventListener('visibilitychange', onShow);
+  window.addEventListener('focus', onShow);
+  window.addEventListener('pageshow', function (e) { if (e.persisted) load(); });
 })();
 </script>
 </body>
