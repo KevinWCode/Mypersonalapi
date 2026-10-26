@@ -13,6 +13,7 @@ phone app  ── POST /ingest ┼──> observations table (SQLite) ──> GE
 
 - **`observations` table**: one row per day, metric and source. Re-running a collector overwrites that day instead of duplicating it.
 - **`GET /days?start=YYYY-MM-DD&end=YYYY-MM-DD`**: per-day metrics (the last 7 days by default).
+- **`GET /trading`**: rolling P/L over 7 and 30 days, last stock bought and sold, and the 5 biggest positions, from Alpaca.
 - **`POST /ingest`**: the phone app uploads screen time and quick manual entries here, with `Authorization: Bearer $INGEST_TOKEN`.
 - **Social media total**: the phone sends minutes per Android app as `screen.app.<package>`. `/days` adds the apps listed in `app/metrics.py` into `screen.social_media_minutes`, currently TikTok plus Instagram.
 
@@ -30,6 +31,7 @@ phone app  ── POST /ingest ┼──> observations table (SQLite) ──> GE
 | `workout.sessions`, `workout.minutes` | Workouts started on the watch | Yes |
 | `kb.<move>.reps`, `kb.<move>.sets`, `kb.<move>.top_weight_lb` | Quick entry in the phone app | No, about 10 seconds per set |
 | `football.max_catch_yards` | Quick entry in the phone app | No |
+| `trading.equity`, `trading.pl_day` | Alpaca portfolio history, hourly (read-only) | Yes |
 
 ## Run it
 
