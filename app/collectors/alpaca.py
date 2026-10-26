@@ -1,4 +1,4 @@
-"""Reads the Alpaca account: daily equity and P/L, filled orders, and open positions. Read-only: GET requests only."""
+"""Reads the Alpaca account: daily equity and P/L, fills, and open positions. Read-only: GET requests only."""
 import logging
 import sqlite3
 from datetime import datetime, timezone
@@ -50,12 +50,14 @@ def collect(conn: sqlite3.Connection, client: httpx.Client | None = None) -> int
     history.raise_for_status()
     n = db.upsert(conn, daily_pl(history.json()))
 
-    orders = client.get("/v2/orders", params={"status": "closed", "limit": 100, "direction": "desc"})
-    orders.raise_for_status()
-    filled = [o for o in orders.json() if o.get("filled_at") and float(o.get("filled_qty") or 0) > 0]
+    # Fill activities rather than orders: a busy order list is mostly cancelled or expired orders, which pushed
+    # real buys out of the most recent 100.
+    fills = client.get("/v2/account/activities/FILL", params={"direction": "desc", "page_size": 100})
+    fills.raise_for_status()
+    filled = fills.json()
     conn.executemany(
         "INSERT OR REPLACE INTO trades (id, filled_at, symbol, side, qty, price) VALUES (?, ?, ?, ?, ?, ?)",
-        [(o["id"], o["filled_at"], o["symbol"], o["side"], float(o["filled_qty"]), float(o["filled_avg_price"])) for o in filled],
+        [(f["id"], f["transaction_time"], f["symbol"], f["side"], float(f["qty"]), float(f["price"])) for f in filled],
     )
 
     positions = client.get("/v2/positions")
@@ -82,7 +84,9 @@ def summary(conn: sqlite3.Connection, today: str) -> dict:
 
     def last(side: str) -> dict | None:
         row = conn.execute(
-            "SELECT symbol, qty, price, filled_at FROM trades WHERE side = ? ORDER BY filled_at DESC LIMIT 1", (side,)
+            # LIKE so short sales (sell_short) count as sells.
+            "SELECT symbol, qty, price, filled_at FROM trades WHERE side LIKE ? ORDER BY filled_at DESC LIMIT 1",
+            (f"{side}%",),
         ).fetchone()
         return dict(row) if row else None
 

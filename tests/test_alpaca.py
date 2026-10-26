@@ -22,11 +22,11 @@ HISTORY = {
     "profit_loss_pct": [0, 0.01, 0.005, 0.03],
     "base_value": 1000.0,
 }
-ORDERS = [
-    {"id": "o3", "symbol": "NVDA", "side": "sell", "filled_qty": "2", "filled_avg_price": "140.5", "filled_at": "2026-10-23T15:00:00Z"},
-    {"id": "o2", "symbol": "AAPL", "side": "buy", "filled_qty": "1", "filled_avg_price": "230", "filled_at": "2026-10-22T15:00:00Z"},
-    {"id": "o1", "symbol": "MSFT", "side": "buy", "filled_qty": "1", "filled_avg_price": "410", "filled_at": "2026-10-21T15:00:00Z"},
-    {"id": "o0", "symbol": "TSLA", "side": "buy", "filled_qty": "0", "filled_avg_price": None, "filled_at": None},
+FILLS = [
+    {"id": "f4", "activity_type": "FILL", "type": "fill", "symbol": "NVDA", "side": "sell_short", "qty": "1", "price": "141", "transaction_time": "2026-10-23T16:00:00Z"},
+    {"id": "f3", "activity_type": "FILL", "type": "fill", "symbol": "GMEX", "side": "sell", "qty": "2", "price": "2.84", "transaction_time": "2026-10-23T15:00:00Z"},
+    {"id": "f2", "activity_type": "FILL", "type": "partial_fill", "symbol": "AAPL", "side": "buy", "qty": "1", "price": "230", "transaction_time": "2026-10-22T15:00:00Z"},
+    {"id": "f1", "activity_type": "FILL", "type": "fill", "symbol": "MSFT", "side": "buy", "qty": "1", "price": "410", "transaction_time": "2026-10-21T15:00:00Z"},
 ]
 POSITIONS = [
     {"symbol": "AAPL", "qty": "1", "market_value": "232", "unrealized_pl": "2"},
@@ -39,7 +39,7 @@ def fake_alpaca():
         assert request.method == "GET"
         body = {
             "/v2/account/portfolio/history": HISTORY,
-            "/v2/orders": ORDERS,
+            "/v2/account/activities/FILL": FILLS,
             "/v2/positions": POSITIONS,
         }[request.url.path]
         return httpx.Response(200, json=body)
@@ -66,7 +66,8 @@ def test_collect_and_summary():
     assert s["pl_30d"] == 30.0
     assert s["pl_7d"] == 30.0
     assert s["last_buy"]["symbol"] == "AAPL"
-    assert s["last_sell"]["symbol"] == "NVDA"
+    assert s["last_sell"]["symbol"] == "NVDA"  # a short sale counts as a sell
+    assert s["last_buy"]["price"] == 230.0
     assert [p["symbol"] for p in s["top_positions"]] == ["MSFT", "AAPL"]
 
     # A week later the oldest P/L days fall out of the 7-day window.
