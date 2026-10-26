@@ -1,6 +1,7 @@
 package com.kevinwcode.personalapi
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings as AndroidSettings
 import android.text.InputType
@@ -60,6 +61,8 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 0, 0, 24)
         }.also { root.addView(it) }
 
+        button("Open dashboard") { openDashboard() }
+
         heading("Connection")
         val url = field("Server address", settings.serverUrl)
         val token = field("Upload token (INGEST_TOKEN from .env)", settings.token, secret = true)
@@ -118,6 +121,16 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refresh()
+    }
+
+    /**
+     * Opens the dashboard in the browser with the upload token after the #. Browsers never send that part to the
+     * server; the dashboard keeps the token so its Quick log buttons can save, then clears it from the address bar.
+     */
+    private fun openDashboard() {
+        val token = settings.token
+        val url = "${settings.serverUrl}/dashboard" + if (token.isEmpty()) "" else "#token=${Uri.encode(token)}"
+        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }
 
     private fun syncNow() {

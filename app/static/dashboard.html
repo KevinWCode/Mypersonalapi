@@ -14,6 +14,7 @@
   --accent: #2457D6; --accent-deep: #163A99; --good: #1F6B3A; --warn: #B4501A; --dark-sub: #C5CAD1;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: Inter, system-ui, sans-serif; }
 a { color: var(--accent); } a:hover { color: var(--accent-deep); }
 h1, h2, .num { font-family: 'Space Grotesk', Inter, system-ui, sans-serif; }
@@ -39,6 +40,7 @@ nav button[aria-pressed="true"] { background: var(--ink); border-color: var(--in
 .legend span { display: flex; align-items: center; gap: 6px; }
 .sw { width: 10px; height: 10px; border-radius: 2px; }
 
+.headline { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 16px; }
 .hero { background: var(--ink); color: #FFFFFF; border-radius: 20px; padding: 28px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; }
 .hero-main { display: flex; flex-direction: column; gap: 10px; flex: 1 1 320px; }
 .hero .big { font-size: 56px; font-weight: 700; line-height: 1; }
@@ -98,6 +100,35 @@ thead th { font-size: 13px; font-weight: 500; color: var(--muted); text-align: l
 .dot { width: 8px; height: 8px; border-radius: 4px; flex: none; }
 .chip.auto .dot { background: var(--accent); } .chip.manual .dot { background: var(--warn); }
 
+.quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 480px) { .quick { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.qbtn { min-height: 96px; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 6px; text-align: left; cursor: pointer; font-family: Inter, sans-serif; }
+.qbtn .l { font-size: 14px; font-weight: 600; }
+.qbtn .s { font-size: 13px; color: var(--muted); }
+.qbtn[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #FFFFFF; }
+.qbtn[aria-pressed="true"] .s { color: var(--dark-sub); }
+.auth { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--muted); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1px solid var(--axis); border-radius: 12px; padding: 10px 12px; font: 14px Inter, system-ui, sans-serif; color: var(--ink); background: #FFFFFF; resize: vertical; }
+.btn { min-height: 44px; padding: 0 18px; border-radius: 22px; border: 1px solid var(--ink); background: var(--ink); color: #FFFFFF; font: 500 14px Inter, sans-serif; cursor: pointer; }
+.btn:disabled { opacity: .5; cursor: default; }
+.fuel { flex-direction: row; flex-wrap: wrap; gap: 28px; }
+.fuel-main { flex: 2 1 300px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.meters { flex: 3 1 min(420px, 100%); display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 20px; align-content: start; }
+@media (min-width: 900px) { .meters { padding-top: 40px; } }
+.meter { display: flex; flex-direction: column; gap: 8px; }
+.track { background: #E8EEFC; border-radius: 6px; overflow: hidden; }
+.fill { height: 100%; border-radius: 6px; }
+.meal-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.meal-list li { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); font-size: 14px; min-height: 44px; }
+.meal-list .what { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 6px 0; }
+.meal-list .what span { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.meal-list .x { width: 44px; height: 44px; flex: none; border: 0; background: none; color: var(--muted); font-size: 22px; line-height: 1; cursor: pointer; border-radius: 22px; }
+.meal-list .x:hover { background: var(--bg); color: var(--ink); }
+.tickbtn { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; cursor: pointer; }
+.tickbtn:hover .tick { border-color: var(--accent); }
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 20; display: none; align-items: center; gap: 14px; width: max-content; max-width: calc(100% - 32px); background: var(--ink); color: #FFFFFF; border-radius: 14px; padding: 10px 10px 10px 16px; font-size: 14px; box-shadow: 0 6px 20px rgba(22, 25, 29, .2); }
+#toast button { background: none; border: 0; color: #9DB5F0; font: 600 14px Inter, sans-serif; cursor: pointer; padding: 8px 10px; }
 #tip { position: fixed; z-index: 10; display: none; pointer-events: none; background: #FFFFFF; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 20px rgba(22, 25, 29, .12); padding: 10px 12px; font-size: 13px; min-width: 120px; }
 #tip .t { color: var(--muted); margin-bottom: 4px; }
 #tip .row { display: flex; align-items: center; gap: 8px; }
@@ -123,13 +154,48 @@ thead th { font-size: 13px; font-weight: 500; color: var(--muted); text-align: l
 
 <p class="banner" id="banner" hidden></p>
 
-<section aria-label="Headline" class="hero">
+<section aria-label="Headline" class="headline">
+<div class="hero">
   <div class="hero-main">
     <p class="sub" id="hero-label">Time reclaimed from social media</p>
     <p class="num big" id="hero-value">…</p>
     <p class="sub" id="hero-note"></p>
   </div>
   <div class="hero-side" id="hero-side"></div>
+</div>
+<div class="card" style="gap:14px">
+  <div class="card-head">
+    <h2>Quick log</h2>
+    <span class="note">One tap records it for today</span>
+  </div>
+  <div class="quick" id="quick"></div>
+  <div class="auth" id="auth" hidden>
+    <p id="auth-msg">To log from this page, tap <b>Open dashboard</b> in the Personal API phone app once. On a computer, paste your upload token (INGEST_TOKEN from .env) here instead:</p>
+    <form class="row" id="auth-form">
+      <input type="password" id="auth-token" autocomplete="off" aria-label="Upload token">
+      <button class="btn" type="submit">Save</button>
+    </form>
+  </div>
+</div>
+</section>
+
+<section aria-label="Fuel today" class="card fuel">
+  <div class="fuel-main">
+    <h2>Fuel today</h2>
+    <p class="num" style="font-weight:700;line-height:1"><span id="kcal" style="font-size:52px">0</span><span id="kcal-goal" style="font-size:28px;color:var(--muted)"></span></p>
+    <div class="track" style="height:12px" role="img" id="kcal-track"><div class="fill" id="kcal-bar"></div></div>
+    <p class="note" id="kcal-note" style="font-size:14px"></p>
+    <ul class="meal-list" id="meal-list" aria-label="Today's meals"></ul>
+    <form id="paste-form" style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+      <label for="paste" class="note">Meals saved by your food AI into the inbox folder appear here within a minute. Or paste its line:</label>
+      <div class="row">
+        <textarea id="paste" rows="2" placeholder='{"meal":"lunch","kcal":640,"protein_g":42,"carbs_g":55,"fat_g":20}'></textarea>
+        <button class="btn" type="submit" id="paste-btn">Add meal</button>
+      </div>
+      <p class="note" id="paste-msg" role="status"></p>
+    </form>
+  </div>
+  <div class="meters" id="meters"></div>
 </section>
 
 <section aria-label="Daily averages" class="tiles" id="tiles"></section>
@@ -159,18 +225,25 @@ thead th { font-size: 13px; font-weight: 500; color: var(--muted); text-align: l
   </div>
 </section>
 
-<section aria-label="Training" class="grid two">
+<section aria-label="Training" class="grid">
   <div class="card">
     <div class="card-head">
       <h2>Kettlebell this week</h2>
       <span class="note" id="kb-week"></span>
     </div>
     <div class="scroll"><table class="kb" id="kb"></table></div>
-    <p class="note">Ticks fill in from the sets you log in the phone app.</p>
+    <p class="note">Ticks come from Workout done, a tap on the next box, or sets logged in the phone app.</p>
   </div>
   <div class="card">
     <h2>Workout minutes</h2>
     <div id="ch-workout"></div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <h2>Study and reading hours</h2>
+      <div class="legend"><span><span class="sw" style="background:#2457D6"></span>Study</span><span><span class="sw" style="background:#86A8F2"></span>Reading</span></div>
+    </div>
+    <div id="ch-learn"></div>
   </div>
 </section>
 
@@ -220,19 +293,27 @@ thead th { font-size: 13px; font-weight: 500; color: var(--muted); text-align: l
     <span class="chip auto"><span class="dot"></span>Phone usage stats · TikTok + Instagram</span>
     <span class="chip auto"><span class="dot"></span>GitHub · commits</span>
     <span class="chip auto"><span class="dot"></span>Alpaca paper · P/L, positions, trades</span>
+    <span class="chip manual"><span class="dot"></span>Food AI, pasted here · calories, protein, carbs, fat (manual)</span>
+    <span class="chip manual"><span class="dot"></span>Quick log buttons · water, reading, study, coffee, workout done (manual)</span>
     <span class="chip manual"><span class="dot"></span>Phone app · kettlebell sets, catch distance (manual)</span>
   </div>
 </section>
 
 </main>
 <div id="tip" role="tooltip"></div>
+<div id="toast" role="status" aria-live="polite"><span id="toast-text"></span><button type="button" id="toast-undo">Undo</button></div>
 
 <script>
 (function () {
   'use strict';
 
   var COLOR = { tiktok: '#B4501A', instagram: '#E89A62', deep: '#1D3F99', rem: '#5B85EC', light: '#9DB5F0', unstaged: '#C9CCC6',
-    accent: '#2457D6', ink: '#16191D', good: '#1F6B3A', warn: '#B4501A', muted: '#5B6168' };
+    accent: '#2457D6', ink: '#16191D', good: '#1F6B3A', warn: '#B4501A', muted: '#5B6168', study: '#2457D6', reading: '#86A8F2' };
+  // Daily targets for Fuel today. Caffeine is a maximum, counted at 95 mg per coffee.
+  var GOALS = { kcal: 2000, protein_g: 150, water_l: 3.0, caffeine_mg: 400 };
+  var CAFFEINE_PER_CUP = 95;
+  var MEALS = ['breakfast', 'lunch', 'dinner', 'snack'];
+  var KB_MOVES = [['swing', 'Swing'], ['clean', 'Clean'], ['clean_press', 'Clean & press'], ['ballistic_row', 'Ballistic row']];
   var RANGES = {
     7: { eyebrow: 'Last 7 days', title: 'Freedom gained this week', period: 'This week', prev: 'Last week', vs: 'vs last week', prevs: "last week's", unit: 'week' },
     30: { eyebrow: 'Last 30 days', title: 'Freedom gained this month', period: 'Last 30 days', prev: '30 days before', vs: 'vs the 30 days before', prevs: "the previous 30 days'", unit: '30 days' },
@@ -243,7 +324,7 @@ thead th { font-size: 13px; font-weight: 500; color: var(--muted); text-align: l
   var REFRESH_MS = 5 * 60 * 1000;
   var WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  var state = { range: 7, byDate: {}, trading: null, status: null, today: new Date() };
+  var state = { range: 7, byDate: {}, trading: null, status: null, today: new Date(), token: '', meals: [] };
 
   // ---- small helpers ----
   function $(id) { return document.getElementById(id); }
@@ -537,24 +618,58 @@ thead th { font-size: 13px; font-weight: 500; color: var(--muted); text-align: l
     single($('ch-steps'), 'health.steps', 'Steps', COLOR.accent, bucketAvg, function (v) { return (v / 1000).toFixed(1) + 'k'; }, int, perDay);
     single($('ch-commits'), 'github.commits', 'Commits', COLOR.ink, bucketSum, int, int, perWeek);
     single($('ch-workout'), 'workout.minutes', 'Minutes', COLOR.accent, bucketSum, function (v) { return Math.round(v) + ''; }, function (v) { return Math.round(v) + ' min'; }, perWeek, workout);
+
+    function hours(b, key) { return bucketSum(b, function (d) { return m(d, key) || 0; }) / 60; }
+    function h1(v) { return +v.toFixed(1) + ' h'; }
+    var learnTotal = 0;
+    barChart($('ch-learn'), {
+      series: [{ name: 'Study', color: COLOR.study }, { name: 'Reading', color: COLOR.reading }], fmt: h1, xName: xName, note: perWeek,
+      points: bs.map(function (b) {
+        var st = hours(b, 'study.minutes'), rd = hours(b, 'reading.minutes');
+        learnTotal += st + rd;
+        return { label: b.label, title: b.title, values: [st, rd],
+          rows: [{ text: h1(st + rd), name: 'total' }, { color: COLOR.study, text: h1(st), name: 'Study' }, { color: COLOR.reading, text: h1(rd), name: 'Reading' }] };
+      })
+    });
+    $('ch-learn').append(el('p', { class: 'note' }, h1(learnTotal) + ' ' + (state.range === 7 ? 'this week' : 'in ' + RANGES[state.range].unit) + ', from Quick log'));
+  }
+
+  // A move counts as done on a day when sets were logged in the phone app or it was ticked here.
+  function setsLogged(day, move) { return (m(day, 'kb.' + move + '.sets') || 0) > 0; }
+  function ticked(day, move) { return (m(day, 'kb.' + move + '.done') || 0) > 0; }
+  function moveDone(day, move) { return setsLogged(day, move) || ticked(day, move); }
+  function thisWeek() {
+    var out = [], sun = addDays(state.today, -state.today.getDay());
+    for (var d = sun; d <= state.today; d = addDays(d, 1)) out.push(iso(d));
+    return out;
   }
 
   function renderKettlebell() {
-    var today = state.today, sun = addDays(today, -today.getDay()), sat = addDays(sun, 6);
+    var today = iso(state.today), sun = addDays(state.today, -state.today.getDay()), sat = addDays(sun, 6);
     $('kb-week').textContent = longDay(sun) + ' – ' + longDay(sat) + ' · resets Sunday';
-    var week = [];
-    for (var d = sun; d <= today; d = addDays(d, 1)) week.push(iso(d));
-    var moves = [['swing', 'Swing'], ['clean', 'Clean'], ['clean_press', 'Clean & press'], ['ballistic_row', 'Ballistic row']];
-    var rows = moves.map(function (mv) {
-      return { name: mv[1], sessions: week.filter(function (day) { return (m(day, 'kb.' + mv[0] + '.sets') || 0) > 0; }).length, always: mv[0] !== 'ballistic_row' };
+    var week = thisWeek();
+    var rows = KB_MOVES.map(function (mv) {
+      var sessions = week.filter(function (day) { return moveDone(day, mv[0]); }).length;
+      // The next open box ticks today; today's own tick (if made here) can be tapped again to undo it.
+      var tap = !moveDone(today, mv[0]) ? sessions : (ticked(today, mv[0]) && !setsLogged(today, mv[0]) ? sessions - 1 : -1);
+      return { key: mv[0], name: mv[1], sessions: sessions, tap: tap, always: mv[0] !== 'ballistic_row' };
     }).filter(function (r) { return r.always || r.sessions > 0; });
     var head = el('thead', null, el('tr', null, el('th', { scope: 'col' }, 'Move'), [1, 2, 3].map(function (i) { return el('th', { scope: 'col', class: 'c' }, 'Session ' + i); })));
     var body = el('tbody', null, rows.map(function (r) {
       return el('tr', null, el('th', { scope: 'row', style: 'font-weight:600;text-align:left' }, r.name, r.sessions > 3 ? el('span', { class: 'note' }, ' +' + (r.sessions - 3) + ' extra') : null),
         [0, 1, 2].map(function (i) {
-          var done = i < r.sessions;
-          return el('td', { class: 'c' }, el('span', { class: 'tick' + (done ? ' done' : ''), role: 'img', 'aria-label': r.name + ' session ' + (i + 1) + (done ? ': done' : ': not yet') },
-            done ? checkIcon() : null));
+          var done = i < r.sessions, label = r.name + ' session ' + (i + 1) + (done ? ': done' : ': not yet');
+          var box = el('span', { class: 'tick' + (done ? ' done' : '') }, done ? checkIcon() : null);
+          if (i !== r.tap) {
+            box.setAttribute('role', 'img'); box.setAttribute('aria-label', label);
+            return el('td', { class: 'c' }, el('span', { class: 'tickbtn', style: 'cursor:default' }, box));
+          }
+          var btn = el('button', { type: 'button', class: 'tickbtn', 'aria-label': label + (done ? '. Tap to undo today' : '. Tap to tick for today') }, box);
+          btn.addEventListener('click', function () {
+            send([{ metric: 'kb.' + r.key + '.done', value: done ? 0 : 1, unit: 'count', mode: 'set' }],
+              done ? 'Unticked ' + r.name + ' for today' : 'Ticked ' + r.name + ' for today');
+          });
+          return el('td', { class: 'c' }, btn);
         }));
     }));
     $('kb').replaceChildren(head, body);
@@ -641,6 +756,203 @@ thead th { font-size: 13px; font-weight: 500; color: var(--muted); text-align: l
     return md(d);
   }
 
+  // ---- logging from the page ----
+  function tv(key) { return m(iso(state.today), key) || 0; }
+  function litres(ml) { return +(ml / 1000).toFixed(2) + ' L'; }
+
+  function api(method, url, body) {
+    return fetch(url, { method: method, cache: 'no-store',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.token },
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function (r) {
+      if (!r.ok) { var e = new Error(method + ' ' + url + ' ' + r.status); e.status = r.status; throw e; }
+      return r.json();
+    });
+  }
+  // After a change, re-read today so totals that combine several sources (protein, kettlebell) stay right.
+  function refreshToday() {
+    var day = iso(state.today);
+    return Promise.all([getJSON('/days?start=' + day + '&end=' + day), getJSON('/meals?date=' + day)]).then(function (res) {
+      state.byDate[day] = res[0].days.length ? res[0].days[0].metrics : {};
+      state.meals = res[1].meals;
+      render();
+    });
+  }
+  function postLog(day, entries) { return api('POST', '/log', { date: day, entries: entries }).then(refreshToday); }
+
+  // Saves entries for today and offers an undo: an add is undone by subtracting, a set by restoring the old value.
+  function send(entries, message) {
+    if (!state.token) { showAuth(); return Promise.resolve(false); }
+    var day = iso(state.today);
+    var undo = entries.map(function (e) {
+      return e.mode === 'set' ? { metric: e.metric, value: m(day, e.metric) || 0, unit: e.unit, mode: 'set' } : { metric: e.metric, value: -e.value, unit: e.unit };
+    });
+    return postLog(day, entries).then(function () {
+      toast(message, function () { postLog(day, undo).then(function () { toast('Undone'); }, failed); });
+      return true;
+    }, function (err) { failed(err); return false; });
+  }
+  function failed(err) {
+    if (err && err.status === 401) {
+      state.token = ''; store('token', '');
+      showAuth('The token was refused. Open the dashboard from the phone app again, or paste the token here:');
+    } else toast("Couldn't save that. Is the server on?");
+  }
+
+  var toastTimer = null;
+  function toast(text, undo) {
+    $('toast-text').textContent = text;
+    var b = $('toast-undo');
+    b.hidden = !undo;
+    b.onclick = undo ? function () { $('toast').style.display = 'none'; undo(); } : null;
+    $('toast').style.display = 'flex';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { $('toast').style.display = 'none'; }, 6000);
+  }
+
+  function showAuth(msg) {
+    $('auth').hidden = false;
+    if (msg) $('auth-msg').textContent = msg;
+    $('auth').scrollIntoView({ block: 'nearest' });
+  }
+
+  var ICONS = {
+    water: 'M12 3c3.5 4.2 6 7.4 6 10.5a6 6 0 0 1-12 0C6 10.4 8.5 7.2 12 3z',
+    reading: 'M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z',
+    workout: 'M9 9V7a3 3 0 0 1 6 0v2M12 21a6 6 0 1 0 0-12a6 6 0 0 0 0 12z',
+    protein: 'M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 1.5-3 4-3 7h3V3zM17 10v11',
+    coffee: 'M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 10h1.5a2.5 2.5 0 0 1 0 5H16M8 3v3M12 3v3',
+    study: 'M2 9l10-5 10 5-10 5zM6 11v5c3 2.5 9 2.5 12 0v-5M22 9v6'
+  };
+  function icon(path) {
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    [['width', '22'], ['height', '22'], ['viewBox', '0 0 24 24'], ['fill', 'none'], ['stroke', 'currentColor'], ['stroke-width', '1.8'],
+      ['stroke-linecap', 'round'], ['stroke-linejoin', 'round'], ['aria-hidden', 'true']].forEach(function (a) { svg.setAttribute(a[0], a[1]); });
+    var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', path);
+    svg.append(p);
+    return svg;
+  }
+
+  function renderQuick() {
+    var today = iso(state.today), main = KB_MOVES.slice(0, 3).map(function (mv) { return mv[0]; });
+    var allTicked = main.every(function (mv) { return ticked(today, mv); });
+    var fewest = Math.min.apply(null, main.map(function (mv) { return thisWeek().filter(function (d) { return moveDone(d, mv); }).length; }));
+    var cups = tv('coffee.cups'), read = tv('reading.minutes') / 60;
+    var buttons = [
+      { label: '+250 ml water', icon: ICONS.water, sub: litres(tv('water.ml')) + ' today',
+        tap: function () { send([{ metric: 'water.ml', value: 250, unit: 'ml' }], 'Added 250 ml water'); } },
+      { label: '+1 hour reading', icon: ICONS.reading, sub: +read.toFixed(1) + (read === 1 ? ' hour' : ' hours') + ' today',
+        tap: function () { send([{ metric: 'reading.minutes', value: 60, unit: 'minutes' }], 'Added 1 hour of reading'); } },
+      { label: 'Workout done', icon: ICONS.workout, pressed: allTicked,
+        sub: allTicked ? 'Done today · tap to undo' : fewest >= 3 ? 'All 3 done this week' : fewest + ' of 3 this week',
+        tap: function () {
+          send(main.map(function (mv) { return { metric: 'kb.' + mv + '.done', value: allTicked ? 0 : 1, unit: 'count', mode: 'set' }; }),
+            allTicked ? "Removed today's workout" : 'Ticked Swing, Clean and Clean & press for today');
+        } },
+      { label: '+25 g protein', icon: ICONS.protein, sub: Math.round(tv('food.protein_g')) + ' g today',
+        tap: function () { send([{ metric: 'food.protein_g', value: 25, unit: 'g' }], 'Added 25 g protein'); } },
+      { label: '+1 coffee', icon: ICONS.coffee, sub: cups + (cups === 1 ? ' cup' : ' cups') + ' · ' + cups * CAFFEINE_PER_CUP + ' mg',
+        tap: function () { send([{ metric: 'coffee.cups', value: 1, unit: 'cups' }], 'Added a coffee'); } },
+      { label: '+30 min study', icon: ICONS.study, sub: Math.round(tv('study.minutes')) + ' min today',
+        tap: function () { send([{ metric: 'study.minutes', value: 30, unit: 'minutes' }], 'Added 30 min of study'); } }
+    ];
+    $('quick').replaceChildren.apply($('quick'), buttons.map(function (q) {
+      var b = el('button', { type: 'button', class: 'qbtn', 'aria-pressed': q.pressed ? 'true' : 'false' },
+        icon(q.icon), el('span', { class: 'l' }, q.label), el('span', { class: 's' }, q.sub));
+      b.addEventListener('click', q.tap);
+      return b;
+    }));
+  }
+
+  function renderFuel() {
+    var kcal = tv('food.kcal'), over = kcal > GOALS.kcal;
+    $('kcal').textContent = int(kcal);
+    $('kcal-goal').textContent = ' / ' + int(GOALS.kcal) + ' kcal';
+    $('kcal-track').setAttribute('aria-label', int(kcal) + ' of ' + int(GOALS.kcal) + ' calories eaten');
+    $('kcal-bar').style.width = Math.min(100, kcal / GOALS.kcal * 100) + '%';
+    $('kcal-bar').style.background = over ? COLOR.warn : COLOR.accent;
+    var meals = MEALS.filter(function (ml) { return tv('food.' + ml + '.kcal') > 0; })
+      .map(function (ml) { return (ml === 'snack' ? 'snacks' : ml) + ' ' + int(tv('food.' + ml + '.kcal')); });
+    var macros = ['carbs_g', 'fat_g'].filter(function (k) { return tv('food.' + k) > 0; })
+      .map(function (k) { return (k === 'carbs_g' ? 'carbs ' : 'fat ') + Math.round(tv('food.' + k)) + ' g'; });
+    $('kcal-note').textContent = kcal === 0 ? 'Nothing logged yet today. Paste a meal from your food AI below.'
+      : [over ? int(kcal - GOALS.kcal) + ' kcal over' : int(GOALS.kcal - kcal) + ' kcal left'].concat(meals, macros).join(' · ');
+
+    $('meal-list').replaceChildren.apply($('meal-list'), state.meals.map(function (ml) {
+      var name = ml.meal.charAt(0).toUpperCase() + ml.meal.slice(1);
+      var facts = [int(ml.kcal) + ' kcal'].concat(ml.protein_g ? [Math.round(ml.protein_g) + ' g protein'] : []).join(' · ');
+      var x = el('button', { type: 'button', class: 'x', 'aria-label': 'Remove ' + describe(ml) }, '×');
+      x.addEventListener('click', function () { removeMeal(ml); });
+      return el('li', null, el('div', { class: 'what' }, el('b', null, name + ' · ' + facts), ml.description ? el('span', null, ml.description) : null), x);
+    }));
+
+    var protein = tv('food.protein_g'), water = tv('water.ml') / 1000, caffeine = tv('coffee.cups') * CAFFEINE_PER_CUP;
+    var meters = [
+      { label: 'Protein', value: Math.round(protein) + ' g', goal: GOALS.protein_g + ' g', pct: protein / GOALS.protein_g, color: COLOR.accent, aria: Math.round(protein) + ' of ' + GOALS.protein_g + ' grams of protein' },
+      { label: 'Water', value: water.toFixed(1) + ' L', goal: GOALS.water_l.toFixed(1) + ' L', pct: water / GOALS.water_l, color: COLOR.accent, aria: water.toFixed(1) + ' of ' + GOALS.water_l + ' litres of water' },
+      { label: 'Caffeine · daily max', value: caffeine + ' mg', goal: GOALS.caffeine_mg + ' mg', pct: caffeine / GOALS.caffeine_mg, color: caffeine > GOALS.caffeine_mg ? COLOR.warn : COLOR.muted, aria: caffeine + ' of ' + GOALS.caffeine_mg + ' milligrams of caffeine' }
+    ];
+    $('meters').replaceChildren.apply($('meters'), meters.map(function (mt) {
+      return el('div', { class: 'meter' },
+        el('p', { class: 'note' }, mt.label),
+        el('p', { class: 'num', style: 'font-size:22px;font-weight:700' }, mt.value, el('span', { style: 'font-size:15px;color:var(--muted);font-weight:500' }, ' / ' + mt.goal)),
+        el('div', { class: 'track', style: 'height:8px', role: 'img', 'aria-label': mt.aria },
+          el('div', { class: 'fill', style: 'width:' + Math.min(100, mt.pct * 100) + '%;background:' + mt.color })));
+    }));
+  }
+
+  // Reads every {...} in the pasted text, so pasting the AI's whole reply works too.
+  function parseMeals(text) {
+    var blocks = text.replace(/[“”]/g, '"').match(/\{[^{}]*\}/g) || [];
+    var meals = [];
+    for (var i = 0; i < blocks.length; i++) {
+      var o;
+      try { o = JSON.parse(blocks[i]); } catch (e) { return { error: "That line isn't valid JSON: " + blocks[i] }; }
+      var meal = String(o.meal || '').trim().toLowerCase().replace(/s$/, '');
+      if (MEALS.indexOf(meal) < 0) return { error: 'Meal must be breakfast, lunch, dinner or snack, not "' + (o.meal || '') + '".' };
+      var item = { meal: meal, description: String(o.description || (Array.isArray(o.items) ? o.items.join(', ') : '')).slice(0, 300) };
+      var fields = [['kcal', o.kcal !== undefined ? o.kcal : o.calories, 5000], ['protein_g', o.protein_g, 1000], ['carbs_g', o.carbs_g, 1000], ['fat_g', o.fat_g, 1000]];
+      for (var j = 0; j < fields.length; j++) {
+        var f = fields[j];
+        if (f[1] === undefined || f[1] === null) { if (f[0] === 'kcal') return { error: 'The meal line needs "kcal".' }; continue; }
+        var n = Number(f[1]);
+        if (!isFinite(n) || n < 0 || n > f[2]) return { error: f[0] + ' should be a number between 0 and ' + f[2] + '.' };
+        item[f[0]] = n;
+      }
+      meals.push(item);
+    }
+    if (!meals.length) return { error: 'No meal line found. It should look like {"meal":"lunch","kcal":640,"protein_g":42}.' };
+    return { meals: meals };
+  }
+
+  function describe(ml) { return ml.meal + ' ' + int(ml.kcal) + ' kcal' + (ml.protein_g ? ', ' + Math.round(ml.protein_g) + ' g protein' : ''); }
+
+  function addMeals(meals) {
+    if (!state.token) { showAuth(); return Promise.resolve(false); }
+    var day = iso(state.today);
+    return api('POST', '/meals', { date: day, meals: meals }).then(function (b) {
+      return refreshToday().then(function () {
+        toast('Added ' + meals.map(describe).join('; '), function () {
+          Promise.all(b.ids.map(function (id) { return api('DELETE', '/meals/' + encodeURIComponent(id)); }))
+            .then(refreshToday).then(function () { toast('Undone'); }, failed);
+        });
+        return true;
+      });
+    }, function (err) { failed(err); return false; });
+  }
+
+  function removeMeal(ml) {
+    if (!state.token) { showAuth(); return; }
+    var day = iso(state.today);
+    api('DELETE', '/meals/' + encodeURIComponent(ml.id)).then(refreshToday).then(function () {
+      toast('Removed ' + describe(ml), function () {
+        var again = { meal: ml.meal, kcal: ml.kcal, protein_g: ml.protein_g, carbs_g: ml.carbs_g, fat_g: ml.fat_g, description: ml.description };
+        api('POST', '/meals', { date: day, meals: [again] }).then(refreshToday).then(function () { toast('Undone'); }, failed);
+      });
+    }, failed);
+  }
+
   function renderCatch() {
     var blocks = [];
     for (var k = 4; k >= 0; k--) {
@@ -669,6 +981,8 @@ thead th { font-size: 13px; font-weight: 500; color: var(--muted); text-align: l
     var cur = dates(state.range, 0), prev = dates(state.range, state.range);
     renderHeader();
     renderHero(cur, prev);
+    renderQuick();
+    renderFuel();
     renderTiles(cur, prev);
     renderCharts(cur);
     renderKettlebell();
@@ -685,7 +999,7 @@ thead th { font-size: 13px; font-weight: 500; color: var(--muted); text-align: l
     $('wrap').classList.add('loading');
     state.today = new Date();
     var start = iso(addDays(state.today, -(HISTORY_DAYS - 1))), end = iso(state.today);
-    return Promise.allSettled([getJSON('/days?start=' + start + '&end=' + end), getJSON('/trading'), getJSON('/status')]).then(function (res) {
+    return Promise.allSettled([getJSON('/days?start=' + start + '&end=' + end), getJSON('/trading'), getJSON('/status'), getJSON('/meals?date=' + end)]).then(function (res) {
       var problems = [];
       if (res[0].status === 'fulfilled') {
         state.byDate = {};
@@ -693,12 +1007,48 @@ thead th { font-size: 13px; font-weight: 500; color: var(--muted); text-align: l
       } else problems.push('daily stats');
       if (res[1].status === 'fulfilled') state.trading = res[1].value; else problems.push('trading');
       if (res[2].status === 'fulfilled') state.status = res[2].value; else problems.push('sync status');
+      if (res[3].status === 'fulfilled') state.meals = res[3].value.meals; else problems.push("today's meals");
       $('banner').hidden = !problems.length;
       $('banner').textContent = problems.length ? "Couldn't load " + problems.join(', ') + ' from the server. Showing what loaded; it retries every 5 minutes.' : '';
       render();
       $('wrap').classList.remove('loading');
     });
   }
+
+  $('paste-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var parsed = parseMeals($('paste').value);
+    if (parsed.error) { $('paste-msg').textContent = parsed.error; return; }
+    $('paste-btn').disabled = true;
+    addMeals(parsed.meals).then(function (ok) {
+      $('paste-btn').disabled = false;
+      if (ok) { $('paste').value = ''; $('paste-msg').textContent = ''; }
+    });
+  });
+  $('auth-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    state.token = $('auth-token').value.trim();
+    if (!state.token) return;
+    // An empty log only checks the token.
+    postLog(iso(state.today), []).then(function () {
+      store('token', state.token); $('auth-token').value = ''; $('auth').hidden = true; toast('Logging is on for this browser');
+    }, failed);
+  });
+
+  // The phone app opens the dashboard with the upload token after the # (browsers never send that part to the
+  // server). Keep it for Quick log, then take it out of the address bar.
+  // It also arrives as a hash change when the dashboard is already open in that tab.
+  function tokenFromLink() {
+    var fromApp = location.hash.match(/token=([^&]+)/);
+    if (!fromApp) return false;
+    state.token = decodeURIComponent(fromApp[1]);
+    store('token', state.token);
+    history.replaceState(null, '', location.pathname + location.search);
+    $('auth').hidden = true;
+    return true;
+  }
+  if (!tokenFromLink()) state.token = store('token') || '';
+  window.addEventListener('hashchange', tokenFromLink);
 
   document.querySelectorAll('#range button').forEach(function (b) {
     b.addEventListener('click', function () { state.range = +b.dataset.days; store('range', String(state.range)); render(); });

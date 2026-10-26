@@ -26,6 +26,20 @@ CREATE TABLE IF NOT EXISTS trades (
     price     REAL NOT NULL
 );
 
+-- Meals from the food inbox folder or pasted on the dashboard. Daily food.* totals are recomputed from these.
+CREATE TABLE IF NOT EXISTS meals (
+    id          TEXT PRIMARY KEY,
+    date        TEXT NOT NULL,
+    meal        TEXT NOT NULL,  -- breakfast, lunch, dinner or snack
+    kcal        REAL NOT NULL,
+    protein_g   REAL NOT NULL,
+    carbs_g     REAL NOT NULL,
+    fat_g       REAL NOT NULL,
+    description TEXT NOT NULL,
+    origin      TEXT NOT NULL,  -- paste, or inbox:<file name>
+    added_at    TEXT NOT NULL
+);
+
 -- Current Alpaca positions, replaced on every collect.
 CREATE TABLE IF NOT EXISTS positions (
     symbol        TEXT PRIMARY KEY,
@@ -61,6 +75,28 @@ def upsert(conn: sqlite3.Connection, rows: list[dict]) -> int:
     )
     conn.commit()
     return len(rows)
+
+
+def add(conn: sqlite3.Connection, day: str, entries: list[dict], source: str) -> dict[str, float]:
+    """Add to (mode "add") or replace (mode "set") one day's values, never going below 0. Returns the new values."""
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    for e in entries:
+        # excluded.value is already clamped to 0, so an add uses the raw amount (which is negative for an undo).
+        new_value = "MAX(0, observations.value + ?)" if e["mode"] == "add" else "MAX(0, ?)"
+        conn.execute(
+            f"""INSERT INTO observations (date, metric, value, unit, source, updated_at)
+                VALUES (?, ?, MAX(0, ?), ?, ?, ?)
+                ON CONFLICT (date, metric, source)
+                DO UPDATE SET value = {new_value}, unit = excluded.unit, updated_at = excluded.updated_at""",
+            (day, e["metric"], e["value"], e["unit"], source, now, e["value"]),
+        )
+    conn.commit()
+    metrics = sorted({e["metric"] for e in entries})
+    rows = conn.execute(
+        f"SELECT metric, value FROM observations WHERE date = ? AND source = ? AND metric IN ({','.join('?' * len(metrics))})",
+        (day, source, *metrics),
+    ).fetchall()
+    return {metric: value for metric, value in rows}
 
 
 def fetch_range(conn: sqlite3.Connection, start: str, end: str) -> list[sqlite3.Row]:

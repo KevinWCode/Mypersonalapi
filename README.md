@@ -15,7 +15,9 @@ phone app  ── POST /ingest ┼──> observations table (SQLite) ──> GE
 - **`GET /dashboard`** (and `/`): the dashboard page. Plain HTML and JavaScript in `app/static/dashboard.html` that reads `/days`, `/trading` and `/status`, with 7, 30 and 90-day views. It refreshes every 5 minutes.
 - **`GET /days?start=YYYY-MM-DD&end=YYYY-MM-DD`**: per-day metrics (the last 7 days by default).
 - **`GET /trading`**: rolling P/L over 7 and 30 days, last stock bought and sold, the 5 most recent fills and the 5 biggest positions, from Alpaca.
-- **`GET /status`**: when each source (phone, manual, github, alpaca) last sent data.
+- **`GET /status`**: when each source (phone, manual, github, alpaca, food, dashboard) last sent data.
+- **`POST /log`**: the dashboard's Quick log buttons and kettlebell ticks. Each entry adds to the day's value (or sets it), with `Authorization: Bearer $INGEST_TOKEN`.
+- **`GET /meals?date=`, `POST /meals`, `DELETE /meals/{id}`**: the day's meals. The food totals (`food.*`) are recomputed from these, so nothing is counted twice.
 - **`POST /ingest`**: the phone app uploads screen time and quick manual entries here, with `Authorization: Bearer $INGEST_TOKEN`.
 - **Social media total**: the phone sends minutes per Android app as `screen.app.<package>`. `/days` adds the apps listed in `app/metrics.py` into `screen.social_media_minutes`, currently TikTok plus Instagram.
 
@@ -35,6 +37,18 @@ phone app  ── POST /ingest ┼──> observations table (SQLite) ──> GE
 | `kb.<move>.reps`, `kb.<move>.sets`, `kb.<move>.top_weight_lb` | Quick entry in the phone app | No, about 10 seconds per set |
 | `football.max_catch_yards` | Quick entry in the phone app | No |
 | `trading.equity`, `trading.pl_day` | Alpaca portfolio history, hourly (read-only) | Yes |
+| `food.kcal`, `food.protein_g`, `food.carbs_g`, `food.fat_g`, `food.<meal>.kcal` | Meal files your food AI saves into the inbox folder, or lines pasted on the dashboard (see below) | Partly: the AI does the work, you take the photo |
+| `water.ml`, `coffee.cups`, `reading.minutes`, `study.minutes`, `food.protein_g`, `kb.<move>.done` | Quick log buttons and kettlebell ticks on the dashboard | No, one tap each |
+
+## Food
+
+The server checks `data/inbox` (on the PC: `C:\Users\kevin\personal-api\data\inbox`) every minute. Each `.json` file there is one meal (or a list of meals). It's added to that day's totals and moved to `inbox/done`; a file that can't be read goes to `inbox/failed`. An AI that works out meals from photos and can save files on the PC only needs this instruction:
+
+> After working out a meal from my photo, save a new file in C:\Users\kevin\personal-api\data\inbox named with the date, time and meal (for example 2026-10-26-1305-lunch.json), containing only:
+> `{"date":"2026-10-26","meal":"lunch","kcal":640,"protein_g":42,"carbs_g":55,"fat_g":20,"description":"chicken wrap, apple"}`
+> meal is breakfast, lunch, dinner or snack.
+
+The same line can be pasted into the Fuel today card instead, for example from an AI app on the phone. A meal without a `date` goes on the day it's imported. The AI is only how the numbers get worked out; the server runs no AI.
 
 ## Run it
 
