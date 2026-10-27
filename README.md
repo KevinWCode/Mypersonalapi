@@ -15,7 +15,7 @@ phone app  ── POST /ingest ┼──> observations table (SQLite) ──> GE
 - **`GET /dashboard`** (and `/`): the dashboard page. Plain HTML and JavaScript in `app/static/dashboard.html` that reads `/days`, `/trading` and `/status`, with 7, 30 and 90-day views. It re-reads today every minute while open, everything every 5 minutes, and reloads when you switch back to it.
 - **`GET /days?start=YYYY-MM-DD&end=YYYY-MM-DD`**: per-day metrics (the last 7 days by default).
 - **`GET /summary?date=YYYY-MM-DD`**: the phone widget's numbers for one day: time reclaimed from social media this week, calories, protein, sleep and steps, plus 7-day steps per day, resting heart rate, workouts, study and reading hours, trading P/L and the last trade.
-- **`GET /trading`**: rolling P/L over 7 and 30 days, last stock bought and sold, the 5 most recent fills and the 5 biggest positions, from Alpaca.
+- **`GET /trading`**: rolling P/L over 7 and 30 days, last stock bought and sold, the 5 most recent fills and the 5 biggest positions, from Alpaca. With several paper accounts (`ALPACA_KEY_ID_2`, `_3` ... in `.env`, one per trading bot) everything is added together as if it were one account.
 - **`GET /status`**: when each source (phone, manual, github, alpaca, food, dashboard) last sent data.
 - **`POST /log`**: the dashboard's Quick log buttons and kettlebell ticks. Each entry adds to the day's value (or sets it), with `Authorization: Bearer $INGEST_TOKEN`.
 - **`GET /meals?date=`, `POST /meals`, `DELETE /meals/{id}`**: the day's meals. The food totals (`food.*`) are recomputed from these, so nothing is counted twice.
