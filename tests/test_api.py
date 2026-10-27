@@ -122,3 +122,18 @@ def test_summary_for_the_widget():
     empty = client.get("/summary", params={"date": "2026-01-01"}).json()
     assert empty["social"]["reclaimed_minutes"] is None and empty["kcal"] is None and empty["steps"] is None
     assert empty["workouts_week"] is None and empty["resting_hr"] is None
+
+
+def test_env_file_is_read_without_overriding(tmp_path, monkeypatch):
+    from app import config
+
+    env = tmp_path / ".env"
+    env.write_text('# comment\nPAPI_TEST_A=one\nPAPI_TEST_B="two"\nPAPI_TEST_C=three\n')
+    monkeypatch.setenv("PAPI_TEST_C", "already set")
+    monkeypatch.delenv("PAPI_TEST_A", raising=False)
+    monkeypatch.delenv("PAPI_TEST_B", raising=False)
+    config.load_env_file(env)
+    import os
+    assert (os.environ["PAPI_TEST_A"], os.environ["PAPI_TEST_B"], os.environ["PAPI_TEST_C"]) == ("one", "two", "already set")
+    monkeypatch.delenv("PAPI_TEST_A")
+    monkeypatch.delenv("PAPI_TEST_B")

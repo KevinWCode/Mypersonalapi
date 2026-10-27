@@ -61,6 +61,18 @@ curl localhost:8000/days
 
 Then open http://localhost:8000/dashboard (or the PC's Tailscale address from the phone).
 
+### Without Docker (Windows)
+
+On a PC where Docker can't run, install Python 3.12 (tick "Add python.exe to PATH"), put `.env` and the `data` folder next to the code, and double-click `start-server.bat`. The first run installs the Python packages into `.venv`. It runs the API on port 8000 and the collector in the background (`python -m app.serve`, which restarts either one if it stops), with logs in `data\logs`. `stop-server.bat` stops both.
+
+To start it whenever you sign in:
+
+```
+schtasks /create /tn "Personal API" /sc onlogon /tr "C:\Users\kevin\personal-api\start-server.bat"
+```
+
+Windows asks once whether Python may accept network connections: allow it, so the phone can reach the server over Tailscale.
+
 Server setup for the spare computer: [docs/server-setup.md](docs/server-setup.md).
 
 Phone app (in `android/`): [docs/phone-app.md](docs/phone-app.md). CI builds the APK on every PR, and every push to `main` publishes it as the `latest` release.
