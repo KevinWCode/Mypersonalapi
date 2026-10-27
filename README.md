@@ -65,11 +65,7 @@ Then open http://localhost:8000/dashboard (or the PC's Tailscale address from th
 
 On a PC where Docker can't run, install Python 3.12 (tick "Add python.exe to PATH"), put `.env` and the `data` folder next to the code, and double-click `start-server.bat`. The first run installs the Python packages into `.venv`. It runs the API on port 8000 and the collector in the background (`python -m app.serve`, which restarts either one if it stops), with logs in `data\logs`. `stop-server.bat` stops both.
 
-To start it whenever you sign in:
-
-```
-schtasks /create /tn "Personal API" /sc onlogon /tr "C:\Users\kevin\personal-api\start-server.bat"
-```
+To start it whenever you sign in, press Windows + R, type `shell:startup`, and put a shortcut to `start-server.bat` in the folder that opens (right-drag the file there and choose **Create shortcuts here**). This needs no admin rights, unlike a Task Scheduler logon task.
 
 Windows asks once whether Python may accept network connections: allow it, so the phone can reach the server over Tailscale.
 
