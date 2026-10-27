@@ -1,6 +1,24 @@
 import os
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def load_env_file(path: Path) -> None:
+    """Reads KEY=value lines from .env when running without Docker (Docker passes them in itself).
+    Values already set in the environment win."""
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+load_env_file(ROOT / ".env")
+
 DB_PATH = os.environ.get("DB_PATH", "data/personal.db")
 GITHUB_USER = os.environ.get("GITHUB_USER", "")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
