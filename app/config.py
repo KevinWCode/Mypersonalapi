@@ -28,5 +28,10 @@ COLLECT_EVERY_MINUTES = int(os.environ.get("COLLECT_EVERY_MINUTES", "60"))
 FOOD_INBOX = os.environ.get("FOOD_INBOX", str(Path(DB_PATH).parent / "inbox"))
 ALPACA_KEY_ID = os.environ.get("ALPACA_KEY_ID", "")
 ALPACA_SECRET_KEY = os.environ.get("ALPACA_SECRET_KEY", "")
+# More paper accounts (one per trading bot): ALPACA_KEY_ID_2 / ALPACA_SECRET_KEY_2, _3 and so on.
+# They're added together and shown as one account.
+ALPACA_EXTRA_ACCOUNTS = [
+    (os.environ.get(f"ALPACA_KEY_ID_{n}", ""), os.environ.get(f"ALPACA_SECRET_KEY_{n}", "")) for n in range(2, 10)
+]
 # Paper trading by default; set to https://api.alpaca.markets for the live account.
 ALPACA_BASE_URL = os.environ.get("ALPACA_BASE_URL", "https://paper-api.alpaca.markets")

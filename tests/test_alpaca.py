@@ -34,22 +34,27 @@ POSITIONS = [
 ]
 
 
-def fake_alpaca():
+def fake_alpaca(history=HISTORY, fills=FILLS, positions=POSITIONS):
     def handler(request: httpx.Request):
         assert request.method == "GET"
         body = {
-            "/v2/account/portfolio/history": HISTORY,
-            "/v2/account/activities/FILL": FILLS,
-            "/v2/positions": POSITIONS,
+            "/v2/account/portfolio/history": history,
+            "/v2/account/activities/FILL": fills,
+            "/v2/positions": positions,
         }[request.url.path]
         return httpx.Response(200, json=body)
     return httpx.Client(base_url="https://paper-api.alpaca.markets", transport=httpx.MockTransport(handler))
 
 
 def test_client_sends_keys():
-    client = alpaca._client()
+    client = alpaca._client("key", "secret")
     assert client.headers["APCA-API-KEY-ID"] == "key"
     assert client.headers["APCA-API-SECRET-KEY"] == "secret"
+
+
+def test_accounts_from_numbered_keys(monkeypatch):
+    monkeypatch.setattr(config, "ALPACA_EXTRA_ACCOUNTS", [("key2", "secret2"), ("", ""), ("key4", "secret4")])
+    assert alpaca.accounts() == [("alpaca1", "key", "secret"), ("alpaca2", "key2", "secret2"), ("alpaca4", "key4", "secret4")]
 
 
 def test_daily_pl_is_change_from_previous_day():
@@ -60,7 +65,7 @@ def test_daily_pl_is_change_from_previous_day():
 
 def test_collect_and_summary():
     conn = db.connect()
-    alpaca.collect(conn, client=fake_alpaca())
+    alpaca.collect(conn, clients={"alpaca1": fake_alpaca()})
     s = alpaca.summary(conn, "2026-10-23")
     assert s["equity"] == 1030.0
     assert s["pl_30d"] == 30.0
@@ -75,8 +80,30 @@ def test_collect_and_summary():
     assert alpaca.summary(conn, "2026-10-29")["pl_7d"] == 25.0
 
 
+def test_several_accounts_show_as_one():
+    conn = db.connect()
+    other_history = {**HISTORY, "equity": [500.0, 505.0, 500.0, 510.0], "profit_loss": [0.0, 5.0, 0.0, 10.0]}
+    other_fills = [{"id": "g1", "activity_type": "FILL", "type": "fill", "symbol": "AAPL", "side": "buy", "qty": "2",
+                    "price": "231", "transaction_time": "2026-10-23T17:00:00Z"}]
+    other_positions = [{"symbol": "AAPL", "qty": "2", "market_value": "464", "unrealized_pl": "2"}]
+    alpaca.collect(conn, clients={
+        "alpaca1": fake_alpaca(),
+        "alpaca2": fake_alpaca(other_history, other_fills, other_positions),
+    })
+    s = alpaca.summary(conn, "2026-10-23")
+    assert s["equity"] == 1540.0
+    assert s["pl_30d"] == 40.0
+    assert s["last_buy"]["symbol"] == "AAPL" and s["last_buy"]["qty"] == 2
+    assert s["recent_trades"][0]["symbol"] == "AAPL"
+    assert s["top_positions"][0] == {"symbol": "AAPL", "qty": 3.0, "market_value": 696.0, "unrealized_pl": 4.0}
+    # The dashboard's daily P/L adds the accounts up too.
+    day = TestClient(app).get("/days", params={"start": "2026-10-23", "end": "2026-10-23"}).json()["days"][0]
+    assert day["metrics"]["trading.pl_day"] == 35.0
+
+
 def test_skips_when_not_configured(monkeypatch):
     monkeypatch.setattr(config, "ALPACA_KEY_ID", "")
+    monkeypatch.setattr(config, "ALPACA_EXTRA_ACCOUNTS", [])
     assert alpaca.collect(db.connect()) == 0
 
 
