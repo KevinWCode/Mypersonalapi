@@ -23,6 +23,9 @@ DB_PATH = os.environ.get("DB_PATH", "data/personal.db")
 GITHUB_USER = os.environ.get("GITHUB_USER", "")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 INGEST_TOKEN = os.environ.get("INGEST_TOKEN", "")
+# Which network address the API listens on without Docker. 0.0.0.0 means every network, home Wi-Fi included.
+# Set it to the PC's Tailscale address so only your own Tailscale devices can reach it.
+API_HOST = os.environ.get("API_HOST") or "0.0.0.0"
 COLLECT_EVERY_MINUTES = int(os.environ.get("COLLECT_EVERY_MINUTES", "60"))
 # Meal files (JSON) saved here are added to food totals. Next to the database by default: data/inbox on the PC.
 FOOD_INBOX = os.environ.get("FOOD_INBOX", str(Path(DB_PATH).parent / "inbox"))

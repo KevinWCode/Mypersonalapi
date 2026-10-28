@@ -69,6 +69,8 @@ To start it whenever you sign in, press Windows + R, type `shell:startup`, and p
 
 Windows asks once whether Python may accept network connections: allow it, so the phone can reach the server over Tailscale.
 
+Reading the dashboard needs no token, so set `API_HOST` in `.env` to the PC's Tailscale address (`100.x.y.z`). Then only your own Tailscale devices can reach the server, not everything else on your home Wi-Fi. On the PC itself, open the dashboard at that address too, since `localhost` stops working. If Tailscale isn't up yet when the server starts, it keeps retrying every 10 seconds.
+
 Server setup for the spare computer: [docs/server-setup.md](docs/server-setup.md).
 
 Phone app (in `android/`): [docs/phone-app.md](docs/phone-app.md). CI builds the APK on every PR, and every push to `main` publishes it as the `latest` release.
