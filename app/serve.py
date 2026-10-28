@@ -6,11 +6,11 @@ import sys
 import time
 from pathlib import Path
 
-from app.config import ROOT
+from app.config import API_HOST, ROOT
 
 DATA = ROOT / "data"
 COMMANDS = {
-    "api": [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"],
+    "api": [sys.executable, "-m", "uvicorn", "app.main:app", "--host", API_HOST, "--port", "8000"],
     "collector": [sys.executable, "-m", "app.collect", "--loop"],
 }
 
