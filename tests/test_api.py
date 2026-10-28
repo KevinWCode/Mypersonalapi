@@ -137,3 +137,13 @@ def test_env_file_is_read_without_overriding(tmp_path, monkeypatch):
     assert (os.environ["PAPI_TEST_A"], os.environ["PAPI_TEST_B"], os.environ["PAPI_TEST_C"]) == ("one", "two", "already set")
     monkeypatch.delenv("PAPI_TEST_A")
     monkeypatch.delenv("PAPI_TEST_B")
+
+
+def test_server_runs_only_once(tmp_path):
+    from app.serve import single_instance
+
+    first = single_instance(tmp_path / "serve.lock")
+    assert first is not None
+    assert single_instance(tmp_path / "serve.lock") is None
+    first.close()
+    assert single_instance(tmp_path / "serve.lock") is not None
