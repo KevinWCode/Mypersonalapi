@@ -67,6 +67,8 @@ On a PC where Docker can't run, install Python 3.12 (tick "Add python.exe to PAT
 
 To start it whenever you sign in, press Windows + R, type `shell:startup`, and put a shortcut to `start-server.bat` in the folder that opens (right-drag the file there and choose **Create shortcuts here**). This needs no admin rights, unlike a Task Scheduler logon task.
 
+To have it come back by itself if something stops it (a Claude app update stops every program that was started from inside Claude), double-click `install-autostart.bat` once. It makes a Task Scheduler task, "Personal API", that starts the server every 10 minutes unless it is already running, with no window and no admin rights. Because of that task, `stop-server.bat` only stops the server until the next 10-minute check; to stop it for good, disable the task in Task Scheduler first.
+
 Windows asks once whether Python may accept network connections: allow it, so the phone can reach the server over Tailscale.
 
 Reading the dashboard needs no token, so set `API_HOST` in `.env` to the PC's Tailscale address (`100.x.y.z`). Then only your own Tailscale devices can reach the server, not everything else on your home Wi-Fi. On the PC itself, open the dashboard at that address too, since `localhost` stops working. If Tailscale isn't up yet when the server starts, it keeps retrying every 10 seconds.

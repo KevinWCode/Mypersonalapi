@@ -4,7 +4,6 @@ import os
 import subprocess
 import sys
 import time
-from pathlib import Path
 
 from app.config import API_HOST, ROOT
 
@@ -15,8 +14,30 @@ COMMANDS = {
 }
 
 
+def single_instance(path):
+    """Locks path and returns the open file, or None if another copy of the server holds the lock.
+    The lock goes away when the process ends, however it ends."""
+    f = open(path, "a+")
+    try:
+        if os.name == "nt":
+            import msvcrt
+            f.seek(0)
+            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        f.close()
+        return None
+    return f
+
+
 def main() -> None:
     (DATA / "logs").mkdir(parents=True, exist_ok=True)
+    # The scheduled task starts this every 10 minutes, so quietly do nothing while the server already runs.
+    lock = single_instance(DATA / "serve.lock")
+    if lock is None:
+        return
     # .env says /data/personal.db, which is the path inside Docker. Here the data folder sits next to the code.
     env = {**os.environ, "DB_PATH": str(DATA / "personal.db"), "FOOD_INBOX": str(DATA / "inbox")}
     running: dict[str, subprocess.Popen] = {}
