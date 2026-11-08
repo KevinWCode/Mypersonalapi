@@ -31,7 +31,7 @@ Tailscale has to be switched on for syncs to reach the server.
 
 ## Home screen widget
 
-Long-press an empty spot on the home screen, tap **Widgets**, find **Personal API** and drag **Personal API today** onto the screen. It's 4 x 4 by default and can be resized. It shows:
+Long-press an empty spot on the home screen, tap **Widgets**, find **Personal API** and drag **Personal API today** onto the screen. It's 4 x 4 by default and can be resized down to about 3 x 3; when it's shorter than 4 rows it switches to a compact layout (day names only under the bars, no small lines under the tiles, one line for the last trade). It shows:
 
 - social media for each of the last 7 days as bars: green up to half the daily limit, amber up to the limit, red over it, with the limit as a dashed line (60 minutes; change `SOCIAL_LIMIT_MINUTES` in the server's `.env`). Under them: minutes per day, time reclaimed against last week, and YouTube per day
 - calories and protein today, and last night's sleep
