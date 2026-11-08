@@ -133,6 +133,14 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 .tickbtn { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; cursor: pointer; }
 .tickbtn:hover .tick { border-color: var(--accent); }
 .game { display: flex; flex-direction: column; gap: 16px; }
+.game-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.blocks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.blocks li { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); min-height: 56px; }
+.blocks .when { width: 92px; flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.blocks .what { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 15px; }
+.blocks .what span { font-size: 12px; color: var(--muted); }
+.blocks li.next .what b::after { content: ' · next up'; color: var(--accent); font-size: 12px; font-weight: 600; }
+.blocks li.done .what b { text-decoration: line-through; color: var(--muted); }
 .game-top { align-items: start; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 16px; }
 .char { background: var(--raised); color: var(--on-raised); border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); padding: 28px; display: flex; flex-direction: column; gap: 14px; }
 .char .lvl { font-size: 56px; font-weight: 700; line-height: 1; }
@@ -300,7 +308,13 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 <section aria-labelledby="game-h" id="game" class="game" hidden>
 <div class="card-head"><h2 id="game-h">Character</h2><span class="note" id="game-note"></span></div>
 <div class="game-top">
-  <div class="char" id="char"></div>
+  <div class="game-col">
+    <div class="char" id="char"></div>
+    <div class="card">
+      <div class="card-head"><h2>Today's blocks</h2><span class="note">Tick a block when it's done · +50 XP each, up to 3</span></div>
+      <ul class="blocks" id="blocks"></ul>
+    </div>
+  </div>
   <div class="card">
     <div class="card-head"><h2>Today's XP</h2><span class="note" id="xp-today"></span></div>
     <ul class="xp-list" id="xp-list"></ul>
@@ -939,10 +953,11 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   // After a change, re-read today so totals that combine several sources (protein, kettlebell) stay right.
   function refreshToday() {
     var day = iso(state.today);
-    return Promise.all([getJSON('/days?start=' + day + '&end=' + day), getJSON('/meals?date=' + day), getJSON('/game?date=' + day)]).then(function (res) {
+    return Promise.all([getJSON('/days?start=' + day + '&end=' + day), getJSON('/meals?date=' + day), getJSON('/game?date=' + day), getJSON('/calendar?date=' + day)]).then(function (res) {
       state.byDate[day] = res[0].days.length ? res[0].days[0].metrics : {};
       state.meals = res[1].meals;
       state.game = res[2];
+      state.calendar = res[3].events;
       state.fetchedAt = new Date();
       render();
     });
@@ -1194,6 +1209,31 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     $('game-note').textContent = 'Day ' + g.day_number + ' · scored from your synced stats';
   }
 
+  function renderBlocks() {
+    var list = $('blocks'), events = state.calendar;
+    if (!events) { list.replaceChildren(el('li', null, el('span', { class: 'note' }, "Couldn't load the calendar."))); return; }
+    if (!events.length) {
+      list.replaceChildren(el('li', null, el('span', { class: 'note' },
+        'No blocks today. Calendar not connected yet? Put your Google Calendar secret iCal address in .env as GOOGLE_CALENDAR_ICS_URL.')));
+      return;
+    }
+    var now = new Date(), nextShown = false;
+    var t = function (iso) { var d = new Date(iso); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+    list.replaceChildren.apply(list, events.map(function (ev) {
+      var isNext = !ev.done && !nextShown && new Date(ev.end) > now;
+      if (isNext) nextShown = true;
+      var btn = el('button', { type: 'button', class: 'tickbtn', 'aria-pressed': ev.done ? 'true' : 'false', 'aria-label': (ev.done ? 'Untick ' : 'Tick ') + ev.title },
+        el('span', { class: 'tick' + (ev.done ? ' done' : '') }, ev.done ? checkIcon() : null));
+      btn.addEventListener('click', function () {
+        send([{ metric: ev.done_metric, value: ev.done ? 0 : 1, unit: 'count', mode: 'set' }], ev.done ? 'Unticked ' + ev.title : ev.title + ' done');
+      });
+      return el('li', { class: ev.done ? 'done' : isNext ? 'next' : null },
+        el('span', { class: 'when' }, t(ev.start) + '–' + t(ev.end)),
+        el('div', { class: 'what' }, el('b', null, ev.title), el('span', null, ev.kind === 'other' ? 'Block' : ev.kind[0].toUpperCase() + ev.kind.slice(1))),
+        btn);
+    }));
+  }
+
   function renderCatch() {
     var blocks = [];
     for (var k = 4; k >= 0; k--) {
@@ -1223,6 +1263,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     renderHeader();
     renderHero(cur, prev);
     renderGame();
+    renderBlocks();
     renderQuick();
     renderFuel();
     renderTiles(cur, prev);
@@ -1244,7 +1285,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     $('wrap').classList.add('loading');
     state.today = new Date();
     var start = iso(addDays(state.today, -(HISTORY_DAYS - 1))), end = iso(state.today);
-    return Promise.allSettled([getJSON('/days?start=' + start + '&end=' + end), getJSON('/trading'), getJSON('/status'), getJSON('/meals?date=' + end), getJSON('/game?date=' + end)]).then(function (res) {
+    return Promise.allSettled([getJSON('/days?start=' + start + '&end=' + end), getJSON('/trading'), getJSON('/status'), getJSON('/meals?date=' + end), getJSON('/game?date=' + end), getJSON('/calendar?date=' + end)]).then(function (res) {
       var problems = [];
       if (res[0].status === 'fulfilled') {
         state.byDate = {};
@@ -1254,6 +1295,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       if (res[2].status === 'fulfilled') state.status = res[2].value; else problems.push('sync status');
       if (res[3].status === 'fulfilled') state.meals = res[3].value.meals; else problems.push("today's meals");
       if (res[4].status === 'fulfilled') state.game = res[4].value; else problems.push('game');
+      if (res[5].status === 'fulfilled') state.calendar = res[5].value.events; else problems.push('calendar');
       if (!problems.length) state.fetchedAt = new Date();
       $('banner').hidden = !problems.length;
       $('banner').textContent = problems.length ? "Couldn't load " + problems.join(', ') + ' from the server. Showing what loaded; it retries every 5 minutes.' : '';

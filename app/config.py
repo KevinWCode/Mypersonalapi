@@ -40,3 +40,7 @@ ALPACA_EXTRA_ACCOUNTS = [
 ]
 # Paper trading by default; set to https://api.alpaca.markets for the live account.
 ALPACA_BASE_URL = os.environ.get("ALPACA_BASE_URL", "https://paper-api.alpaca.markets")
+# Google Calendar's secret iCal address (read-only). Keep it only in .env: anyone with it can read the calendar.
+GOOGLE_CALENDAR_ICS_URL = os.environ.get("GOOGLE_CALENDAR_ICS_URL", "")
+# Time zone calendar events are shown and counted in.
+CALENDAR_TZ = os.environ.get("CALENDAR_TZ") or "Europe/London"

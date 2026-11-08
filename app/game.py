@@ -8,6 +8,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 from app import db, perks
+from app.collectors import calendar
 from app.metrics import APP_PREFIX, build_days
 
 # Day 1 of the game: the first day with phone data.
@@ -180,9 +181,14 @@ def score_day(m: dict, ctx: dict) -> list[dict]:
     lines.append(_line("catch", "Catch drill", "DEX", 50 if catch else 0, 50,
                        f"{catch:.0f} yd" if catch else "No drill"))
 
-    blocks = m.get("calendar.blocks_done")
-    lines.append(_line("calendar", "Calendar blocks", "Quests", 50 * min(blocks or 0, 3), 150,
-                       f"{blocks:.0f} block(s) kept" if blocks is not None else "Calendar not connected yet"))
+    # Calendar: blocks ticked done that day (on the dashboard), 50 XP each, up to 3.
+    blocks = sum(1 for k, v in m.items() if k.startswith("cal.") and k.endswith(".done") and v > 0)
+    planned = ctx.get("blocks_planned", 0)
+    if ctx.get("calendar_connected") or blocks:
+        detail = f"{blocks:.0f} of {planned} block(s) kept" if planned else f"{blocks:.0f} block(s) kept"
+    else:
+        detail = "Calendar not connected yet"
+    lines.append(_line("calendar", "Calendar blocks", "Quests", 50 * min(blocks, 3), 150, detail))
 
     commits = m.get("github.commits", 0)
     lines.append(_line("github", "GitHub commits", "Craft", 25 * min(int(commits), 4), 100, f"{commits:.0f} commit(s)"))
@@ -229,6 +235,7 @@ def build(conn, day: date) -> dict:
     lookback = GAME_START - timedelta(days=30)
     rows = db.fetch_range(conn, lookback.isoformat(), day.isoformat())
     by_date = {d["date"]: d["metrics"] for d in build_days(rows)}
+    planned = calendar.counts_by_day(conn, lookback.isoformat(), day.isoformat())
     youtube: dict[str, float] = defaultdict(float)
     for r in rows:
         if r["metric"] == APP_PREFIX + YOUTUBE_APP:
@@ -259,7 +266,8 @@ def build(conn, day: date) -> dict:
             buffs = []
 
             ctx = {"rhr_base": _avg(rhr_seen[-30:]), "hrv_base": _avg(hrv_seen[-30:]),
-                   "prev_equity": prev_equity, "youtube": youtube.get(key, 0)}
+                   "prev_equity": prev_equity, "youtube": youtube.get(key, 0),
+                   "blocks_planned": planned.get(key, 0), "calendar_connected": bool(planned)}
             lines = score_day(m, ctx)
             by_key = {line["key"]: line for line in lines}
             if ("wis", 1) in active:
