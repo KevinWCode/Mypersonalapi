@@ -77,6 +77,46 @@ def stat_sheet(key: str, label: str, stat: str, xp: float, max_xp: int) -> dict:
     }
 
 
+# Well-Rested: waking after 7.5 h asleep adds 10% to that day's XP. Sleep is filed under the day you wake up.
+WELL_RESTED_MINUTES = 450
+WELL_RESTED_BONUS = 0.10
+
+# Classes: the 13 stats fall into six paths. Your class comes from your two strongest paths (each path counts
+# its highest stat level), or a pure class when one path leads by double.
+PATHS = {
+    "Might": ["kettlebell", "workout"],
+    "Finesse": ["catch", "steps"],
+    "Vigor": ["sleep", "heart"],
+    "Mind": ["youtube", "social", "journal"],
+    "Craft": ["github", "calendar", "email"],
+    "Fortune": ["stocks"],
+}
+PURE_CLASSES = {"Might": "Juggernaut", "Finesse": "Skirmisher", "Vigor": "Warden", "Mind": "Sage",
+                "Craft": "Artificer", "Fortune": "Merchant"}
+DUAL_CLASSES = {
+    frozenset(k.split("+")): v for k, v in {
+        "Might+Finesse": "Duelist", "Might+Vigor": "Ironclad", "Might+Mind": "Battle Monk",
+        "Might+Craft": "Forgeknight", "Might+Fortune": "Mercenary", "Finesse+Vigor": "Ranger",
+        "Finesse+Mind": "Shadowblade", "Finesse+Craft": "Tinker", "Finesse+Fortune": "Rogue",
+        "Vigor+Mind": "Druid", "Vigor+Craft": "Alchemist", "Vigor+Fortune": "Steward",
+        "Mind+Craft": "Runesmith", "Mind+Fortune": "Oracle", "Craft+Fortune": "Guildmaster",
+    }.items()
+}
+
+
+def character_class(stats: list[dict]) -> dict:
+    by_key = {s["key"]: s for s in stats}
+    # Highest stat level in each path, then that stat's XP progress to break ties.
+    power = {path: max((by_key[k]["level"], by_key[k]["xp"]) for k in keys) for path, keys in PATHS.items()}
+    ranked = sorted(power, key=lambda p: power[p], reverse=True)
+    first, second = ranked[0], ranked[1]
+    if power[first][0] < 2:
+        return {"name": "Adventurer", "paths": [], "detail": "Level a stat to 2 to find your class"}
+    if power[first][0] >= 2 * power[second][0]:
+        return {"name": PURE_CLASSES[first], "paths": [first], "detail": f"Pure {first}"}
+    return {"name": DUAL_CLASSES[frozenset((first, second))], "paths": [first, second], "detail": f"{first} + {second}"}
+
+
 def _avg(values: list[float]) -> float | None:
     return sum(values) / len(values) if values else None
 
@@ -190,6 +230,7 @@ def build(conn, day: date) -> dict:
     rhr_seen, hrv_seen = [], []
     prev_equity = None
     today_lines: list[dict] = []
+    today_bonus, today_rested = 0, False
     d = lookback
     while d <= day:
         key = d.isoformat()
@@ -198,13 +239,17 @@ def build(conn, day: date) -> dict:
             ctx = {"rhr_base": _avg(rhr_seen[-30:]), "hrv_base": _avg(hrv_seen[-30:]),
                    "prev_equity": prev_equity, "youtube": youtube.get(key, 0)}
             lines = score_day(m, ctx)
-            xp = max(0, sum(line["xp"] for line in lines))
-            history.append({"date": key, "xp": xp})
+            base = max(0, sum(line["xp"] for line in lines))
+            rested = m.get("sleep.total_minutes", 0) >= WELL_RESTED_MINUTES
+            # The buff adds to the character's XP only; each stat keeps the XP it earned itself.
+            bonus = round(base * WELL_RESTED_BONUS) if rested else 0
+            xp = base + bonus
+            history.append({"date": key, "xp": xp, "well_rested": rested})
             for line in lines:
                 # A stat's XP never drops below 0, so a bad social media day can't undo levels.
                 stat_xp[line["key"]] = max(0, stat_xp[line["key"]] + line["xp"])
             if d == day:
-                today_lines = lines
+                today_lines, today_bonus, today_rested = lines, bonus, rested
         if "health.resting_heart_rate" in m:
             rhr_seen.append(m["health.resting_heart_rate"])
         if "health.hrv_rmssd" in m:
@@ -214,6 +259,8 @@ def build(conn, day: date) -> dict:
         d += timedelta(days=1)
 
     total = sum(h["xp"] for h in history)
+    stats = [stat_sheet(line["key"], line["label"], line["stat"], stat_xp[line["key"]], line["max"])
+             for line in score_day({}, {})]
     recent = _avg([h["xp"] for h in history[-14:]])
     remaining = max(0, XP_TO_MAX - total)
     days_left = round(remaining / recent) if recent and remaining else (0 if not remaining else None)
@@ -224,11 +271,17 @@ def build(conn, day: date) -> dict:
         "total_xp": total,
         "xp_to_max": XP_TO_MAX,
         "day_number": len(history),
-        "today": {"xp": history[-1]["xp"] if history else 0, "max": DAILY_MAX, "metrics": today_lines},
+        "class": character_class(stats),
+        "today": {
+            "xp": history[-1]["xp"] if history else 0,
+            "max": DAILY_MAX,
+            "buffs": [{"name": "Well-Rested", "detail": "7.5 h+ sleep: +10% XP today", "xp": today_bonus}]
+            if today_rested else [],
+            "metrics": today_lines,
+        },
         "avg_daily_xp_14d": round(recent) if recent is not None else None,
         "days_to_max_level": days_left,
         "max_level_date": (day + timedelta(days=days_left)).isoformat() if days_left is not None else None,
-        "stats": [stat_sheet(line["key"], line["label"], line["stat"], stat_xp[line["key"]], line["max"])
-                  for line in score_day({}, {})],
+        "stats": stats,
         "history": history[-30:],
     }

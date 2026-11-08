@@ -50,9 +50,11 @@ def test_full_day_scores_every_line():
     xp = {line["key"]: line["xp"] for line in g["today"]["metrics"]}
     assert xp == {"sleep": 125, "heart": 40, "steps": 100, "workout": 115, "kettlebell": 75, "catch": 50,
                   "calendar": 0, "github": 100, "email": 0, "journal": 0, "youtube": 50, "social": 100, "stocks": 0}
-    assert g["today"]["xp"] == 755
+    # 755 from the stats, plus 10% for waking Well-Rested after 8 h.
+    assert g["today"]["buffs"] == [{"name": "Well-Rested", "detail": "7.5 h+ sleep: +10% XP today", "xp": 76}]
+    assert g["today"]["xp"] == 831
     # Day 1 (Oct 23) had no data, so the total is just this day.
-    assert g["total_xp"] == 755 and g["level"] == 2 and g["day_number"] == 2
+    assert g["total_xp"] == 831 and g["level"] == 2 and g["day_number"] == 2
 
 
 def test_social_media_penalty_never_takes_xp_below_zero():
@@ -118,3 +120,32 @@ def test_stats_in_game_response():
     assert len(stats) == 13
     assert stats["sleep"]["xp"] == 75 and stats["sleep"]["level"] == 2  # Sleep's level 1 costs 54 XP
     assert stats["social"]["xp"] == 0  # a penalty can't take a stat below 0
+
+
+def test_short_sleep_gets_no_buff():
+    d = "2026-10-24"
+    post([obs(d, "sleep.total_minutes", 400, "minutes"), obs(d, "health.steps", 5000)])
+    g = client.get("/game", params={"date": d}).json()
+    assert g["today"]["buffs"] == [] and g["today"]["xp"] == 50
+
+
+def sheet(key, level, xp=0):
+    return {"key": key, "level": level, "xp": xp}
+
+
+def all_stats(**levels):
+    keys = [k for keys in game.PATHS.values() for k in keys]
+    return [sheet(k, levels.get(k, 1)) for k in keys]
+
+
+def test_class_from_two_strongest_paths():
+    assert game.character_class(all_stats())["name"] == "Adventurer"
+    assert game.character_class(all_stats(kettlebell=6, steps=5))["name"] == "Duelist"
+    assert game.character_class(all_stats(github=9, sleep=8))["name"] == "Alchemist"
+    # One path at double the next is a pure class.
+    assert game.character_class(all_stats(kettlebell=10, steps=5))["name"] == "Juggernaut"
+
+
+def test_class_in_game_response():
+    g = client.get("/game", params={"date": "2026-10-24"}).json()
+    assert g["class"]["name"] == "Adventurer"
