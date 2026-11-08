@@ -10,6 +10,8 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import android.os.Build
+import android.util.SizeF
 import android.widget.RemoteViews
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
@@ -75,6 +77,8 @@ class HomeWidget : AppWidgetProvider() {
         // The chart is drawn at this size and stretched to the widget's width; bars are plain shapes, so that's fine.
         private const val CHART_W = 700
         private const val CHART_H = 140
+        // Widgets shorter than this get the compact layout.
+        private const val COMPACT_BELOW_DP = 330f
 
         private fun refreshSoon(context: Context, policy: ExistingWorkPolicy) {
             WorkManager.getInstance(context).enqueueUniqueWork("widget-now", policy, OneTimeWorkRequestBuilder<RefreshWorker>().build())
@@ -176,10 +180,20 @@ class HomeWidget : AppWidgetProvider() {
                 ?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDateTime() }
             val t = WidgetText.lines(summary, LocalDate.now(), fetchedAt, cache.getBoolean("offline", false))
 
-            val views = RemoteViews(context.packageName, R.layout.home_widget)
+            val full = fill(context, RemoteViews(context.packageName, R.layout.home_widget), t, updating, compact = false)
+            // Android 12+ picks the layout that fits the widget's size; below a 4th row it gets the compact one.
+            val views = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val compact = fill(context, RemoteViews(context.packageName, R.layout.home_widget_compact), t, updating, compact = true)
+                RemoteViews(mapOf(SizeF(180f, 180f) to compact, SizeF(180f, COMPACT_BELOW_DP) to full))
+            } else full
+            AppWidgetManager.getInstance(context).updateAppWidget(ComponentName(context, HomeWidget::class.java), views)
+        }
+
+        private fun fill(context: Context, views: RemoteViews, t: WidgetLines, updating: Boolean, compact: Boolean): RemoteViews {
             views.setTextViewText(R.id.label, t.label)
             views.setImageViewBitmap(R.id.chart, chart(context, t.bars, t.limitAt))
-            t.bars.forEachIndexed { i, bar -> views.setTextViewText(BAR_LABELS[i], bar.label) }
+            // The compact layout has room for the day names only.
+            t.bars.forEachIndexed { i, bar -> views.setTextViewText(BAR_LABELS[i], if (compact) bar.label.substringAfter("\n") else bar.label) }
             views.setTextViewText(R.id.note, t.note)
             t.tiles.forEachIndexed { i, tile ->
                 views.setTextViewText(TILE_VALUES[i], tile.value)
@@ -195,7 +209,7 @@ class HomeWidget : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.root, PendingIntent.getActivity(context, 0, open, PendingIntent.FLAG_IMMUTABLE))
             val refresh = Intent(context, HomeWidget::class.java).setAction(ACTION_REFRESH)
             views.setOnClickPendingIntent(R.id.refresh, PendingIntent.getBroadcast(context, 0, refresh, PendingIntent.FLAG_IMMUTABLE))
-            AppWidgetManager.getInstance(context).updateAppWidget(ComponentName(context, HomeWidget::class.java), views)
+            return views
         }
     }
 }
