@@ -7,8 +7,8 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
-from app import config, db, food, summary
-from app.collectors import alpaca
+from app import config, db, food, game, summary
+from app.collectors import alpaca, calendar
 from app.metrics import build_days
 
 app = FastAPI(title="Personal API")
@@ -36,7 +36,7 @@ class IngestBody(BaseModel):
 
 
 # What the dashboard's Quick log buttons and kettlebell ticks may write. Meals go through /meals instead.
-LOG_METRICS = r"^(water\.ml|reading\.minutes|study\.minutes|coffee\.cups|food\.protein_g|kb\.[a-z_]{1,30}\.done)$"
+LOG_METRICS = r"^(water\.ml|reading\.minutes|study\.minutes|coffee\.cups|food\.protein_g|kb\.[a-z_]{1,30}\.done|perk\.(str|con|int|wis|cha|per)\.[1-4]\.claimed|cal\.[0-9a-f]{12}\.done)$"
 
 
 class LogEntry(BaseModel):
@@ -98,6 +98,19 @@ def today_summary(day: date | None = Query(default=None, alias="date"), conn=Dep
     """Time reclaimed this week, calories, protein, sleep and steps for one day, for the phone widget.
     The phone sends its own date so the day matches the phone's clock."""
     return summary.build(conn, day or date.today())
+
+
+@app.get("/game")
+def game_status(day: date | None = Query(default=None, alias="date"), conn=Depends(get_conn)):
+    """The RPG layer: level, XP and how each of today's stats scored. Every day since the game started is
+    scored from the stored stats, so nothing extra is saved."""
+    return game.build(conn, day or date.today())
+
+
+@app.get("/calendar")
+def calendar_day(day: date | None = Query(default=None, alias="date"), conn=Depends(get_conn)):
+    """One day's calendar blocks and whether each was ticked done. Tick one with /log: its done_metric, set to 1."""
+    return {"events": calendar.for_day(conn, (day or date.today()).isoformat())}
 
 
 @app.get("/trading")

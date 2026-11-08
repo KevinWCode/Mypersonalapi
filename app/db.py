@@ -40,6 +40,17 @@ CREATE TABLE IF NOT EXISTS meals (
     added_at    TEXT NOT NULL
 );
 
+-- Google Calendar events (timed blocks) near today, replaced on every collect. Ticks live in observations as
+-- cal.<id>.done.
+CREATE TABLE IF NOT EXISTS calendar_events (
+    id    TEXT PRIMARY KEY,  -- one per occurrence of an event
+    date  TEXT NOT NULL,     -- local day it starts
+    start TEXT NOT NULL,     -- local ISO time
+    end   TEXT NOT NULL,
+    title TEXT NOT NULL,
+    kind  TEXT NOT NULL      -- study, cook, workout or other
+);
+
 -- Current Alpaca positions, replaced on every collect.
 CREATE TABLE IF NOT EXISTS positions (
     symbol        TEXT PRIMARY KEY,

@@ -40,3 +40,14 @@ ALPACA_EXTRA_ACCOUNTS = [
 ]
 # Paper trading by default; set to https://api.alpaca.markets for the live account.
 ALPACA_BASE_URL = os.environ.get("ALPACA_BASE_URL", "https://paper-api.alpaca.markets")
+# Google Calendar's secret iCal address (read-only). Keep it only in .env: anyone with it can read the calendar.
+GOOGLE_CALENDAR_ICS_URL = os.environ.get("GOOGLE_CALENDAR_ICS_URL", "")
+# Time zone calendar events are shown and counted in.
+CALENDAR_TZ = os.environ.get("CALENDAR_TZ") or "Europe/London"
+# Google sign-in for the calendar (preferred over the iCal address). Create the OAuth client as in
+# docs/google-calendar.md, then run: python -m app.google_auth
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_CALENDAR_ID = os.environ.get("GOOGLE_CALENDAR_ID") or "primary"
+# The saved sign-in, next to the database. Keep it private: it can read the calendar.
+GOOGLE_TOKEN_FILE = os.environ.get("GOOGLE_TOKEN_FILE") or str(Path(DB_PATH).parent / "google_token.json")
