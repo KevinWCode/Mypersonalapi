@@ -1048,26 +1048,28 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
           el('div', { class: 'meta' }, el('b', null, grp.name),
             el('span', { class: 'note' }, 'Level ' + grp.level + (grp.title ? ' · ' + grp.title : ' · no title yet')))),
         el('div', null,
-          el('div', { class: 'track', style: 'height:8px', role: 'img', 'aria-label': next ? 'Level ' + grp.level + ' of ' + next + ' for the next tier' : 'All tiers unlocked' },
+          el('div', { class: 'track', style: 'height:8px', role: 'img', 'aria-label': next ? 'Progress to the next tier' : 'All tiers unlocked' },
             el('div', { class: 'fill', style: 'width:' + toNext + '%;background:' + COLOR.accent })),
-          el('p', { class: 'note', style: 'margin-top:6px' }, next ? 'Next tier at level ' + next : 'All tiers unlocked')),
+          el('p', { class: 'note', style: 'margin-top:6px' }, next ? 'Keep levelling to reveal your next perk' : 'All tiers unlocked')),
         el('div', null, grp.stats.map(function (k) {
           var s = stats[k];
           return el('div', { class: 'stat-row' }, el('span', null, s.label),
             el('span', null, 'Lv ' + s.level + ' · ' + s.rank + ' · ' + s.score + ' (' + (s.modifier >= 0 ? '+' : '') + s.modifier + ')'));
         })),
-        el('ul', { class: 'perks' }, grp.perks.map(function (p) {
-          var cls = p.claimed_on ? 'perk' : p.earned ? 'perk earned' : 'perk locked';
+        // Locked perks stay a surprise: only one mystery slot shows, with no name or unlock level.
+        el('ul', { class: 'perks' }, grp.perks.filter(function (p) { return p.earned; }).map(function (p) {
+          var cls = p.claimed_on ? 'perk' : 'perk earned';
           var action = p.claimed_on ? el('span', { class: 'state' }, 'Claimed ' + md(parseDay(p.claimed_on)))
-            : p.earned ? el('button', { type: 'button', class: 'btn' }, 'Claim')
-            : el('span', { class: 'state' }, 'Unlocks at ' + p.unlock_level);
+            : el('button', { type: 'button', class: 'btn' }, 'Claim');
           if (action.tagName === 'BUTTON') action.addEventListener('click', function () {
             send([{ metric: p.claim_metric, value: 1, unit: 'count', mode: 'set' }], 'Claimed ' + p.token);
           });
           return el('li', { class: cls },
             el('div', { class: 'what' }, el('b', null, p.rank + ': ' + p.token), el('span', null, p.title + ' · ' + p.detail)),
             action);
-        })));
+        }).concat(next ? [el('li', { class: 'perk locked' },
+          el('div', { class: 'what' }, el('b', null, 'Next perk: ???'), el('span', null, 'Hidden until you unlock it')),
+          el('span', { class: 'state' }, 'Locked'))] : [])));
     }));
     $('game-note').textContent = 'Day ' + g.day_number + ' · scored from your synced stats';
   }
