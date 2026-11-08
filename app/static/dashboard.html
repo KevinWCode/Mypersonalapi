@@ -33,6 +33,18 @@ h1 { margin: 0; font-size: clamp(30px, 7vw, 40px); font-weight: 700; line-height
 nav { display: flex; gap: 8px; flex-wrap: wrap; }
 nav button { min-height: 44px; padding: 0 18px; border-radius: 22px; border: 1px solid var(--axis); background: var(--card); color: var(--ink); font: 500 14px var(--font-body); cursor: pointer; }
 nav button[aria-pressed="true"] { background: var(--raised); border-color: var(--raised); color: var(--on-raised); }
+.wrap[data-view="today"] [data-tab]:not([data-tab="today"]),
+.wrap[data-view="money"] [data-tab]:not([data-tab="money"]),
+.wrap[data-view="char"] [data-tab]:not([data-tab="char"]),
+.wrap[data-view="info"] [data-tab]:not([data-tab="info"]) { display: none !important; }
+header { align-items: flex-start; }
+.char-mini { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; width: 100%; padding: 16px 20px; border: none; border-radius: var(--radius); background: var(--raised); color: var(--on-raised); box-shadow: var(--shadow); font: 500 14px var(--font-body); text-align: left; cursor: pointer; }
+.char-mini b { font: 700 22px var(--font-head); }
+.char-mini .track { flex: 1 1 160px; height: 10px; background: var(--raised-track); }
+.char-mini .fill { background: var(--raised-fill); }
+.char-mini .go { color: var(--dark-sub); }
+.gear { width: 44px; height: 44px; flex: none; border-radius: 22px; border: 1px solid var(--axis); background: var(--card); color: var(--ink); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.gear[aria-pressed="true"] { background: var(--raised); border-color: var(--raised); color: var(--on-raised); }
 .banner { background: var(--warm); color: var(--warm-ink); border-radius: 14px; padding: 14px 18px; font-size: 14px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 16px; }
 .grid.two { grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); }
@@ -268,41 +280,52 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 </style>
 </head>
 <body>
-<main class="wrap loading" id="wrap">
+<main class="wrap loading" id="wrap" data-view="today">
 
 <header>
   <div>
     <p class="eyebrow" id="eyebrow">Personal API · Last 7 days</p>
     <h1 id="title">Freedom gained this week</h1>
   </div>
-  <nav aria-label="Time range" id="range">
-    <button type="button" data-days="7" aria-pressed="true">This week</button>
-    <button type="button" data-days="30" aria-pressed="false">30 days</button>
-    <button type="button" data-days="90" aria-pressed="false">90 days</button>
-  </nav>
+  <button type="button" class="gear" id="info-btn" aria-label="Settings and info" aria-pressed="false">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
+  </button>
 </header>
+
+<nav aria-label="Dashboard sections" id="tabs">
+  <button type="button" data-view="today" aria-pressed="true">Today</button>
+  <button type="button" data-view="money" aria-pressed="false">Money</button>
+  <button type="button" data-view="char" aria-pressed="false">Character</button>
+</nav>
 
 <p class="banner" id="banner" hidden></p>
 
-<section aria-labelledby="game-h" id="game" class="game" hidden>
-<div class="card-head"><h2 id="game-h">Character</h2><span class="note" id="game-note"></span></div>
-<div class="game-top">
-  <div class="game-col">
-    <div class="char" id="char"></div>
-    <div class="card">
-      <div class="card-head"><h2>Today's blocks</h2><span class="note">Tick a block when it's done · +50 XP each, up to 3</span></div>
-      <ul class="blocks" id="blocks"></ul>
-    </div>
-  </div>
+<button type="button" class="char-mini" id="char-mini" data-tab="today" hidden></button>
+
+<section aria-label="Quests" id="quests" class="game-top" data-tab="today" hidden>
   <div class="card">
     <div class="card-head"><h2>Daily quests</h2><span class="note" id="xp-today"></span></div>
     <ul class="xp-list" id="xp-list"></ul>
   </div>
-</div>
+  <div class="card">
+    <div class="card-head"><h2>Today's blocks</h2><span class="note">Tick a block when it's done · +50 XP each, up to 3</span></div>
+    <ul class="blocks" id="blocks"></ul>
+  </div>
+</section>
+
+<section aria-labelledby="game-h" id="game" class="game" data-tab="char" hidden>
+<div class="card-head"><h2 id="game-h">Character</h2><span class="note" id="game-note"></span></div>
+<div class="char" id="char"></div>
 <div class="groups" id="groups"></div>
 </section>
 
-<section aria-label="Headline" class="headline">
+<nav aria-label="Time range" id="range" data-tab="today">
+  <button type="button" data-days="7" aria-pressed="true">This week</button>
+  <button type="button" data-days="30" aria-pressed="false">30 days</button>
+  <button type="button" data-days="90" aria-pressed="false">90 days</button>
+</nav>
+
+<section aria-label="Headline" class="headline" data-tab="today">
 <div class="hero">
   <div class="hero-main">
     <p class="sub" id="hero-label">Time reclaimed from social media</p>
@@ -328,7 +351,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 </section>
 
 
-<section aria-label="Fuel today" class="card fuel">
+<section aria-label="Fuel today" class="card fuel" data-tab="today">
   <div class="fuel-main">
     <h2>Fuel today</h2>
     <p class="num" style="font-weight:700;line-height:1"><span id="kcal" style="font-size:52px">0</span><span id="kcal-goal" style="font-size:28px;color:var(--muted)"></span></p>
@@ -350,9 +373,9 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   <div class="meters" id="meters"></div>
 </section>
 
-<section aria-label="Daily averages" class="tiles" id="tiles"></section>
+<section aria-label="Daily averages" class="tiles" id="tiles" data-tab="today"></section>
 
-<section aria-label="Charts" class="grid two">
+<section aria-label="Charts" class="grid two" data-tab="today">
   <div class="card">
     <div class="card-head">
       <h2>Social media minutes</h2>
@@ -377,7 +400,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   </div>
 </section>
 
-<section aria-label="Training" class="grid two">
+<section aria-label="Training" class="grid two" data-tab="today">
   <div class="card">
     <div class="card-head">
       <h2>Kettlebell this week</h2>
@@ -395,7 +418,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   </div>
 </section>
 
-<section aria-label="Trading" class="grid">
+<section aria-label="Trading" class="grid" data-tab="money">
   <div class="card">
     <div class="card-head">
       <h2>Rolling P/L</h2>
@@ -423,7 +446,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   </div>
 </section>
 
-<div class="card">
+<div class="card" data-tab="today">
   <div class="card-head">
     <h2>Max reliable catch, every 3 weeks</h2>
     <span class="note">Goal: 20 yds</span>
@@ -431,7 +454,14 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   <div id="ch-catch"></div>
 </div>
 
-<section aria-label="Data sources" class="card" style="gap:14px">
+
+
+<section aria-labelledby="theme-h" class="card" data-tab="info">
+  <div class="card-head"><h2 id="theme-h">Theme</h2><span class="note">Remembered on this device</span></div>
+  <div class="themes" id="themes"></div>
+</section>
+
+<section aria-label="Data sources" class="card" style="gap:14px" data-tab="info">
   <div class="card-head">
     <h2>Where the numbers come from</h2>
     <span class="note" id="last-sync"></span>
@@ -445,11 +475,6 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     <span class="chip manual"><span class="dot"></span>Quick log buttons · water, reading, study, coffee, workout done (manual)</span>
     <span class="chip manual"><span class="dot"></span>Phone app · kettlebell sets, catch distance (manual)</span>
   </div>
-</section>
-
-<section aria-labelledby="theme-h" class="card">
-  <div class="card-head"><h2 id="theme-h">Theme</h2><span class="note">Remembered on this device</span></div>
-  <div class="themes" id="themes"></div>
 </section>
 
 </main>
@@ -477,7 +502,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   var REFRESH_MS = 5 * 60 * 1000, TODAY_MS = 60 * 1000, lastLoad = 0;
   var WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  var state = { range: 7, byDate: {}, trading: null, status: null, today: new Date(), token: '', meals: [] };
+  var state = { view: 'today', range: 7, byDate: {}, trading: null, status: null, today: new Date(), token: '', meals: [] };
 
   // ---- small helpers ----
   function $(id) { return document.getElementById(id); }
@@ -669,8 +694,11 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   function renderHeader() {
     var r = RANGES[state.range];
     $('eyebrow').textContent = 'Personal API · ' + r.eyebrow + (state.fetchedAt ? ' · updated ' + clock(state.fetchedAt) : '');
-    $('title').textContent = r.title;
-    // ---- themes ----
+    $('title').textContent = VIEW_TITLES[state.view] || r.title;
+    document.querySelectorAll('#range button').forEach(function (b) { b.setAttribute('aria-pressed', String(+b.dataset.days === state.range)); });
+  }
+
+  // ---- themes ----
   var THEMES = [
     { id: 'light', name: 'Daylight', sample: '#F3F4F1' },
     { id: 'dark', name: 'Dark', sample: '#0F1114' },
@@ -682,6 +710,17 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     { id: 'board', name: 'Quest Board', sample: 'linear-gradient(135deg,#7A4F2A,#EEDDB5)', font: 'IM+Fell+English&family=Crimson+Pro:wght@400;600' }
   ];
   var BASE_COLOR = { accent: COLOR.accent, ink: COLOR.ink, muted: COLOR.muted, good: COLOR.good, warn: COLOR.warn };
+  var VIEW_TITLES = { money: 'Money', char: 'Character', info: 'Settings and info' };
+  function setView(view) {
+    state.view = view;
+    $('wrap').dataset.view = view;
+    document.querySelectorAll('#tabs button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.view === view)); });
+    $('info-btn').setAttribute('aria-pressed', String(view === 'info'));
+    if (view !== 'info') store('view', view);
+    $('title').textContent = VIEW_TITLES[view] || RANGES[state.range].title;
+    window.scrollTo(0, 0);
+  }
+
   function applyTheme(id) {
     var t = THEMES.filter(function (x) { return x.id === id; })[0] || THEMES[0];
     document.documentElement.dataset.theme = t.id;
@@ -702,9 +741,6 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     }));
   }
   applyTheme(store('theme') || 'light');
-
-  document.querySelectorAll('#range button').forEach(function (b) { b.setAttribute('aria-pressed', String(+b.dataset.days === state.range)); });
-  }
 
   function renderHero(cur, prev) {
     var r = RANGES[state.range];
@@ -1152,6 +1188,14 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   function renderGame() {
     var g = state.game;
     $('game').hidden = !g;
+    $('quests').hidden = !g;
+    $('char-mini').hidden = !g;
+    var pct = g.level_cost ? Math.round(g.level_xp / g.level_cost * 100) : 100;
+    $('char-mini').replaceChildren(
+      el('b', null, 'Level ' + g.level),
+      el('span', null, g['class'].name + (g.title ? ' · ' + g.title : '')),
+      el('div', { class: 'track', 'aria-hidden': 'true' }, el('div', { class: 'fill', style: 'width:' + pct + '%' })),
+      el('span', { class: 'go' }, (g.level_cost ? int(g.xp_to_next) + ' XP to level ' + (g.level + 1) : 'Max level') + ' · Open character'));
     if (!g) return;
     var c = $('char');
     c.replaceChildren();
@@ -1362,6 +1406,13 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   document.querySelectorAll('#range button').forEach(function (b) {
     b.addEventListener('click', function () { state.range = +b.dataset.days; store('range', String(state.range)); render(); });
   });
+  document.querySelectorAll('#tabs button').forEach(function (b) {
+    b.addEventListener('click', function () { setView(b.dataset.view); });
+  });
+  $('char-mini').addEventListener('click', function () { setView('char'); });
+  $('info-btn').addEventListener('click', function () { setView(state.view === 'info' ? (store('view') || 'today') : 'info'); });
+  var savedView = store('view');
+  if (savedView === 'money' || savedView === 'char') setView(savedView);
   var saved = +store('range');
   if (RANGES[saved]) state.range = saved;
   load();
