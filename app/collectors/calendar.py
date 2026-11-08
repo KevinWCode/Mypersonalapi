@@ -1,5 +1,5 @@
-"""Reads Google Calendar through its secret iCal address (Settings > your calendar > "Secret address in iCal
-format"). Read-only, no Google sign-in. Timed events from 3 days ago to 7 days ahead are stored; each one can be
+"""Reads Google Calendar, read-only: through a Google sign-in (python -m app.google_auth, see
+docs/google-calendar.md), or else through the calendar's secret iCal address. Timed events from 3 days ago to 7 days ahead are stored; each one can be
 ticked done on the dashboard, and kept blocks earn calendar XP."""
 import hashlib
 import logging
@@ -11,7 +11,7 @@ import httpx
 import icalendar
 import recurring_ical_events
 
-from app import config
+from app import config, google_auth
 
 log = logging.getLogger("collect.calendar")
 
@@ -44,24 +44,55 @@ def parse(ics: str, today: date, tz: ZoneInfo) -> list[dict]:
             continue  # all-day events aren't blocks
         s = s.astimezone(tz) if s.tzinfo else s.replace(tzinfo=tz)
         e = (e.astimezone(tz) if e.tzinfo else e.replace(tzinfo=tz)) if isinstance(e, datetime) else s
-        title = str(ev.get("SUMMARY") or "Untitled")
-        # One id per occurrence, so each repeat of a weekly block is ticked on its own.
-        event_id = hashlib.sha1(f"{ev.get('UID')}|{s.isoformat()}".encode()).hexdigest()[:12]
-        events.append({"id": event_id, "date": s.date().isoformat(), "start": s.isoformat(timespec="minutes"),
-                       "end": e.isoformat(timespec="minutes"), "title": title, "kind": kind_of(title)})
+        events.append(_event(str(ev.get("UID")), s, e, str(ev.get("SUMMARY") or "Untitled")))
     return sorted(events, key=lambda x: x["start"])
 
 
+def _event(uid: str, s: datetime, e: datetime, title: str) -> dict:
+    # One id per occurrence, so each repeat of a weekly block is ticked on its own.
+    event_id = hashlib.sha1(f"{uid}|{s.isoformat()}".encode()).hexdigest()[:12]
+    return {"id": event_id, "date": s.date().isoformat(), "start": s.isoformat(timespec="minutes"),
+            "end": e.isoformat(timespec="minutes"), "title": title, "kind": kind_of(title)}
+
+
+def from_api(client: httpx.Client, today: date, tz: ZoneInfo) -> list[dict]:
+    """Timed events from the Calendar API, repeats already expanded by Google (singleEvents)."""
+    token = google_auth.access_token(client)
+    start = datetime.combine(today - timedelta(days=DAYS_BACK), datetime.min.time(), tz)
+    end = datetime.combine(today + timedelta(days=DAYS_AHEAD + 1), datetime.min.time(), tz)
+    events, page = [], None
+    while True:
+        params = {"timeMin": start.isoformat(), "timeMax": end.isoformat(), "singleEvents": "true",
+                  "orderBy": "startTime", "maxResults": 250, **({"pageToken": page} if page else {})}
+        resp = client.get(f"https://www.googleapis.com/calendar/v3/calendars/{config.GOOGLE_CALENDAR_ID}/events",
+                          params=params, headers={"Authorization": f"Bearer {token}"})
+        resp.raise_for_status()
+        body = resp.json()
+        for ev in body.get("items", []):
+            if ev.get("status") == "cancelled" or "dateTime" not in ev.get("start", {}):
+                continue  # all-day events aren't blocks
+            s = datetime.fromisoformat(ev["start"]["dateTime"]).astimezone(tz)
+            e = datetime.fromisoformat(ev["end"]["dateTime"]).astimezone(tz)
+            events.append(_event(ev["id"], s, e, ev.get("summary") or "Untitled"))
+        page = body.get("nextPageToken")
+        if not page:
+            return events
+
+
 def collect(conn: sqlite3.Connection, client: httpx.Client | None = None, today: date | None = None) -> int:
-    if not config.GOOGLE_CALENDAR_ICS_URL:
+    use_api = google_auth.configured()
+    if not use_api and not config.GOOGLE_CALENDAR_ICS_URL:
         log.info("calendar: not configured, skipping")
         return 0
     tz = ZoneInfo(config.CALENDAR_TZ)
     today = today or datetime.now(tz).date()
     client = client or httpx.Client(timeout=30, follow_redirects=True)
-    resp = client.get(config.GOOGLE_CALENDAR_ICS_URL)
-    resp.raise_for_status()
-    events = parse(resp.text, today, tz)
+    if use_api:
+        events = from_api(client, today, tz)
+    else:
+        resp = client.get(config.GOOGLE_CALENDAR_ICS_URL)
+        resp.raise_for_status()
+        events = parse(resp.text, today, tz)
     first = (today - timedelta(days=DAYS_BACK)).isoformat()
     last = (today + timedelta(days=DAYS_AHEAD)).isoformat()
     # The window is replaced as a whole, so moved or deleted events disappear. Ticks stay, keyed by event id.

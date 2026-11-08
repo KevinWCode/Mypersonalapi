@@ -81,3 +81,32 @@ def test_kinds():
     assert calendar.kind_of("Gym: kettlebell") == "workout"
     assert calendar.kind_of("Meal prep") == "cook"
     assert calendar.kind_of("Dentist") == "other"
+
+
+def test_google_sign_in_path(monkeypatch, tmp_path):
+    token = tmp_path / "google_token.json"
+    token.write_text('{"refresh_token": "r1"}')
+    monkeypatch.setattr(config, "GOOGLE_CLIENT_ID", "cid")
+    monkeypatch.setattr(config, "GOOGLE_CLIENT_SECRET", "csecret")
+    monkeypatch.setattr(config, "GOOGLE_TOKEN_FILE", str(token))
+    seen = []
+
+    def handler(request):
+        seen.append(request.url.host)
+        if request.url.host == "oauth2.googleapis.com":
+            assert b"refresh_token=r1" in request.content
+            return httpx.Response(200, json={"access_token": "a1"})
+        assert request.headers["Authorization"] == "Bearer a1"
+        assert request.url.params["singleEvents"] == "true"
+        return httpx.Response(200, json={"items": [
+            {"id": "e1", "summary": "Gym session", "start": {"dateTime": "2026-11-08T17:00:00Z"},
+             "end": {"dateTime": "2026-11-08T18:00:00Z"}},
+            {"id": "e2", "summary": "Holiday", "start": {"date": "2026-11-08"}, "end": {"date": "2026-11-09"}},
+            {"id": "e3", "status": "cancelled", "start": {"dateTime": "2026-11-08T09:00:00Z"}, "end": {"dateTime": "2026-11-08T10:00:00Z"}},
+        ]})
+
+    fake = httpx.Client(transport=httpx.MockTransport(handler))
+    assert calendar.collect(db.connect(), client=fake, today=date(2026, 11, 8)) == 1
+    events = client.get("/calendar", params={"date": "2026-11-08"}).json()["events"]
+    assert [(e["title"], e["kind"], e["start"]) for e in events] == [("Gym session", "workout", "2026-11-08T17:00+00:00")]
+    assert seen == ["oauth2.googleapis.com", "www.googleapis.com"]
