@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
-from app import config, db, food, summary
+from app import config, db, food, game, summary
 from app.collectors import alpaca
 from app.metrics import build_days
 
@@ -98,6 +98,13 @@ def today_summary(day: date | None = Query(default=None, alias="date"), conn=Dep
     """Time reclaimed this week, calories, protein, sleep and steps for one day, for the phone widget.
     The phone sends its own date so the day matches the phone's clock."""
     return summary.build(conn, day or date.today())
+
+
+@app.get("/game")
+def game_status(day: date | None = Query(default=None, alias="date"), conn=Depends(get_conn)):
+    """The RPG layer: level, XP and how each of today's stats scored. Every day since the game started is
+    scored from the stored stats, so nothing extra is saved."""
+    return game.build(conn, day or date.today())
 
 
 @app.get("/trading")
