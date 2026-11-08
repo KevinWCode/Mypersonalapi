@@ -163,7 +163,11 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 .xp-list .track { grid-column: 1 / -1; height: 6px; }
 .groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 16px; }
 .ability { display: flex; align-items: center; gap: 14px; }
-.ability .abbr { width: 56px; height: 56px; flex: none; border-radius: 14px; background: var(--raised); color: var(--on-raised); display: flex; align-items: center; justify-content: center; font: 700 18px var(--font-head); }
+.ability .abbr { width: 56px; height: 56px; flex: none; border-radius: 14px; background: var(--raised); color: var(--on-raised); display: flex; flex-direction: column; align-items: center; justify-content: center; font: 700 18px var(--font-head); }
+.ability .abbr small { font: 500 11px var(--font-body, inherit); color: var(--dark-sub); }
+.streaks { display: flex; flex-wrap: wrap; gap: 8px; }
+.streak { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 14px; font-size: 13px; background: var(--raised-track); color: var(--on-raised); }
+.streak svg { flex: none; }
 .ability .meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ability .meta b { font-size: 16px; }
 .stat-row { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; padding: 6px 0; border-bottom: 1px solid var(--line); }
@@ -280,6 +284,24 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 
 <p class="banner" id="banner" hidden></p>
 
+<section aria-labelledby="game-h" id="game" class="game" hidden>
+<div class="card-head"><h2 id="game-h">Character</h2><span class="note" id="game-note"></span></div>
+<div class="game-top">
+  <div class="game-col">
+    <div class="char" id="char"></div>
+    <div class="card">
+      <div class="card-head"><h2>Today's blocks</h2><span class="note">Tick a block when it's done · +50 XP each, up to 3</span></div>
+      <ul class="blocks" id="blocks"></ul>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Daily quests</h2><span class="note" id="xp-today"></span></div>
+    <ul class="xp-list" id="xp-list"></ul>
+  </div>
+</div>
+<div class="groups" id="groups"></div>
+</section>
+
 <section aria-label="Headline" class="headline">
 <div class="hero">
   <div class="hero-main">
@@ -305,23 +327,6 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 </div>
 </section>
 
-<section aria-labelledby="game-h" id="game" class="game" hidden>
-<div class="card-head"><h2 id="game-h">Character</h2><span class="note" id="game-note"></span></div>
-<div class="game-top">
-  <div class="game-col">
-    <div class="char" id="char"></div>
-    <div class="card">
-      <div class="card-head"><h2>Today's blocks</h2><span class="note">Tick a block when it's done · +50 XP each, up to 3</span></div>
-      <ul class="blocks" id="blocks"></ul>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-head"><h2>Today's XP</h2><span class="note" id="xp-today"></span></div>
-    <ul class="xp-list" id="xp-list"></ul>
-  </div>
-</div>
-<div class="groups" id="groups"></div>
-</section>
 
 <section aria-label="Fuel today" class="card fuel">
   <div class="fuel-main">
@@ -481,6 +486,12 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
   function parseDay(s) { var p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
   function md(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+  function monthYear(s) { return parseDay(s).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }); }
+  function svgEl(tag, attrs) {
+    var e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    return e;
+  }
   function longDay(d) { return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); }
   function sum(a) { return a.reduce(function (x, y) { return x + y; }, 0); }
   function avg(a) { return a.length ? sum(a) / a.length : null; }
@@ -1155,19 +1166,27 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       el('p', { class: 'sub' }, g.level_cost ? int(g.xp_to_next) + ' XP to level ' + (g.level + 1) : 'Max level reached'),
       el('div', { class: 'char-facts' },
         el('div', null, el('span', { class: 'sub' }, 'Total XP'), el('span', { class: 'num' }, int(g.total_xp))),
-        el('div', null, el('span', { class: 'sub' }, 'Avg / day, 14 days'), el('span', { class: 'num' }, g.avg_daily_xp_14d === null ? '–' : int(g.avg_daily_xp_14d))),
-        el('div', null, el('span', { class: 'sub' }, 'Level 110'), el('span', { class: 'num' },
-          g.max_level_date ? md(parseDay(g.max_level_date)) + ' ' + g.max_level_date.slice(0, 4) : '–'))),
+        el('div', null, el('span', { class: 'sub' }, 'Avg / day, 14 days'), el('span', { class: 'num' }, g.avg_daily_xp_14d === null ? '–' : int(g.avg_daily_xp_14d)))),
+      g.avg_daily_xp_14d && g.max_level_date ? el('p', { class: 'sub' }, 'At your 14-day pace of ' + int(g.avg_daily_xp_14d) +
+        ' XP a day, you reach level ' + g.max_level + ' around ' + monthYear(g.max_level_date) + '.') : null,
+      g.streaks && g.streaks.some(function (k) { return k.days > 0; }) ? el('div', { class: 'streaks', 'aria-label': 'Streaks' },
+        g.streaks.filter(function (k) { return k.days > 0; }).map(function (k) {
+          var icon = svgEl('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2,
+            'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' });
+          icon.append(svgEl('path', { d: 'M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.2 1-3.6 2.2-4.8.3 1.6 1.1 2.6 2.3 3C11 9 11 6 12 3z' }));
+          return el('span', { class: 'streak' }, icon, el('b', null, k.days + ' ' + k.unit + (k.days === 1 ? '' : 's')), ' ' + k.label);
+        })) : null,
       g.today.buffs.length ? el('div', { class: 'buffs' }, g.today.buffs.map(function (b) {
         return el('span', { class: 'buff', title: b.detail }, b.name + (b.xp ? ' +' + int(b.xp) + ' XP' : ''));
       })) : null
     ].forEach(function (kid) { if (kid) c.append(kid); });
 
-    $('xp-today').textContent = int(g.today.xp) + ' / ' + int(g.today.max) + ' XP';
+    var questsDone = g.today.metrics.filter(function (l) { return l.xp >= l.max; }).length;
+    $('xp-today').textContent = questsDone + ' of ' + g.today.metrics.length + ' done · ' + int(g.today.xp) + ' / ' + int(g.today.max) + ' XP';
     $('xp-list').replaceChildren.apply($('xp-list'), g.today.metrics.map(function (l) {
       var w = Math.max(0, Math.round(l.xp / l.max * 100));
       return el('li', null,
-        el('div', { class: 'what' }, el('b', null, l.label), el('span', null, l.detail)),
+        el('div', { class: 'what' }, el('b', null, (l.xp >= l.max ? '\u2713 ' : '') + l.label), el('span', null, l.detail)),
         el('div', { class: 'pts' + (l.xp < 0 ? ' neg' : '') }, (l.xp > 0 ? '+' : '') + l.xp + ' / ' + l.max),
         el('div', { class: 'track', 'aria-hidden': 'true' }, el('div', { class: 'fill', style: 'width:' + w + '%;background:' + COLOR.accent })));
     }));
@@ -1179,7 +1198,8 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       var toNext = next ? Math.min(100, Math.round(grp.level / next * 100)) : 100;
       return el('div', { class: 'card' },
         el('div', { class: 'ability' },
-          el('div', { class: 'abbr', 'aria-hidden': 'true' }, grp.ability),
+          el('div', { class: 'abbr', title: grp.ability + ' ' + grp.score + ' (' + (grp.modifier >= 0 ? '+' : '') + grp.modifier + ')' },
+            grp.ability, el('small', null, grp.score + ' (' + (grp.modifier >= 0 ? '+' : '\u2212') + Math.abs(grp.modifier) + ')')),
           el('div', { class: 'meta' }, el('b', null, grp.name),
             el('span', { class: 'note' }, 'Level ' + grp.level + (grp.title ? ' · ' + grp.title : ' · no title yet')))),
         el('div', null,

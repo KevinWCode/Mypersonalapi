@@ -202,3 +202,18 @@ def test_perk_claims_only_accept_real_tokens():
 def test_class_in_game_response():
     g = client.get("/game", params={"date": "2026-10-24"}).json()
     assert g["class"]["name"] == "Adventurer"
+
+
+def test_streaks_count_back_and_today_is_in_progress():
+    def day(rested=False, social=False, commit=False):
+        return {"well_rested": rested, "social_ok": social, "committed": commit}
+    history = [day(commit=True), day(rested=True, commit=True), day(rested=True, commit=True), day(rested=True)]
+    by_key = {s["key"]: s["days"] for s in game.streaks(history)}
+    # Rested 3 nights through today; commits ran 3 days to yesterday and today isn't done yet; social never kept.
+    assert by_key == {"well_rested": 3, "committed": 3, "social_ok": 0}
+
+
+def test_group_has_ability_score():
+    groups = game.group_sheets(all_stats(kettlebell=55), {})
+    strength = next(g for g in groups if g["key"] == "str")
+    assert (strength["score"], strength["modifier"]) == (14, 2)

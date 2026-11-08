@@ -65,15 +65,20 @@ def level_for(total_xp: float, scale: float = 1) -> dict:
 STAT_RANKS = [(27, "Novice"), (55, "Adept"), (83, "Expert"), (MAX_LEVEL, "Master")]
 
 
+def ability_score(level: int) -> dict:
+    """A tabletop-style ability score: 8 at level 1 up to 20 at level 110, and its modifier, (score - 10) // 2,
+    so -1 to +5."""
+    score = 8 + level * 12 // MAX_LEVEL
+    return {"score": score, "modifier": (score - 10) // 2}
+
+
 def stat_sheet(key: str, label: str, stat: str, xp: float, max_xp: int) -> dict:
-    """One stat's own level, plus a tabletop-style ability score: 8 at level 1 up to 20 at level 110, and its
-    modifier, (score - 10) // 2, so -1 to +5."""
+    """One stat's own level, rank and ability score."""
     lv = level_for(xp, max_xp / DAILY_MAX)
-    score = 8 + lv["level"] * 12 // MAX_LEVEL
     return {
         "key": key, "label": label, "stat": stat, "xp": round(xp),
         "level": lv["level"], "rank": next(name for top, name in STAT_RANKS if lv["level"] <= top),
-        "score": score, "modifier": (score - 10) // 2,
+        **ability_score(lv["level"]),
         "level_xp": lv["level_xp"], "level_cost": lv["level_cost"], "xp_to_next": lv["xp_to_next"],
     }
 
@@ -110,6 +115,7 @@ def group_sheets(stats: list[dict], claims: dict) -> list[dict]:
         next_tier = next((t for t in perks.TIERS if t > tier), None)
         out.append({
             "key": g, "name": name, "ability": ability, "stats": keys, "level": level, "tier": tier,
+            **ability_score(level),
             "title": perks.PERKS[(g, tier)][0] if tier else None,
             "next_tier_level": perks.TIERS[next_tier][1] if next_tier else None,
             "perks": [{
@@ -231,6 +237,25 @@ def score_day(m: dict, ctx: dict) -> list[dict]:
 DAILY_MAX = sum(line["max"] for line in score_day({}, {}))
 
 
+STREAKS = [("social_ok", "social under 30 min", "day"), ("well_rested", "Well-Rested", "night"),
+           ("committed", "any commit", "day")]
+
+
+def streaks(history: list[dict]) -> list[dict]:
+    """Days in a row each habit was kept. Today still counts as in progress, so a streak runs to yesterday until
+    today's stats meet it."""
+    out = []
+    for key, label, unit in STREAKS:
+        days = history[:-1] if history and not history[-1].get(key) else history
+        run = 0
+        for h in reversed(days):
+            if not h.get(key):
+                break
+            run += 1
+        out.append({"key": key, "label": label, "days": run, "unit": unit})
+    return out
+
+
 def build(conn, day: date) -> dict:
     lookback = GAME_START - timedelta(days=30)
     rows = db.fetch_range(conn, lookback.isoformat(), day.isoformat())
@@ -293,7 +318,10 @@ def build(conn, day: date) -> dict:
                 if floor > xp:
                     buffs.append({"name": "Digital Detox Retreat", "detail": "Scored at your 14-day average", "xp": floor - xp})
                     xp = floor
-            history.append({"date": key, "xp": xp, "well_rested": bool(bonus)})
+            synced = "screen.total_minutes" in m
+            history.append({"date": key, "xp": xp, "well_rested": bool(bonus),
+                            "social_ok": synced and m.get("screen.social_media_minutes", 0) < 30,
+                            "committed": m.get("github.commits", 0) > 0})
             for line in lines:
                 # A stat's XP never drops below 0, so a bad social media day can't undo levels.
                 stat_xp[line["key"]] = max(0, stat_xp[line["key"]] + line["xp"])
@@ -332,6 +360,7 @@ def build(conn, day: date) -> dict:
         "avg_daily_xp_14d": round(recent) if recent is not None else None,
         "days_to_max_level": days_left,
         "max_level_date": (day + timedelta(days=days_left)).isoformat() if days_left is not None else None,
+        "streaks": streaks(history),
         "stats": stats,
         "groups": groups,
         "history": history[-30:],
