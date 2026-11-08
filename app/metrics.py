@@ -6,6 +6,13 @@ SOCIAL_MEDIA_APPS = {
     "com.zhiliaoapp.musically": "tiktok",
     "com.ss.android.ugc.trill": "tiktok",  # TikTok's package name in some regions
     "com.instagram.android": "instagram",
+    "com.facebook.katana": "facebook",
+    "com.facebook.lite": "facebook",
+    "com.reddit.frontpage": "reddit",
+}
+# Tracked on their own and left out of the social media total.
+SEPARATE_APPS = {
+    "com.google.android.youtube": "youtube",
 }
 
 APP_PREFIX = "screen.app."
@@ -20,12 +27,13 @@ def build_days(rows) -> list[dict]:
             # Every app counts toward total screen time, which also tells the dashboard the phone synced that day.
             day["screen.total_minutes"] = day.get("screen.total_minutes", 0) + value
             package = metric[len(APP_PREFIX):]
-            name = SOCIAL_MEDIA_APPS.get(package)
+            name = SOCIAL_MEDIA_APPS.get(package) or SEPARATE_APPS.get(package)
             if name is None:
                 continue
             key = f"screen.{name}_minutes"
             day[key] = day.get(key, 0) + value
-            day["screen.social_media_minutes"] = day.get("screen.social_media_minutes", 0) + value
+            if package in SOCIAL_MEDIA_APPS:
+                day["screen.social_media_minutes"] = day.get("screen.social_media_minutes", 0) + value
         else:
             day[metric] = day.get(metric, 0) + value
     return [{"date": d, "metrics": days[d]} for d in sorted(days)]

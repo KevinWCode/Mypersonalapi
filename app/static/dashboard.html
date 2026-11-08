@@ -207,7 +207,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   <div class="card">
     <div class="card-head">
       <h2>Social media minutes</h2>
-      <div class="legend"><span><span class="sw" style="background:#B4501A"></span>TikTok</span><span><span class="sw" style="background:#E89A62"></span>Instagram</span></div>
+      <div class="legend"><span><span class="sw" style="background:#B4501A"></span>TikTok</span><span><span class="sw" style="background:#E89A62"></span>Instagram</span><span><span class="sw" style="background:#7A3510"></span>Facebook</span><span><span class="sw" style="background:#F2C29E"></span>Reddit</span></div>
     </div>
     <div id="ch-social"></div>
   </div>
@@ -289,7 +289,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   </div>
   <div class="chips">
     <span class="chip auto"><span class="dot"></span>Galaxy Watch 6 · sleep, heart rate, SpO2, steps, workouts</span>
-    <span class="chip auto"><span class="dot"></span>Phone usage stats · TikTok + Instagram</span>
+    <span class="chip auto"><span class="dot"></span>Phone usage stats · TikTok, Instagram, Facebook, Reddit, plus YouTube on its own</span>
     <span class="chip auto"><span class="dot"></span>GitHub · commits</span>
     <span class="chip auto"><span class="dot"></span>Alpaca paper · P/L, positions, trades</span>
     <span class="chip manual"><span class="dot"></span>Food AI via the inbox folder · calories, protein, carbs, fat (you take the photo)</span>
@@ -306,7 +306,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 (function () {
   'use strict';
 
-  var COLOR = { tiktok: '#B4501A', instagram: '#E89A62', deep: '#1D3F99', rem: '#5B85EC', light: '#9DB5F0', unstaged: '#C9CCC6',
+  var COLOR = { tiktok: '#B4501A', instagram: '#E89A62', facebook: '#7A3510', reddit: '#F2C29E', deep: '#1D3F99', rem: '#5B85EC', light: '#9DB5F0', unstaged: '#C9CCC6',
     accent: '#2457D6', ink: '#16191D', good: '#1F6B3A', warn: '#B4501A', muted: '#5B6168', study: '#2457D6', reading: '#86A8F2' };
   // Daily targets for Fuel today. Caffeine is a maximum, counted at 95 mg per coffee.
   var GOALS = { kcal: 2000, protein_g: 150, water_l: 3.0, caffeine_mg: 400 };
@@ -531,8 +531,8 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       $('hero-label').textContent = 'Time reclaimed from social media';
       $('hero-value').textContent = (reclaimed < 0 ? '−' : '') + hm(Math.abs(reclaimed));
       $('hero-note').textContent = reclaimed >= 0
-        ? 'vs. ' + r.prevs + " TikTok + Instagram. That's time back for training, building and people."
-        : 'More TikTok + Instagram than ' + r.prev.toLowerCase() + '. A slower few days wins it back.';
+        ? 'vs. ' + r.prevs + " social media. That's time back for training, building and people."
+        : 'More social media than ' + r.prev.toLowerCase() + '. A slower few days wins it back.';
     }
     if (curDays.length) side.push([r.period, Math.round(avg(curDays)) + ' min/day']);
     if (prevDays.length) side.push([r.prev, Math.round(avg(prevDays)) + ' min/day']);
@@ -548,6 +548,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     function socialAvg(days) { return avg(values(days, function (d) { return social(d); })); }
     var tiles = [
       { label: 'Social media / day', get: socialAvg, fmt: function (v) { return Math.round(v) + ' min'; }, lowerIsGood: true },
+      { label: 'YouTube / day', get: function (d) { return avg(values(d, function (x) { return social(x, 'screen.youtube_minutes'); })); }, fmt: function (v) { return Math.round(v) + ' min'; }, lowerIsGood: true },
       { label: 'Sleep / night', get: function (d) { return avgOf(d, 'sleep.total_minutes'); }, fmt: hm, lowerIsGood: false },
       { label: 'Steps / day', get: function (d) { return avgOf(d, 'health.steps'); }, fmt: int, lowerIsGood: false },
       { label: 'Commits ' + range, get: function (d) { return sumOf(d, 'github.commits'); }, fmt: int, lowerIsGood: false },
@@ -571,17 +572,17 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     var perDay = weekly ? 'Daily average for each week' : null, perWeek = weekly ? 'Total for each week' : null;
     var xName = weekly ? 'Week' : 'Day';
 
+    var APPS = [['tiktok', 'TikTok'], ['instagram', 'Instagram'], ['facebook', 'Facebook'], ['reddit', 'Reddit']];
     barChart($('ch-social'), {
-      series: [{ name: 'TikTok', color: COLOR.tiktok }, { name: 'Instagram', color: COLOR.instagram }],
+      series: APPS.map(function (a) { return { name: a[1], color: COLOR[a[0]] }; }),
       fmt: function (v) { return Math.round(v) + ''; }, note: perDay, xName: xName,
       points: bs.map(function (b) {
-        var t = bucketAvg(b, function (d) { return social(d, 'screen.tiktok_minutes'); });
-        var ig = bucketAvg(b, function (d) { return social(d, 'screen.instagram_minutes'); });
-        return { label: b.label, title: b.title, values: t === null ? null : [t, ig],
-          rows: t === null ? [] : [
-            { text: Math.round(t + ig) + ' min', name: 'total' },
-            { color: COLOR.tiktok, text: Math.round(t) + ' min', name: 'TikTok' },
-            { color: COLOR.instagram, text: Math.round(ig) + ' min', name: 'Instagram' }] };
+        var vs = APPS.map(function (a) { return bucketAvg(b, function (d) { return social(d, 'screen.' + a[0] + '_minutes'); }); });
+        if (vs[0] === null) return { label: b.label, title: b.title, values: null, rows: [] };
+        return { label: b.label, title: b.title, values: vs,
+          rows: [{ text: Math.round(sum(vs)) + ' min', name: 'total' }].concat(APPS.map(function (a, i) {
+            return { color: COLOR[a[0]], text: Math.round(vs[i]) + ' min', name: a[1] };
+          })) };
       })
     });
 
