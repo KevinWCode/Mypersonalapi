@@ -36,7 +36,7 @@ class IngestBody(BaseModel):
 
 
 # What the dashboard's Quick log buttons and kettlebell ticks may write. Meals go through /meals instead.
-LOG_METRICS = r"^(water\.ml|reading\.minutes|study\.minutes|coffee\.cups|food\.protein_g|kb\.[a-z_]{1,30}\.done)$"
+LOG_METRICS = r"^(water\.ml|reading\.minutes|study\.minutes|coffee\.cups|food\.protein_g|kb\.[a-z_]{1,30}\.done|perk\.(str|con|int|wis|cha|per)\.[1-4]\.claimed)$"
 
 
 class LogEntry(BaseModel):

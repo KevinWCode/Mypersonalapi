@@ -134,16 +134,69 @@ def sheet(key, level, xp=0):
 
 
 def all_stats(**levels):
-    keys = [k for keys in game.PATHS.values() for k in keys]
+    keys = [k for _, _, keys in game.perks.GROUPS.values() for k in keys]
     return [sheet(k, levels.get(k, 1)) for k in keys]
 
 
-def test_class_from_two_strongest_paths():
+def test_class_from_two_strongest_groups():
     assert game.character_class(all_stats())["name"] == "Adventurer"
-    assert game.character_class(all_stats(kettlebell=6, steps=5))["name"] == "Duelist"
-    assert game.character_class(all_stats(github=9, sleep=8))["name"] == "Alchemist"
-    # One path at double the next is a pure class.
-    assert game.character_class(all_stats(kettlebell=10, steps=5))["name"] == "Juggernaut"
+    assert game.character_class(all_stats(kettlebell=6, sleep=5))["name"] == "Ironclad"
+    assert game.character_class(all_stats(github=9, social=8))["name"] == "Runesmith"
+    # One group at double the next is a pure class.
+    c = game.character_class(all_stats(kettlebell=10, steps=5))
+    assert c == {"name": "Juggernaut", "groups": ["str"], "detail": "Pure STR"}
+
+
+def test_group_tiers_titles_and_tokens():
+    groups = {g["key"]: g for g in game.group_sheets(all_stats(kettlebell=30, sleep=9), {("str", 1): "2026-11-01"})}
+    s = groups["str"]
+    assert s["level"] == 30 and s["tier"] == 2 and s["title"] == "Lord of the Kettlebells"
+    assert s["next_tier_level"] == 56
+    assert [p["earned"] for p in s["perks"]] == [True, True, False, False]
+    assert s["perks"][0]["claimed_on"] == "2026-11-01" and s["perks"][1]["claimed_on"] is None
+    assert groups["con"]["tier"] == 0 and groups["con"]["title"] is None
+
+
+def log(day, metric):
+    r = client.post("/log", json={"date": day, "entries": [{"metric": metric, "value": 1, "unit": "count", "mode": "set"}]},
+                    headers=AUTH)
+    assert r.status_code == 200
+
+
+def test_unearned_claim_is_ignored():
+    log("2026-10-24", "perk.wis.1.claimed")
+    g = client.get("/game", params={"date": "2026-10-24"}).json()
+    wis = next(x for x in g["groups"] if x["key"] == "wis")
+    assert wis["perks"][0]["claimed_on"] is None and g["today"]["buffs"] == []
+
+
+def test_media_pass_waives_screen_penalties(monkeypatch):
+    # Pretend Focus is already tier 1 by lowering its unlock level.
+    monkeypatch.setitem(game.perks.TIERS, 1, ("Novice", 1))
+    d = "2026-10-24"
+    post([obs(d, "screen.app.com.zhiliaoapp.musically", 120, "minutes"),
+          obs(d, "screen.app.com.google.android.youtube", 200, "minutes")])
+    log(d, "perk.wis.1.claimed")
+    g = client.get("/game", params={"date": d}).json()
+    xp = {line["key"]: line["xp"] for line in g["today"]["metrics"]}
+    assert xp["social"] == 0 and xp["youtube"] == 50
+    assert g["today"]["buffs"][0]["name"] == "Unrestricted Media Pass"
+
+
+def test_snooze_pass_gives_well_rested(monkeypatch):
+    monkeypatch.setitem(game.perks.TIERS, 1, ("Novice", 1))
+    d = "2026-10-24"
+    post([obs(d, "health.steps", 10000)])
+    log(d, "perk.con.1.claimed")
+    g = client.get("/game", params={"date": d}).json()
+    assert g["today"]["xp"] == 110
+    assert g["today"]["buffs"] == [{"name": "Well-Rested", "xp": 10, "detail": "Snooze Button Pass: +10% XP today"}]
+
+
+def test_perk_claims_only_accept_real_tokens():
+    r = client.post("/log", json={"date": "2026-10-24", "entries": [
+        {"metric": "perk.xyz.9.claimed", "value": 1, "unit": "count", "mode": "set"}]}, headers=AUTH)
+    assert r.status_code == 422
 
 
 def test_class_in_game_response():

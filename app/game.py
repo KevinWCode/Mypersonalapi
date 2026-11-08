@@ -7,7 +7,7 @@ import os
 from collections import defaultdict
 from datetime import date, timedelta
 
-from app import db
+from app import db, perks
 from app.metrics import APP_PREFIX, build_days
 
 # Day 1 of the game: the first day with phone data.
@@ -81,40 +81,48 @@ def stat_sheet(key: str, label: str, stat: str, xp: float, max_xp: int) -> dict:
 WELL_RESTED_MINUTES = 450
 WELL_RESTED_BONUS = 0.10
 
-# Classes: the 13 stats fall into six paths. Your class comes from your two strongest paths (each path counts
-# its highest stat level), or a pure class when one path leads by double.
-PATHS = {
-    "Might": ["kettlebell", "workout"],
-    "Finesse": ["catch", "steps"],
-    "Vigor": ["sleep", "heart"],
-    "Mind": ["youtube", "social", "journal"],
-    "Craft": ["github", "calendar", "email"],
-    "Fortune": ["stocks"],
-}
-PURE_CLASSES = {"Might": "Juggernaut", "Finesse": "Skirmisher", "Vigor": "Warden", "Mind": "Sage",
-                "Craft": "Artificer", "Fortune": "Merchant"}
-DUAL_CLASSES = {
-    frozenset(k.split("+")): v for k, v in {
-        "Might+Finesse": "Duelist", "Might+Vigor": "Ironclad", "Might+Mind": "Battle Monk",
-        "Might+Craft": "Forgeknight", "Might+Fortune": "Mercenary", "Finesse+Vigor": "Ranger",
-        "Finesse+Mind": "Shadowblade", "Finesse+Craft": "Tinker", "Finesse+Fortune": "Rogue",
-        "Vigor+Mind": "Druid", "Vigor+Craft": "Alchemist", "Vigor+Fortune": "Steward",
-        "Mind+Craft": "Runesmith", "Mind+Fortune": "Oracle", "Craft+Fortune": "Guildmaster",
-    }.items()
-}
+def group_power(stats: list[dict]) -> dict:
+    """Each group's (highest stat level, that stat's XP) - its level, with XP to break ties."""
+    by_key = {s["key"]: s for s in stats}
+    return {g: max((by_key[k]["level"], by_key[k]["xp"]) for k in keys) for g, (_, _, keys) in perks.GROUPS.items()}
 
 
 def character_class(stats: list[dict]) -> dict:
-    by_key = {s["key"]: s for s in stats}
-    # Highest stat level in each path, then that stat's XP progress to break ties.
-    power = {path: max((by_key[k]["level"], by_key[k]["xp"]) for k in keys) for path, keys in PATHS.items()}
-    ranked = sorted(power, key=lambda p: power[p], reverse=True)
-    first, second = ranked[0], ranked[1]
+    power = group_power(stats)
+    first, second = sorted(power, key=lambda g: power[g], reverse=True)[:2]
+    ability = {g: perks.GROUPS[g][1] for g in power}
     if power[first][0] < 2:
-        return {"name": "Adventurer", "paths": [], "detail": "Level a stat to 2 to find your class"}
+        return {"name": "Adventurer", "groups": [], "detail": "Level a stat to 2 to find your class"}
     if power[first][0] >= 2 * power[second][0]:
-        return {"name": PURE_CLASSES[first], "paths": [first], "detail": f"Pure {first}"}
-    return {"name": DUAL_CLASSES[frozenset((first, second))], "paths": [first, second], "detail": f"{first} + {second}"}
+        return {"name": perks.PURE_CLASSES[first], "groups": [first], "detail": f"Pure {ability[first]}"}
+    return {"name": perks.DUAL_CLASSES[frozenset((first, second))], "groups": [first, second],
+            "detail": f"{ability[first]} + {ability[second]}"}
+
+
+def group_sheets(stats: list[dict], claims: dict) -> list[dict]:
+    """Each group's level, tier, title and perk tokens, earned or not, and when each was claimed."""
+    power = group_power(stats)
+    out = []
+    for g, (name, ability, keys) in perks.GROUPS.items():
+        level = power[g][0]
+        tier = perks.tier_for(level)
+        next_tier = next((t for t in perks.TIERS if t > tier), None)
+        out.append({
+            "key": g, "name": name, "ability": ability, "stats": keys, "level": level, "tier": tier,
+            "title": perks.PERKS[(g, tier)][0] if tier else None,
+            "next_tier_level": perks.TIERS[next_tier][1] if next_tier else None,
+            "perks": [{
+                "tier": t, "rank": rank, "unlock_level": unlock, "title": perks.PERKS[(g, t)][0],
+                "token": perks.PERKS[(g, t)][1], "detail": perks.PERKS[(g, t)][2], "earned": level >= unlock,
+                "claimed_on": claims.get((g, t)), "claim_metric": perks.claim_metric(g, t),
+            } for t, (rank, unlock) in perks.TIERS.items()],
+        })
+    return out
+
+
+def _sheets(stat_xp: dict) -> list[dict]:
+    return [stat_sheet(line["key"], line["label"], line["stat"], stat_xp.get(line["key"], 0), line["max"])
+            for line in score_day({}, {})]
 
 
 def _avg(values: list[float]) -> float | None:
@@ -226,30 +234,63 @@ def build(conn, day: date) -> dict:
         if r["metric"] == APP_PREFIX + YOUTUBE_APP:
             youtube[r["date"]] += r["value"]
 
+    # When each perk token was first logged as claimed. A claim only counts once the token was earned.
+    logged: dict[tuple[str, int], str] = {}
+    for g, t in perks.PERKS:
+        logged[(g, t)] = next((dk for dk in sorted(by_date) if by_date[dk].get(perks.claim_metric(g, t), 0) > 0), None)
+    claims: dict[tuple[str, int], str] = {}
+
     history, stat_xp = [], defaultdict(float)
     rhr_seen, hrv_seen = [], []
     prev_equity = None
     today_lines: list[dict] = []
-    today_bonus, today_rested = 0, False
+    today_buffs: list[dict] = []
     d = lookback
     while d <= day:
         key = d.isoformat()
         m = by_date.get(key, {})
         if d >= GAME_START:
+            power = group_power(_sheets(stat_xp))
+            for (g, t), on in logged.items():
+                if on == key and (g, t) not in claims and power[g][0] >= perks.TIERS[t][1]:
+                    claims[(g, t)] = key
+            yesterday = (d - timedelta(days=1)).isoformat()
+            active = {gt for gt, on in claims.items() if on == key}
+            buffs = []
+
             ctx = {"rhr_base": _avg(rhr_seen[-30:]), "hrv_base": _avg(hrv_seen[-30:]),
                    "prev_equity": prev_equity, "youtube": youtube.get(key, 0)}
             lines = score_day(m, ctx)
+            by_key = {line["key"]: line for line in lines}
+            if ("wis", 1) in active:
+                by_key["social"]["xp"] = max(0, by_key["social"]["xp"])
+                by_key["youtube"]["xp"] = by_key["youtube"]["max"]
+                buffs.append({"name": "Unrestricted Media Pass", "detail": "Social media and YouTube can't cost XP today", "xp": 0})
+            if ("per", 2) in active:
+                cal = by_key["calendar"]
+                cal["xp"] = min(cal["max"], cal["xp"] + 50)
+                buffs.append({"name": "Chef Exemption Pass", "detail": "One extra calendar block counted", "xp": 0})
+
             base = max(0, sum(line["xp"] for line in lines))
             rested = m.get("sleep.total_minutes", 0) >= WELL_RESTED_MINUTES
+            pass_used = next((perks.PERKS[gt][1] for gt in (("con", 1), ("con", 2)) if gt in active), None)
             # The buff adds to the character's XP only; each stat keeps the XP it earned itself.
-            bonus = round(base * WELL_RESTED_BONUS) if rested else 0
+            bonus = round(base * WELL_RESTED_BONUS) if rested or pass_used else 0
+            if bonus:
+                buffs.append({"name": "Well-Rested", "xp": bonus,
+                              "detail": f"{pass_used}: +10% XP today" if pass_used and not rested else "7.5 h+ sleep: +10% XP today"})
             xp = base + bonus
-            history.append({"date": key, "xp": xp, "well_rested": rested})
+            if ("wis", 4) in active or claims.get(("wis", 4)) == yesterday:
+                floor = round(_avg([h["xp"] for h in history[-14:]]) or 0)
+                if floor > xp:
+                    buffs.append({"name": "Digital Detox Retreat", "detail": "Scored at your 14-day average", "xp": floor - xp})
+                    xp = floor
+            history.append({"date": key, "xp": xp, "well_rested": bool(bonus)})
             for line in lines:
                 # A stat's XP never drops below 0, so a bad social media day can't undo levels.
                 stat_xp[line["key"]] = max(0, stat_xp[line["key"]] + line["xp"])
             if d == day:
-                today_lines, today_bonus, today_rested = lines, bonus, rested
+                today_lines, today_buffs = lines, buffs
         if "health.resting_heart_rate" in m:
             rhr_seen.append(m["health.resting_heart_rate"])
         if "health.hrv_rmssd" in m:
@@ -259,8 +300,9 @@ def build(conn, day: date) -> dict:
         d += timedelta(days=1)
 
     total = sum(h["xp"] for h in history)
-    stats = [stat_sheet(line["key"], line["label"], line["stat"], stat_xp[line["key"]], line["max"])
-             for line in score_day({}, {})]
+    stats = _sheets(stat_xp)
+    groups = group_sheets(stats, claims)
+    top = max(groups, key=lambda g: (g["tier"], g["level"]))
     recent = _avg([h["xp"] for h in history[-14:]])
     remaining = max(0, XP_TO_MAX - total)
     days_left = round(remaining / recent) if recent and remaining else (0 if not remaining else None)
@@ -272,16 +314,17 @@ def build(conn, day: date) -> dict:
         "xp_to_max": XP_TO_MAX,
         "day_number": len(history),
         "class": character_class(stats),
+        "title": top["title"],
         "today": {
             "xp": history[-1]["xp"] if history else 0,
             "max": DAILY_MAX,
-            "buffs": [{"name": "Well-Rested", "detail": "7.5 h+ sleep: +10% XP today", "xp": today_bonus}]
-            if today_rested else [],
+            "buffs": today_buffs,
             "metrics": today_lines,
         },
         "avg_daily_xp_14d": round(recent) if recent is not None else None,
         "days_to_max_level": days_left,
         "max_level_date": (day + timedelta(days=days_left)).isoformat() if days_left is not None else None,
         "stats": stats,
+        "groups": groups,
         "history": history[-30:],
     }
