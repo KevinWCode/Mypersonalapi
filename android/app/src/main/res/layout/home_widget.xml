@@ -25,7 +25,7 @@
             android:ellipsize="end"
             android:letterSpacing="0.06"
             android:maxLines="1"
-            android:text="Reclaimed from social media"
+            android:text="Social media · last 7 days"
             android:textAllCaps="true"
             android:textColor="@color/widget_sub"
             android:textSize="11sp"
@@ -49,16 +49,93 @@
             android:src="@drawable/ic_refresh" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/headline"
-        android:layout_width="wrap_content"
+    <!-- Social media per day for the last 7 days; HomeWidget draws the bars and the dashed daily limit. -->
+    <ImageView
+        android:id="@+id/chart"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginEnd="10dp"
+        android:contentDescription="Social media minutes for the last 7 days"
+        android:scaleType="fitXY" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:text="—"
-        android:textColor="@color/widget_text"
-        android:textSize="30sp"
-        android:textStyle="bold" />
+        android:layout_marginEnd="10dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/bar0_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:lineSpacingMultiplier="0.9"
+            android:maxLines="2"
+            android:textColor="@color/widget_sub"
+            android:textSize="10sp" />
+        <TextView
+            android:id="@+id/bar1_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:lineSpacingMultiplier="0.9"
+            android:maxLines="2"
+            android:textColor="@color/widget_sub"
+            android:textSize="10sp" />
+        <TextView
+            android:id="@+id/bar2_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:lineSpacingMultiplier="0.9"
+            android:maxLines="2"
+            android:textColor="@color/widget_sub"
+            android:textSize="10sp" />
+        <TextView
+            android:id="@+id/bar3_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:lineSpacingMultiplier="0.9"
+            android:maxLines="2"
+            android:textColor="@color/widget_sub"
+            android:textSize="10sp" />
+        <TextView
+            android:id="@+id/bar4_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:lineSpacingMultiplier="0.9"
+            android:maxLines="2"
+            android:textColor="@color/widget_sub"
+            android:textSize="10sp" />
+        <TextView
+            android:id="@+id/bar5_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:lineSpacingMultiplier="0.9"
+            android:maxLines="2"
+            android:textColor="@color/widget_sub"
+            android:textSize="10sp" />
+        <TextView
+            android:id="@+id/bar6_label"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:lineSpacingMultiplier="0.9"
+            android:maxLines="2"
+            android:textColor="@color/widget_sub"
+            android:textSize="10sp" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/note"

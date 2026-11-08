@@ -6,4 +6,7 @@
     <color name="widget_sub">#C5CAD1</color>
     <color name="widget_warn">#F2A36B</color>
     <color name="widget_good">#7BD88F</color>
+    <color name="widget_bad">#F07178</color>
+    <!-- A day the phone sent no screen time. -->
+    <color name="widget_empty">#4A5058</color>
 </resources>

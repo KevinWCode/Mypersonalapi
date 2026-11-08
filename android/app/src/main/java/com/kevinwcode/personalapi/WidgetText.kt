@@ -31,7 +31,18 @@ data class Summary(
     val readingHoursWeek: Double? = null,
     val pl7d: Double? = null,
     val lastTrade: Trade? = null,
+    /** Social media minutes for the last 7 days, oldest first. Null = the phone sent nothing that day. */
+    val socialDays: List<Double?> = emptyList(),
+    val limitMinutes: Double = 60.0,
+    val youtubeToday: Double? = null,
+    val youtubeWeekPerDay: Double? = null,
 )
+
+/** How a day's social media compares with the daily limit: up to half of it, up to all of it, or over. */
+enum class Level { GOOD, WARN, OVER, NONE }
+
+/** One day's bar on the widget. [height] runs from 0 to 1 of the chart; the limit sits at [WidgetLines.limitAt]. */
+data class Bar(val height: Double, val level: Level, val label: String)
 
 /** One stat on the widget: the big value and the small line under it. */
 data class Tile(val value: String, val sub: String)
@@ -42,8 +53,10 @@ data class Tile(val value: String, val sub: String)
  */
 data class WidgetLines(
     val label: String,
-    val headline: String,
     val note: String,
+    val bars: List<Bar>,
+    /** Where the daily limit line goes, from 0 (bottom) to 1 (top). */
+    val limitAt: Double,
     val tiles: List<Tile>,
     /** True when the P/L is up, false when down, null when there's none. */
     val plUp: Boolean?,
@@ -56,6 +69,7 @@ data class WidgetLines(
 object WidgetText {
     private val CLOCK = DateTimeFormatter.ofPattern("HH:mm", Locale.UK)
     private const val NONE = "—"
+    private const val LABEL = "Social media · last 7 days"
 
     /** Minutes as the dashboard writes them: 116 -> "1h 56m", 45 -> "45m". */
     fun hm(minutes: Double): String {
@@ -87,20 +101,39 @@ object WidgetText {
         return "$verb ${trim(t.qty)} ${t.symbol} at ${money(t.price)}$at"
     }
 
+    fun level(minutes: Double?, limit: Double): Level = when {
+        minutes == null -> Level.NONE
+        minutes <= limit / 2 -> Level.GOOD
+        minutes <= limit -> Level.WARN
+        else -> Level.OVER
+    }
+
+    /** The last 7 days as bars, with today's day name last. Days with no data get a flat bar. */
+    fun bars(days: List<Double?>, limit: Double, today: LocalDate): Pair<List<Bar>, Double> {
+        // Leave headroom over the limit, so a day just under it doesn't touch the top.
+        val top = maxOf(limit * 1.5, days.filterNotNull().maxOrNull() ?: 0.0)
+        val bars = days.mapIndexed { i, m ->
+            val d = today.minusDays((days.size - 1 - i).toLong())
+            Bar(m?.let { it / top } ?: 0.0, level(m, limit), (m?.let { "${it.roundToLong()}" } ?: NONE) + "\n" + day(d))
+        }
+        return bars to limit / top
+    }
+
     fun lines(s: Summary?, today: LocalDate, fetchedAt: LocalDateTime?, offline: Boolean, zone: ZoneId = ZoneId.systemDefault()): WidgetLines {
         val updated = listOfNotNull(if (offline) "Offline" else null, fetchedAt?.let { stamp(it, today) }).joinToString(" · ")
         if (s == null) {
-            return WidgetLines("Reclaimed from social media", NONE, if (offline) "Can't reach the server yet" else "Loading…",
+            val (bars, limitAt) = bars(List(7) { null }, 60.0, today)
+            return WidgetLines(LABEL, if (offline) "Can't reach the server yet" else "Loading…", bars, limitAt,
                 List(9) { Tile(NONE, "") }, null, "", updated, offline)
         }
 
-        // Same headline as the dashboard: time reclaimed once there's a last week to compare with.
-        val (label, headline, note) = when {
-            s.reclaimedMinutes != null -> Triple("Reclaimed from social media", hm(s.reclaimedMinutes),
-                "${s.weekPerDay?.roundToLong()} min/day this week, ${s.lastWeekPerDay?.roundToLong()} last week")
-            s.weekMinutes != null -> Triple("Social media this week", hm(s.weekMinutes), "${s.weekPerDay?.roundToLong()} min/day")
-            else -> Triple("Reclaimed from social media", NONE, "No screen time from the phone yet")
-        }
+        val (bars, limitAt) = bars(s.socialDays.ifEmpty { List(7) { null } }, s.limitMinutes, s.date)
+        // Same sum as the dashboard headline: time reclaimed once there's a last week to compare with.
+        val note = listOfNotNull(
+            s.weekPerDay?.let { "${it.roundToLong()} min/day" } ?: "No screen time from the phone yet",
+            s.reclaimedMinutes?.let { if (it >= 0) "${hm(it)} reclaimed" else "${hm(-it)} over last week" },
+            s.youtubeWeekPerDay?.let { "YouTube ${it.roundToLong()} min/day" },
+        ).joinToString(" · ")
         // If the server was off, these are an earlier day's numbers, so say which day.
         val todayWord = if (s.date == today) "today" else day(s.date)
         val tiles = listOf(
@@ -116,6 +149,6 @@ object WidgetText {
         )
         val plUp = s.pl7d?.takeIf { it != 0.0 }?.let { it > 0 }
         val trade = s.lastTrade?.let { "Last trade: " + trade(it, today, zone) } ?: "No trades yet"
-        return WidgetLines(label, headline, note, tiles, plUp, trade, updated, offline)
+        return WidgetLines(LABEL, note, bars, limitAt, tiles, plUp, trade, updated, offline)
     }
 }

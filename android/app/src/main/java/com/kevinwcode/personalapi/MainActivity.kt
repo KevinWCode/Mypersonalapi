@@ -154,7 +154,7 @@ class MainActivity : AppCompatActivity() {
             status.text = buildString {
                 appendLine("Health Connect: $health")
                 appendLine("Screen time access: ${if (ScreenTime.hasAccess(this@MainActivity)) "allowed" else "not allowed"}")
-                appendLine("Background sync: ${if (backgroundAllowed()) "every 15 min" else "may be paused, tap Keep syncing in the background"}")
+                appendLine("Background sync: ${if (backgroundAllowed()) "every 15 min, ${SyncHours.text}" else "may be paused, tap Keep syncing in the background"}")
                 appendLine("Today's manual entries: ${manual.today().size}")
                 append("Last sync: ${settings.lastSync.replace(", ", "\n  ")}")
             }

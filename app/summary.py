@@ -2,6 +2,7 @@
 from datetime import date, timedelta
 
 from app import db
+from app.config import SOCIAL_LIMIT_MINUTES
 from app.collectors import alpaca
 from app.metrics import build_days
 
@@ -38,6 +39,10 @@ def build(conn, day: date) -> dict:
         return sum(week_values(key)) / 60
 
     # Workouts only arrive on days with one, so they count as 0 once the phone has synced anything that week.
+    def youtube(d: dict) -> float | None:
+        return d.get("screen.youtube_minutes", 0) if "screen.total_minutes" in d else None
+
+    youtube_week = [v for v in map(youtube, week_days) if v is not None]
     synced = any("health.steps" in d or "screen.total_minutes" in d for d in week_days)
     trading = alpaca.summary(conn, day.isoformat())
     return {
@@ -47,7 +52,13 @@ def build(conn, day: date) -> dict:
             "week_minutes": sum(this_week) if this_week else None,
             "week_per_day": _avg(this_week),
             "last_week_per_day": _avg(last_week),
+            "limit_minutes": SOCIAL_LIMIT_MINUTES,
+            # The last 7 days, oldest first, for the widget's bars. None = the phone sent nothing that day.
+            "days": [
+                {"date": (day - timedelta(days=i)).isoformat(), "minutes": _social(week_days[i])} for i in range(6, -1, -1)
+            ],
         },
+        "youtube": {"today_minutes": youtube(today), "week_per_day": _avg(youtube_week)},
         "kcal": today.get("food.kcal"),
         "protein_g": today.get("food.protein_g"),
         # Sleep is filed under the day you wake up, so today's is last night's.

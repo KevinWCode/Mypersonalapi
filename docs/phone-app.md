@@ -1,8 +1,8 @@
 # Phone app
 
-A small Android app that sends your stats to the server. Once it's set up, a background sync every 15 minutes (the most often Android allows) reads:
+A small Android app that sends your stats to the server. Once it's set up, a background sync every 15 minutes (the most often Android allows) between 07:00 and 22:00 reads:
 
-- **Screen time** per app, from Android's usage stats. The server adds TikTok and Instagram into one social media total.
+- **Screen time** per app, from Android's usage stats. The server adds TikTok, Instagram, Facebook and Reddit into one social media total, and tracks YouTube on its own.
 - **Health data** from Health Connect: sleep and its stages, steps, heart rate, resting heart rate, HRV and workouts. Your Galaxy Watch gets there through Samsung Health.
 - **Manual entries** you add in the app: kettlebell sets, and catch distance.
 
@@ -20,7 +20,7 @@ Each sync re-sends the last 3 days, so a missed sync fixes itself next time. No 
 2. **Allow Health Connect access:** tap the button and allow everything, including *Access data in the background*.
 3. **Allow usage access:** tap the button, find **Personal API** in the list, and turn it on.
 4. **Make Samsung Health share with Health Connect:** in Samsung Health, open Settings → Health Connect and allow it to write sleep, steps, heart rate and exercise.
-5. **Keep it running:** tap **Keep syncing in the background** and choose **Allow**. Samsung otherwise tends to pause background syncs. The status line then says `Background sync: every 15 min`. (The same setting lives in Android Settings → Apps → Personal API → Battery → **Unrestricted**.)
+5. **Keep it running:** tap **Keep syncing in the background** and choose **Allow**. Samsung otherwise tends to pause background syncs. The status line then says `Background sync: every 15 min, 07:00 to 22:00`. Overnight it rests to save battery; the first sync in the morning sends the last 3 days again, so nothing is lost. **Sync now** works at any time. (The same setting lives in Android Settings → Apps → Personal API → Battery → **Unrestricted**.)
 6. Tap **Sync now**. The status line should show counts like `screen 25, health 14, manual 0`.
 
 Tailscale has to be switched on for syncs to reach the server.
@@ -33,7 +33,7 @@ Tailscale has to be switched on for syncs to reach the server.
 
 Long-press an empty spot on the home screen, tap **Widgets**, find **Personal API** and drag **Personal API today** onto the screen. It's 4 x 4 by default and can be resized. It shows:
 
-- time reclaimed from social media this week (the dashboard's headline)
+- social media for each of the last 7 days as bars: green up to half the daily limit, amber up to the limit, red over it, with the limit as a dashed line (60 minutes; change `SOCIAL_LIMIT_MINUTES` in the server's `.env`). Under them: minutes per day, time reclaimed against last week, and YouTube per day
 - calories and protein today, and last night's sleep
 - steps per day, resting heart rate and workouts over the last 7 days
 - study and reading hours over the last 7 days
