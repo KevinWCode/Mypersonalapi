@@ -43,18 +43,37 @@ def tier(level: int) -> str:
 XP_TO_MAX = sum(level_cost(lv) for lv in range(1, MAX_LEVEL))
 
 
-def level_for(total_xp: float) -> dict:
+def level_for(total_xp: float, scale: float = 1) -> dict:
+    """scale shrinks the curve for a single stat (its daily max / the whole day's max), so maxing a stat every day
+    levels it at the same pace as the character."""
     level, left = 1, total_xp
-    while level < MAX_LEVEL and left >= level_cost(level):
-        left -= level_cost(level)
+    while level < MAX_LEVEL and left >= level_cost(level) * scale - 1e-6:  # tolerance for the scaled float sums
+        left -= level_cost(level) * scale
         level += 1
-    cost = level_cost(level) if level < MAX_LEVEL else None
+    cost = round(level_cost(level) * scale) if level < MAX_LEVEL else None
     return {
         "level": level,
         "tier": tier(level),
         "level_xp": round(left) if cost else 0,
         "level_cost": cost,
         "xp_to_next": round(cost - left) if cost else 0,
+    }
+
+
+# Each stat's rank by its level, in the same four bands as the character's tiers.
+STAT_RANKS = [(27, "Novice"), (55, "Adept"), (83, "Expert"), (MAX_LEVEL, "Master")]
+
+
+def stat_sheet(key: str, label: str, stat: str, xp: float, max_xp: int) -> dict:
+    """One stat's own level, plus a tabletop-style ability score: 8 at level 1 up to 20 at level 110, and its
+    modifier, (score - 10) // 2, so -1 to +5."""
+    lv = level_for(xp, max_xp / DAILY_MAX)
+    score = 8 + lv["level"] * 12 // MAX_LEVEL
+    return {
+        "key": key, "label": label, "stat": stat, "xp": round(xp),
+        "level": lv["level"], "rank": next(name for top, name in STAT_RANKS if lv["level"] <= top),
+        "score": score, "modifier": (score - 10) // 2,
+        "level_xp": lv["level_xp"], "level_cost": lv["level_cost"], "xp_to_next": lv["xp_to_next"],
     }
 
 
@@ -167,7 +186,7 @@ def build(conn, day: date) -> dict:
         if r["metric"] == APP_PREFIX + YOUTUBE_APP:
             youtube[r["date"]] += r["value"]
 
-    history, stats = [], defaultdict(int)
+    history, stat_xp = [], defaultdict(float)
     rhr_seen, hrv_seen = [], []
     prev_equity = None
     today_lines: list[dict] = []
@@ -182,7 +201,8 @@ def build(conn, day: date) -> dict:
             xp = max(0, sum(line["xp"] for line in lines))
             history.append({"date": key, "xp": xp})
             for line in lines:
-                stats[line["stat"]] += line["xp"]
+                # A stat's XP never drops below 0, so a bad social media day can't undo levels.
+                stat_xp[line["key"]] = max(0, stat_xp[line["key"]] + line["xp"])
             if d == day:
                 today_lines = lines
         if "health.resting_heart_rate" in m:
@@ -208,6 +228,7 @@ def build(conn, day: date) -> dict:
         "avg_daily_xp_14d": round(recent) if recent is not None else None,
         "days_to_max_level": days_left,
         "max_level_date": (day + timedelta(days=days_left)).isoformat() if days_left is not None else None,
-        "stats": dict(stats),
+        "stats": [stat_sheet(line["key"], line["label"], line["stat"], stat_xp[line["key"]], line["max"])
+                  for line in score_day({}, {})],
         "history": history[-30:],
     }
