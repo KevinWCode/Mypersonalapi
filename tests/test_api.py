@@ -16,18 +16,24 @@ def test_ingest_rejects_bad_token():
     assert post([], headers={"Authorization": "Bearer nope"}).status_code == 401
 
 
-def test_social_media_total_adds_tiktok_and_instagram():
+def test_social_media_total_adds_the_social_apps_but_not_youtube():
     post([
         {"date": "2026-10-23", "metric": "screen.app.com.zhiliaoapp.musically", "value": 30, "unit": "minutes"},
         {"date": "2026-10-23", "metric": "screen.app.com.instagram.android", "value": 15, "unit": "minutes"},
+        {"date": "2026-10-23", "metric": "screen.app.com.facebook.katana", "value": 5, "unit": "minutes"},
+        {"date": "2026-10-23", "metric": "screen.app.com.reddit.frontpage", "value": 10, "unit": "minutes"},
+        {"date": "2026-10-23", "metric": "screen.app.com.google.android.youtube", "value": 20, "unit": "minutes"},
         {"date": "2026-10-23", "metric": "screen.app.com.android.chrome", "value": 50, "unit": "minutes"},
     ])
     day = client.get("/days", params={"start": "2026-10-23", "end": "2026-10-23"}).json()["days"][0]
     assert day["metrics"] == {
         "screen.tiktok_minutes": 30,
         "screen.instagram_minutes": 15,
-        "screen.social_media_minutes": 45,
-        "screen.total_minutes": 95,
+        "screen.facebook_minutes": 5,
+        "screen.reddit_minutes": 10,
+        "screen.youtube_minutes": 20,
+        "screen.social_media_minutes": 60,
+        "screen.total_minutes": 130,
     }
 
 
@@ -112,7 +118,14 @@ def test_summary_for_the_widget():
     client.post("/meals", json={"date": "2026-10-26", "meals": [{"meal": "breakfast", "kcal": 260, "protein_g": 9}]}, headers=AUTH)
 
     s = client.get("/summary", params={"date": "2026-10-26"}).json()
-    assert s["social"] == {"reclaimed_minutes": 120, "week_minutes": 240, "week_per_day": 40, "last_week_per_day": 60}
+    social = s["social"]
+    assert {k: social[k] for k in ("reclaimed_minutes", "week_minutes", "week_per_day", "last_week_per_day", "limit_minutes")} == {
+        "reclaimed_minutes": 120, "week_minutes": 240, "week_per_day": 40, "last_week_per_day": 60, "limit_minutes": 60}
+    # Oldest first; the 23rd has no screen time, so it's empty rather than 0.
+    assert [(d["date"], d["minutes"]) for d in social["days"]] == [
+        ("2026-10-20", 40), ("2026-10-21", 40), ("2026-10-22", 40), ("2026-10-23", None),
+        ("2026-10-24", 40), ("2026-10-25", 40), ("2026-10-26", 40)]
+    assert s["youtube"] == {"today_minutes": 0, "week_per_day": 0}
     # Protein adds the meal to the +25 g Quick log tap, like the dashboard.
     assert (s["kcal"], s["protein_g"], s["sleep_minutes"], s["steps"]) == (260, 34, 432, 2100)
     # Week tiles cover the last 7 days, like the dashboard (the 19th is 8 days back).
@@ -122,6 +135,7 @@ def test_summary_for_the_widget():
     empty = client.get("/summary", params={"date": "2026-01-01"}).json()
     assert empty["social"]["reclaimed_minutes"] is None and empty["kcal"] is None and empty["steps"] is None
     assert empty["workouts_week"] is None and empty["resting_hr"] is None
+    assert empty["youtube"] == {"today_minutes": None, "week_per_day": None}
 
 
 def test_env_file_is_read_without_overriding(tmp_path, monkeypatch):

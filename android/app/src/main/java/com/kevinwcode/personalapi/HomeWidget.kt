@@ -6,6 +6,10 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
 import android.widget.RemoteViews
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
@@ -24,7 +28,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 
 /**
- * Home screen widget: time reclaimed from social media, food, sleep, steps, heart rate, workouts, study and reading,
+ * Home screen widget: social media for the last 7 days as bars (green, amber, red against the daily limit), food, sleep, steps, heart rate, workouts, study and reading,
  * trading P/L and the last trade, from the server's GET /summary.
  * It refreshes after each phone sync (every 15 minutes) and when you tap the refresh arrow. Tapping anywhere else
  * opens the dashboard. When the server can't be reached it keeps showing the last numbers it got.
@@ -64,6 +68,13 @@ class HomeWidget : AppWidgetProvider() {
             R.id.tile0_sub, R.id.tile1_sub, R.id.tile2_sub, R.id.tile3_sub, R.id.tile4_sub,
             R.id.tile5_sub, R.id.tile6_sub, R.id.tile7_sub, R.id.tile8_sub,
         )
+
+        private val BAR_LABELS = intArrayOf(
+            R.id.bar0_label, R.id.bar1_label, R.id.bar2_label, R.id.bar3_label, R.id.bar4_label, R.id.bar5_label, R.id.bar6_label,
+        )
+        // The chart is drawn at this size and stretched to the widget's width; bars are plain shapes, so that's fine.
+        private const val CHART_W = 700
+        private const val CHART_H = 140
 
         private fun refreshSoon(context: Context, policy: ExistingWorkPolicy) {
             WorkManager.getInstance(context).enqueueUniqueWork("widget-now", policy, OneTimeWorkRequestBuilder<RefreshWorker>().build())
@@ -117,7 +128,43 @@ class HomeWidget : AppWidgetProvider() {
                     Trade(it.getString("symbol"), it.getString("side"), it.getDouble("qty"), it.getDouble("price"),
                         runCatching { OffsetDateTime.parse(it.getString("filled_at")).toInstant() }.getOrNull())
                 },
+                // Older servers don't send these, so each one is optional.
+                socialDays = social.optJSONArray("days")?.let { a -> List(a.length()) { a.getJSONObject(it).num("minutes") } } ?: emptyList(),
+                limitMinutes = if (social.has("limit_minutes")) social.getDouble("limit_minutes") else 60.0,
+                youtubeToday = o.optJSONObject("youtube")?.num("today_minutes"),
+                youtubeWeekPerDay = o.optJSONObject("youtube")?.num("week_per_day"),
             )
+        }
+
+        private fun color(context: Context, level: Level) = ContextCompat.getColor(context, when (level) {
+            Level.GOOD -> R.color.widget_good
+            Level.WARN -> R.color.widget_warn
+            Level.OVER -> R.color.widget_bad
+            Level.NONE -> R.color.widget_empty
+        })
+
+        /** Seven rounded bars in equal slots, matching the seven day labels under them, and a line at the limit. */
+        private fun chart(context: Context, bars: List<Bar>, limitAt: Double): Bitmap {
+            val bitmap = Bitmap.createBitmap(CHART_W, CHART_H, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+            val slot = CHART_W / bars.size.toFloat()
+            val minH = 6f
+            bars.forEachIndexed { i, bar ->
+                paint.color = color(context, bar.level)
+                val h = maxOf(minH, (bar.height * CHART_H).toFloat())
+                val left = i * slot + slot * 0.2f
+                canvas.drawRoundRect(RectF(left, CHART_H - h, left + slot * 0.6f, CHART_H.toFloat()), 8f, 8f, paint)
+            }
+            paint.color = ContextCompat.getColor(context, R.color.widget_sub)
+            paint.strokeWidth = 3f
+            val y = (CHART_H - limitAt * CHART_H).toFloat()
+            var x = 0f
+            while (x < CHART_W) {
+                canvas.drawLine(x, y, minOf(x + 14f, CHART_W.toFloat()), y, paint)
+                x += 24f
+            }
+            return bitmap
         }
 
         private fun prefs(context: Context) = context.getSharedPreferences("widget", Context.MODE_PRIVATE)
@@ -131,7 +178,8 @@ class HomeWidget : AppWidgetProvider() {
 
             val views = RemoteViews(context.packageName, R.layout.home_widget)
             views.setTextViewText(R.id.label, t.label)
-            views.setTextViewText(R.id.headline, t.headline)
+            views.setImageViewBitmap(R.id.chart, chart(context, t.bars, t.limitAt))
+            t.bars.forEachIndexed { i, bar -> views.setTextViewText(BAR_LABELS[i], bar.label) }
             views.setTextViewText(R.id.note, t.note)
             t.tiles.forEachIndexed { i, tile ->
                 views.setTextViewText(TILE_VALUES[i], tile.value)

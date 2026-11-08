@@ -10,12 +10,17 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
-/** Runs every 15 minutes (the most often Android allows) in the background: reads screen time and health data, uploads the last 3 days. */
+/**
+ * Runs every 15 minutes (the most often Android allows) in the background: reads screen time and health data, uploads the
+ * last 3 days. Outside [SyncHours] it does nothing until the morning.
+ */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
+        if (!SyncHours.allows(LocalTime.now())) return Result.success()
         val settings = Settings(applicationContext)
         val result = try {
             settings.lastSync = "${now()}: ${syncAll(applicationContext)}"
