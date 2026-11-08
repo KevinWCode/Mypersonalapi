@@ -127,6 +127,42 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 .meal-list .x:hover { background: var(--bg); color: var(--ink); }
 .tickbtn { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; padding: 0; cursor: pointer; }
 .tickbtn:hover .tick { border-color: var(--accent); }
+.game { display: flex; flex-direction: column; gap: 16px; }
+.game-top { align-items: start; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 16px; }
+.char { background: var(--ink); color: #FFFFFF; border-radius: 20px; padding: 28px; display: flex; flex-direction: column; gap: 14px; }
+.char .lvl { font-size: 56px; font-weight: 700; line-height: 1; }
+.char .sub { font-size: 14px; color: var(--dark-sub); }
+.char .cls { font-size: 22px; font-weight: 700; }
+.char .track { background: #2E343B; height: 12px; }
+.char .fill { background: #9DB5F0; }
+.char-facts { display: flex; gap: 28px; flex-wrap: wrap; }
+.char-facts div { display: flex; flex-direction: column; gap: 4px; }
+.char-facts .num { font-size: 22px; font-weight: 700; }
+.buffs { display: flex; flex-wrap: wrap; gap: 8px; }
+.buff { padding: 6px 12px; border-radius: 14px; font-size: 13px; font-weight: 600; background: #E8EEFC; color: #163A99; }
+.char .buff { background: #2E343B; color: #FFFFFF; }
+.xp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.xp-list li { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: 4px 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.xp-list .what { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.xp-list .what span { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.xp-list .pts { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.xp-list .pts.neg { color: var(--warn); }
+.xp-list .track { grid-column: 1 / -1; height: 6px; }
+.groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 16px; }
+.ability { display: flex; align-items: center; gap: 14px; }
+.ability .abbr { width: 56px; height: 56px; flex: none; border-radius: 14px; background: var(--ink); color: #FFFFFF; display: flex; align-items: center; justify-content: center; font: 700 18px 'Space Grotesk', sans-serif; }
+.ability .meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ability .meta b { font-size: 16px; }
+.stat-row { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.stat-row span:last-child { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.perks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.perk { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); }
+.perk.earned { background: #E8EEFC; border-color: #C3D3F8; }
+.perk.locked { color: var(--muted); }
+.perk .what { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.perk .what span { font-size: 12px; color: var(--muted); }
+.perk .state { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.perk .btn { min-height: 44px; padding: 0 16px; }
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 20; display: none; align-items: center; gap: 14px; width: max-content; max-width: calc(100% - 32px); background: var(--ink); color: #FFFFFF; border-radius: 14px; padding: 10px 10px 10px 16px; font-size: 14px; box-shadow: 0 6px 20px rgba(22, 25, 29, .2); }
 #toast button { background: none; border: 0; color: #9DB5F0; font: 600 14px Inter, sans-serif; cursor: pointer; padding: 8px 10px; }
 #tip { position: fixed; z-index: 10; display: none; pointer-events: none; background: #FFFFFF; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 20px rgba(22, 25, 29, .12); padding: 10px 12px; font-size: 13px; min-width: 120px; }
@@ -177,6 +213,18 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     </form>
   </div>
 </div>
+</section>
+
+<section aria-labelledby="game-h" id="game" class="game" hidden>
+<div class="card-head"><h2 id="game-h">Character</h2><span class="note" id="game-note"></span></div>
+<div class="game-top">
+  <div class="char" id="char"></div>
+  <div class="card">
+    <div class="card-head"><h2>Today's XP</h2><span class="note" id="xp-today"></span></div>
+    <ul class="xp-list" id="xp-list"></ul>
+  </div>
+</div>
+<div class="groups" id="groups"></div>
 </section>
 
 <section aria-label="Fuel today" class="card fuel">
@@ -771,9 +819,10 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   // After a change, re-read today so totals that combine several sources (protein, kettlebell) stay right.
   function refreshToday() {
     var day = iso(state.today);
-    return Promise.all([getJSON('/days?start=' + day + '&end=' + day), getJSON('/meals?date=' + day)]).then(function (res) {
+    return Promise.all([getJSON('/days?start=' + day + '&end=' + day), getJSON('/meals?date=' + day), getJSON('/game?date=' + day)]).then(function (res) {
       state.byDate[day] = res[0].days.length ? res[0].days[0].metrics : {};
       state.meals = res[1].meals;
+      state.game = res[2];
       state.fetchedAt = new Date();
       render();
     });
@@ -953,6 +1002,76 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     }, failed);
   }
 
+  // ---- the game: level, class, today's XP and the six stat groups with their perk tokens ----
+  function renderGame() {
+    var g = state.game;
+    $('game').hidden = !g;
+    if (!g) return;
+    var c = $('char');
+    c.replaceChildren();
+    var into = g.level_cost ? Math.round(g.level_xp / g.level_cost * 100) : 100;
+    [
+      el('p', { class: 'sub' }, g.tier + ' · day ' + g.day_number + ' of the year'),
+      el('p', { class: 'num lvl' }, 'Level ' + g.level),
+      el('p', { class: 'num cls' }, g['class'].name + (g.title ? ' · ' + g.title : '')),
+      el('p', { class: 'sub' }, g['class'].detail),
+      el('div', { class: 'track', role: 'img', 'aria-label': int(g.level_xp) + ' of ' + int(g.level_cost || 0) + ' XP to the next level' },
+        el('div', { class: 'fill', style: 'width:' + into + '%' })),
+      el('p', { class: 'sub' }, g.level_cost ? int(g.xp_to_next) + ' XP to level ' + (g.level + 1) : 'Max level reached'),
+      el('div', { class: 'char-facts' },
+        el('div', null, el('span', { class: 'sub' }, 'Total XP'), el('span', { class: 'num' }, int(g.total_xp))),
+        el('div', null, el('span', { class: 'sub' }, 'Avg / day, 14 days'), el('span', { class: 'num' }, g.avg_daily_xp_14d === null ? '–' : int(g.avg_daily_xp_14d))),
+        el('div', null, el('span', { class: 'sub' }, 'Level 110'), el('span', { class: 'num' },
+          g.max_level_date ? md(parseDay(g.max_level_date)) + ' ' + g.max_level_date.slice(0, 4) : '–'))),
+      g.today.buffs.length ? el('div', { class: 'buffs' }, g.today.buffs.map(function (b) {
+        return el('span', { class: 'buff', title: b.detail }, b.name + (b.xp ? ' +' + int(b.xp) + ' XP' : ''));
+      })) : null
+    ].forEach(function (kid) { if (kid) c.append(kid); });
+
+    $('xp-today').textContent = int(g.today.xp) + ' / ' + int(g.today.max) + ' XP';
+    $('xp-list').replaceChildren.apply($('xp-list'), g.today.metrics.map(function (l) {
+      var w = Math.max(0, Math.round(l.xp / l.max * 100));
+      return el('li', null,
+        el('div', { class: 'what' }, el('b', null, l.label), el('span', null, l.detail)),
+        el('div', { class: 'pts' + (l.xp < 0 ? ' neg' : '') }, (l.xp > 0 ? '+' : '') + l.xp + ' / ' + l.max),
+        el('div', { class: 'track', 'aria-hidden': 'true' }, el('div', { class: 'fill', style: 'width:' + w + '%;background:' + COLOR.accent })));
+    }));
+
+    var stats = {};
+    g.stats.forEach(function (s) { stats[s.key] = s; });
+    $('groups').replaceChildren.apply($('groups'), g.groups.map(function (grp) {
+      var next = grp.next_tier_level;
+      var toNext = next ? Math.min(100, Math.round(grp.level / next * 100)) : 100;
+      return el('div', { class: 'card' },
+        el('div', { class: 'ability' },
+          el('div', { class: 'abbr', 'aria-hidden': 'true' }, grp.ability),
+          el('div', { class: 'meta' }, el('b', null, grp.name),
+            el('span', { class: 'note' }, 'Level ' + grp.level + (grp.title ? ' · ' + grp.title : ' · no title yet')))),
+        el('div', null,
+          el('div', { class: 'track', style: 'height:8px', role: 'img', 'aria-label': next ? 'Level ' + grp.level + ' of ' + next + ' for the next tier' : 'All tiers unlocked' },
+            el('div', { class: 'fill', style: 'width:' + toNext + '%;background:' + COLOR.accent })),
+          el('p', { class: 'note', style: 'margin-top:6px' }, next ? 'Next tier at level ' + next : 'All tiers unlocked')),
+        el('div', null, grp.stats.map(function (k) {
+          var s = stats[k];
+          return el('div', { class: 'stat-row' }, el('span', null, s.label),
+            el('span', null, 'Lv ' + s.level + ' · ' + s.rank + ' · ' + s.score + ' (' + (s.modifier >= 0 ? '+' : '') + s.modifier + ')'));
+        })),
+        el('ul', { class: 'perks' }, grp.perks.map(function (p) {
+          var cls = p.claimed_on ? 'perk' : p.earned ? 'perk earned' : 'perk locked';
+          var action = p.claimed_on ? el('span', { class: 'state' }, 'Claimed ' + md(parseDay(p.claimed_on)))
+            : p.earned ? el('button', { type: 'button', class: 'btn' }, 'Claim')
+            : el('span', { class: 'state' }, 'Unlocks at ' + p.unlock_level);
+          if (action.tagName === 'BUTTON') action.addEventListener('click', function () {
+            send([{ metric: p.claim_metric, value: 1, unit: 'count', mode: 'set' }], 'Claimed ' + p.token);
+          });
+          return el('li', { class: cls },
+            el('div', { class: 'what' }, el('b', null, p.rank + ': ' + p.token), el('span', null, p.title + ' · ' + p.detail)),
+            action);
+        })));
+    }));
+    $('game-note').textContent = 'Day ' + g.day_number + ' · scored from your synced stats';
+  }
+
   function renderCatch() {
     var blocks = [];
     for (var k = 4; k >= 0; k--) {
@@ -981,6 +1100,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     var cur = dates(state.range, 0), prev = dates(state.range, state.range);
     renderHeader();
     renderHero(cur, prev);
+    renderGame();
     renderQuick();
     renderFuel();
     renderTiles(cur, prev);
@@ -1002,7 +1122,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     $('wrap').classList.add('loading');
     state.today = new Date();
     var start = iso(addDays(state.today, -(HISTORY_DAYS - 1))), end = iso(state.today);
-    return Promise.allSettled([getJSON('/days?start=' + start + '&end=' + end), getJSON('/trading'), getJSON('/status'), getJSON('/meals?date=' + end)]).then(function (res) {
+    return Promise.allSettled([getJSON('/days?start=' + start + '&end=' + end), getJSON('/trading'), getJSON('/status'), getJSON('/meals?date=' + end), getJSON('/game?date=' + end)]).then(function (res) {
       var problems = [];
       if (res[0].status === 'fulfilled') {
         state.byDate = {};
@@ -1011,6 +1131,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       if (res[1].status === 'fulfilled') state.trading = res[1].value; else problems.push('trading');
       if (res[2].status === 'fulfilled') state.status = res[2].value; else problems.push('sync status');
       if (res[3].status === 'fulfilled') state.meals = res[3].value.meals; else problems.push("today's meals");
+      if (res[4].status === 'fulfilled') state.game = res[4].value; else problems.push('game');
       if (!problems.length) state.fetchedAt = new Date();
       $('banner').hidden = !problems.length;
       $('banner').textContent = problems.length ? "Couldn't load " + problems.join(', ') + ' from the server. Showing what loaded; it retries every 5 minutes.' : '';
