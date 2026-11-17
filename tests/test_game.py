@@ -32,7 +32,7 @@ def test_level_curve_matches_the_spec():
 
 
 def test_daily_max():
-    assert game.DAILY_MAX == 1150
+    assert game.DAILY_MAX == 1200
 
 
 def test_full_day_scores_every_line():
@@ -105,11 +105,11 @@ def test_before_game_start_is_level_one():
 
 
 def test_each_stat_has_its_own_level():
-    # Max sleep every day levels Sleep at the character's pace: 125/1150 of the character's curve.
+    # Max sleep every day levels Sleep at the character's pace: 125/1200 of the character's curve.
     sheet = game.stat_sheet("sleep", "Sleep", "Rest", 0, 125)
     assert sheet["level"] == 1 and sheet["rank"] == "Novice" and sheet["score"] == 8 and sheet["modifier"] == -1
-    assert sheet["level_cost"] == round(500 * 125 / 1150)
-    top = game.stat_sheet("sleep", "Sleep", "Rest", game.XP_TO_MAX * 125 / 1150, 125)
+    assert sheet["level_cost"] == round(500 * 125 / 1200)
+    top = game.stat_sheet("sleep", "Sleep", "Rest", game.XP_TO_MAX * 125 / 1200, 125)
     assert top["level"] == 110 and top["rank"] == "Master" and top["score"] == 20 and top["modifier"] == 5
 
 
@@ -118,7 +118,7 @@ def test_stats_in_game_response():
     post([obs(d, "sleep.total_minutes", 480, "minutes"), obs(d, "screen.app.com.zhiliaoapp.musically", 90, "minutes")])
     stats = {s["key"]: s for s in client.get("/game", params={"date": d}).json()["stats"]}
     assert len(stats) == 13
-    assert stats["sleep"]["xp"] == 75 and stats["sleep"]["level"] == 2  # Sleep's level 1 costs 54 XP
+    assert stats["sleep"]["xp"] == 75 and stats["sleep"]["level"] == 2  # Sleep's level 1 costs 52 XP
     assert stats["social"]["xp"] == 0  # a penalty can't take a stat below 0
 
 

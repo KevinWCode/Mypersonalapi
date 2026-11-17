@@ -5,9 +5,9 @@ phone sync or a rule change simply re-scores the past. A day never scores below 
 """
 import os
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
-from app import db, perks
+from app import db, perks, vitals
 from app.collectors import calendar
 from app.metrics import APP_PREFIX, build_days
 
@@ -168,10 +168,10 @@ def score_day(m: dict, ctx: dict) -> list[dict]:
         parts.append(f"HRV {hrv:.0f} ms")
     else:
         parts.append("no HRV from Samsung")
-    lines.append(_line("heart", "Heart rate & HRV", "HP", xp, 75, ", ".join(parts)))
+    lines.append(_line("heart", "Heart rate & HRV", "Pulse", xp, 75, ", ".join(parts)))
 
     steps = m.get("health.steps", 0)
-    lines.append(_line("steps", "Steps", "Stamina", min(int(steps // 1000) * 10, 100), 100, f"{steps:,.0f} steps"))
+    lines.append(_line("steps", "Steps", "Endurance", min(int(steps // 1000) * 10, 100), 100, f"{steps:,.0f} steps"))
 
     # Workout: a session, plus 30+ minutes standing in for the heart rate / calorie target until workouts send those.
     # Sprint pace needs GPS workouts, which aren't sent yet.
@@ -203,9 +203,11 @@ def score_day(m: dict, ctx: dict) -> list[dict]:
     lines.append(_line("email", "Inbox", "Guild", 50 if unread is not None and unread <= 10 else 0, 50,
                        f"{unread:.0f} unread" if unread is not None else "Gmail not connected yet"))
 
-    journal = m.get("journal.entries")
-    lines.append(_line("journal", "Journal", "Logbook", 50 if journal else 0, 50,
-                       "Entry written" if journal else "No journal source yet"))
+    # Journal: tapped on the dashboard. The first entry is worth most; a second one adds a little.
+    journal = m.get("journal.entries", 0)
+    xp = (75 if journal >= 1 else 0) + (25 if journal >= 2 else 0)
+    lines.append(_line("journal", "Journal", "Logbook", xp, 100,
+                       f"{journal:.0f} entr{'y' if journal == 1 else 'ies'}" if journal else "No entry yet"))
 
     # Screen time only counts once the phone has synced that day, so a missing day isn't read as 0 minutes.
     synced = "screen.total_minutes" in m
@@ -256,6 +258,16 @@ def streaks(history: list[dict]) -> list[dict]:
     return out
 
 
+def today_elapsed(day: date, now: datetime | None = None) -> float:
+    """How much of the day has passed, 0 to 1, so the vital bars tick down through it. Past days count in full."""
+    now = now or datetime.now()
+    if day < now.date():
+        return 1.0
+    if day > now.date():
+        return 0.0
+    return (now.hour * 3600 + now.minute * 60 + now.second) / 86400
+
+
 def build(conn, day: date) -> dict:
     lookback = GAME_START - timedelta(days=30)
     rows = db.fetch_range(conn, lookback.isoformat(), day.isoformat())
@@ -277,6 +289,7 @@ def build(conn, day: date) -> dict:
     prev_equity = None
     today_lines: list[dict] = []
     today_buffs: list[dict] = []
+    vital_days: list[tuple[date, dict, float]] = []
     d = lookback
     while d <= day:
         key = d.isoformat()
@@ -294,6 +307,7 @@ def build(conn, day: date) -> dict:
                    "prev_equity": prev_equity, "youtube": youtube.get(key, 0),
                    "blocks_planned": planned.get(key, 0), "calendar_connected": bool(planned)}
             lines = score_day(m, ctx)
+            vital_days.append((d, m, youtube.get(key, 0)))
             by_key = {line["key"]: line for line in lines}
             if ("wis", 1) in active:
                 by_key["social"]["xp"] = max(0, by_key["social"]["xp"])
@@ -336,6 +350,7 @@ def build(conn, day: date) -> dict:
         d += timedelta(days=1)
 
     total = sum(h["xp"] for h in history)
+    vital_bars = vitals.run(vital_days, today_elapsed(day))
     stats = _sheets(stat_xp)
     groups = group_sheets(stats, claims)
     top = max(groups, key=lambda g: (g["tier"], g["level"]))
@@ -361,6 +376,7 @@ def build(conn, day: date) -> dict:
         "days_to_max_level": days_left,
         "max_level_date": (day + timedelta(days=days_left)).isoformat() if days_left is not None else None,
         "streaks": streaks(history),
+        "vitals": vital_bars,
         "stats": stats,
         "groups": groups,
         "history": history[-30:],
