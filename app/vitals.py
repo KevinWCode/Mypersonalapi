@@ -6,7 +6,8 @@ A night's sleep resets HP, Stamina and Focus:
 - Stamina: 10 per hour asleep. It drains through the day; a workout costs 33 and adds 10 to the next day's reset.
 - Focus: 12 per hour asleep. It drains heavily through the day; a workout, study, journalling, kept calendar
   blocks and low social media top it up.
-Mana isn't reset: it drains every day and is refilled by sleep, journalling, reading and deep sleep.
+Mana isn't reset: it drains 20 a day and has four refills of up to 25 each: sleep (15 at 6 h, 20 at 7 h, 25 at
+8 h), one journal entry, reading (12.5 per 30 min) and a night with 35%+ deep + REM sleep.
 
 Like XP, the bars are worked out again from the stored stats on every request, starting at START_VALUE on GAME_START.
 
@@ -22,7 +23,7 @@ LOW = 25  # at or below this a bar shows as low
 BARS = {
     "hp": ("HP", "Reset by sleep, regenerates slowly, lowered by coffee and social media", 12),
     "stamina": ("Stamina", "Reset by sleep (10 an hour), drains through the day, workouts cost 33", -30),
-    "mana": ("Mana", "Mental energy: sleep, journalling, reading and deep sleep", -20),
+    "mana": ("Mana", "Four refills of up to 25: sleep, one journal entry, reading, deep + REM sleep", -20),
     "focus": ("Focus", "Reset by sleep (12 an hour), drains fast, workouts, study and journalling top it up", -45),
 }
 
@@ -47,13 +48,17 @@ def hp_after_sleep(minutes: float) -> float:
     extra = min(minutes, HP_BONUS_MINUTES) - HP_FULL_MINUTES
     return TOP + (HP_BONUS_TOP - TOP) * extra / (HP_BONUS_MINUTES - HP_FULL_MINUTES)
 
-POOR_SLEEP_MINUTES = 360  # under 6 h asleep
-FULL_SLEEP_MINUTES = 450  # 7.5 h, the same line as Well-Rested
 
 
-def _part(x: float, full: float) -> float:
-    """How much of a target was reached, 0 to 1."""
-    return max(0.0, min(1.0, x / full)) if full else 0.0
+MANA_PART = 25  # each of Mana's four refills tops out at 25
+
+
+def mana_from_sleep(minutes: float) -> float:
+    """15 at 6 h, 20 at 7 h, 25 at 8 h and over; less sleep in proportion (3 h = 7.5)."""
+    hours = minutes / 60
+    if hours <= 6:
+        return 15 * hours / 6
+    return min(MANA_PART, 15 + 5 * (hours - 6))
 
 
 def worked_out(m: dict) -> bool:
@@ -84,7 +89,6 @@ def effects(m: dict, youtube_minutes: float = 0, workout_yesterday: bool = False
     synced = "screen.total_minutes" in m
     social = m.get("screen.social_media_minutes", 0)
     blocks = sum(1 for k, v in m.items() if k.startswith("cal.") and k.endswith(".done") and v > 0)
-    poor_sleep = sleep is not None and sleep < POOR_SLEEP_MINUTES
 
     # HP: sleep resets it (in run below); coffee and social media knock it down.
     add("hp", "Coffee", HP_COFFEE * m.get("coffee.cups", 0))
@@ -98,17 +102,13 @@ def effects(m: dict, youtube_minutes: float = 0, workout_yesterday: bool = False
     if workout:
         add("stamina", "Workout", WORKOUT_STAMINA)
 
-    # Mana: a night's sleep keeps it about level; journal, reading and plenty of deep + REM sleep raise it.
+    # Mana: four refills of up to 25 each - sleep, one journal entry, reading and plenty of deep + REM sleep.
     if sleep:
-        add("mana", "Sleep", 10 * _part(sleep, FULL_SLEEP_MINUTES))
-    add("mana", "Journal entry", 15 if journal >= 1 else 0)
-    add("mana", "Second journal entry", 5 if journal >= 2 else 0)
-    add("mana", "Reading", 10 * min(m.get("reading.minutes", 0) / 60, 2))
-    if sleep:
+        add("mana", "Sleep", mana_from_sleep(sleep))
         deep_rem = m.get("sleep.deep_minutes", 0) + m.get("sleep.rem_minutes", 0)
-        add("mana", "Deep + REM sleep", 10 if deep_rem >= 0.35 * sleep else 0)
-    if poor_sleep:
-        add("mana", "Poor sleep (under 6 h)", -10)
+        add("mana", "Deep + REM sleep", MANA_PART if deep_rem >= 0.35 * sleep else 0)
+    add("mana", "Journal entry", MANA_PART if journal >= 1 else 0)
+    add("mana", "Reading", min(MANA_PART, 12.5 * m.get("reading.minutes", 0) / 30))
 
     # Focus: sleep resets it (in run below). A workout, study, journal, kept calendar blocks and low screen time top
     # it up; heavy social media or YouTube drains it.

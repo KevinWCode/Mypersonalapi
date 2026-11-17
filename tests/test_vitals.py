@@ -53,7 +53,6 @@ def test_sleep_resets_stamina_and_focus_by_the_hour():
     assert b["focus"]["start_of_day"] == 60 and b["focus"]["value"] == 15  # 5 h x 12, then the 45 drain
     long = bars({"sleep.total_minutes": 600})
     assert long["stamina"]["start_of_day"] == 100 and long["focus"]["start_of_day"] == 100  # capped
-    assert "Poor sleep (under 6 h)" in [e["label"] for e in b["mana"]["today"]]
 
 
 def test_workout_costs_stamina_gives_focus_and_boosts_next_day():
@@ -71,7 +70,7 @@ def test_workout_costs_stamina_gives_focus_and_boosts_next_day():
 def test_journal_and_social_media_move_mana_and_focus():
     good = bars({"journal.entries": 1, "screen.total_minutes": 100, "screen.social_media_minutes": 10})
     bad = bars({"screen.total_minutes": 200, "screen.social_media_minutes": 90}, yt=120)
-    assert good["mana"]["gained_today"] == 15 and good["focus"]["gained_today"] == 18
+    assert good["mana"]["gained_today"] == 25 and good["focus"]["gained_today"] == 18
     assert bad["focus"]["gained_today"] == -25
 
 
@@ -117,4 +116,14 @@ def test_journal_counts_for_wis_and_per():
 def test_full_night_and_low_social_top_up_focus():
     b = bars({"sleep.total_minutes": 450, "screen.total_minutes": 100, "screen.social_media_minutes": 20})
     assert b["focus"]["gained_today"] == 10 and b["focus"]["value"] == 55  # 90 + 10 - 45
-    assert b["mana"]["gained_today"] == 10
+    assert b["mana"]["gained_today"] == 22.5  # 7.5 h of sleep
+
+
+def test_mana_has_four_refills_of_25():
+    assert vitals.mana_from_sleep(360) == 15 and vitals.mana_from_sleep(420) == 20
+    assert vitals.mana_from_sleep(480) == 25 and vitals.mana_from_sleep(600) == 25
+    assert vitals.mana_from_sleep(180) == 7.5
+    best = bars({"sleep.total_minutes": 480, "sleep.deep_minutes": 100, "sleep.rem_minutes": 80,
+                 "journal.entries": 2, "reading.minutes": 90})
+    assert best["mana"]["gained_today"] == 100  # 25 + 25 + 25 + 25: a second entry and a third half hour add nothing
+    assert bars({"reading.minutes": 30})["mana"]["gained_today"] == 12.5
