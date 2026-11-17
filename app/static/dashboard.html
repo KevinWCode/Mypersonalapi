@@ -178,6 +178,17 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 .ability .abbr { width: 56px; height: 56px; flex: none; border-radius: 14px; background: var(--raised); color: var(--on-raised); display: flex; flex-direction: column; align-items: center; justify-content: center; font: 700 18px var(--font-head); }
 .ability .abbr small { font: 500 11px var(--font-body, inherit); color: var(--dark-sub); }
 .streaks { display: flex; flex-wrap: wrap; gap: 8px; }
+.vitals { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 10px 20px; }
+.vital { display: flex; flex-direction: column; gap: 5px; }
+.vital .top { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.vital .top b { font-weight: 700; }
+.char .vital .track { height: 10px; }
+.vital .why { font-size: 12px; color: var(--dark-sub); }
+.vital.low .top span { color: #FF8A80; font-weight: 600; }
+.char-mini .minis { display: flex; flex-wrap: wrap; gap: 6px 14px; width: 100%; }
+.char-mini .minis span { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dark-sub); }
+.char-mini .minis i { display: block; width: 44px; height: 6px; border-radius: 3px; background: var(--raised-track); overflow: hidden; }
+.char-mini .minis i::after { content: ''; display: block; height: 100%; width: var(--w); background: var(--c); }
 .streak { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 14px; font-size: 13px; background: var(--raised-track); color: var(--on-raised); }
 .streak svg { flex: none; }
 .ability .meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -472,7 +483,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     <span class="chip auto"><span class="dot"></span>GitHub · commits</span>
     <span class="chip auto"><span class="dot"></span>Alpaca paper · P/L, positions, trades</span>
     <span class="chip manual"><span class="dot"></span>Food AI via the inbox folder · calories, protein, carbs, fat (you take the photo)</span>
-    <span class="chip manual"><span class="dot"></span>Quick log buttons · water, reading, study, coffee, workout done (manual)</span>
+    <span class="chip manual"><span class="dot"></span>Quick log buttons · water, reading, study, coffee, workout done, journal entry (manual)</span>
     <span class="chip manual"><span class="dot"></span>Phone app · kettlebell sets, catch distance (manual)</span>
   </div>
 </section>
@@ -1051,7 +1062,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     water: 'M12 3c3.5 4.2 6 7.4 6 10.5a6 6 0 0 1-12 0C6 10.4 8.5 7.2 12 3z',
     reading: 'M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z',
     workout: 'M9 9V7a3 3 0 0 1 6 0v2M12 21a6 6 0 1 0 0-12a6 6 0 0 0 0 12z',
-    protein: 'M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 1.5-3 4-3 7h3V3zM17 10v11',
+    journal: 'M5 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5zM9 3v18M12 8h2M12 12h2M20 7l-1.5 8-1-1',
     coffee: 'M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 10h1.5a2.5 2.5 0 0 1 0 5H16M8 3v3M12 3v3',
     study: 'M2 9l10-5 10 5-10 5zM6 11v5c3 2.5 9 2.5 12 0v-5M22 9v6'
   };
@@ -1081,8 +1092,9 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
           send(main.map(function (mv) { return { metric: 'kb.' + mv + '.done', value: allTicked ? 0 : 1, unit: 'count', mode: 'set' }; }),
             allTicked ? "Removed today's workout" : 'Ticked Swing, Clean and Clean & press for today');
         } },
-      { label: '+25 g protein', icon: ICONS.protein, sub: Math.round(tv('food.protein_g')) + ' g today',
-        tap: function () { send([{ metric: 'food.protein_g', value: 25, unit: 'g' }], 'Added 25 g protein'); } },
+      { label: 'Journal entry', icon: ICONS.journal, pressed: tv('journal.entries') > 0,
+        sub: tv('journal.entries') ? tv('journal.entries') + (tv('journal.entries') === 1 ? ' entry' : ' entries') + ' today' : 'None yet today',
+        tap: function () { send([{ metric: 'journal.entries', value: 1, unit: 'count' }], 'Journal entry logged · Mana and Focus up'); } },
       { label: '+1 coffee', icon: ICONS.coffee, sub: cups + (cups === 1 ? ' cup' : ' cups') + ' · ' + cups * CAFFEINE_PER_CUP + ' mg',
         tap: function () { send([{ metric: 'coffee.cups', value: 1, unit: 'cups' }], 'Added a coffee'); } },
       { label: '+30 min study', icon: ICONS.study, sub: Math.round(tv('study.minutes')) + ' min today',
@@ -1185,17 +1197,43 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   }
 
   // ---- the game: level, class, today's XP and the six stat groups with their perk tokens ----
+  // Vital bar colours, readable on the dark character card in every theme.
+  var VITAL_COLOR = { hp: '#E5484D', stamina: '#F2A93B', mana: '#4C8DFF', focus: '#A77BF3' };
+  // Today's bars tick down with the local clock: the start-of-day value, plus today's gains, minus the share of
+  // the daily drain that has passed. Past days show the stored value.
+  function vitalNow(g, v) {
+    if (g.date !== iso(new Date())) return v.value;
+    var now = new Date(), share = (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) / 86400;
+    return Math.round(Math.max(0, Math.min(v.max, v.start_of_day + v.gained_today - v.drain_per_day * share)));
+  }
+  function vitalBars(g) {
+    return el('div', { class: 'vitals', 'aria-label': 'Vital bars' }, (g.vitals || []).map(function (v) {
+      var now = vitalNow(g, v), low = now <= 25;
+      var why = v.today.length ? v.today.map(function (e) { return e.label + ' ' + (e.points > 0 ? '+' : '−') + Math.abs(Math.round(e.points)); }).join(' · ')
+        : 'Nothing has topped it up today';
+      return el('div', { class: 'vital' + (low ? ' low' : ''), title: v.about },
+        el('div', { class: 'top' }, el('b', null, v.name), el('span', null, (low ? 'Low · ' : '') + now + ' / ' + v.max)),
+        el('div', { class: 'track', role: 'img', 'aria-label': v.name + ' ' + now + ' of ' + v.max },
+          el('div', { class: 'fill', style: 'width:' + now + '%;background:' + VITAL_COLOR[v.key] })),
+        el('span', { class: 'why' }, why + ' · drains ' + v.drain_per_day + ' a day'));
+    }));
+  }
+
   function renderGame() {
     var g = state.game;
     $('game').hidden = !g;
     $('quests').hidden = !g;
     $('char-mini').hidden = !g;
     var pct = g.level_cost ? Math.round(g.level_xp / g.level_cost * 100) : 100;
-    $('char-mini').replaceChildren(
+    $('char-mini').replaceChildren.apply($('char-mini'), [
       el('b', null, 'Level ' + g.level),
       el('span', null, g['class'].name + (g.title ? ' · ' + g.title : '')),
       el('div', { class: 'track', 'aria-hidden': 'true' }, el('div', { class: 'fill', style: 'width:' + pct + '%' })),
-      el('span', { class: 'go' }, (g.level_cost ? int(g.xp_to_next) + ' XP to level ' + (g.level + 1) : 'Max level') + ' · Open character'));
+      el('span', { class: 'go' }, (g.level_cost ? int(g.xp_to_next) + ' XP to level ' + (g.level + 1) : 'Max level') + ' · Open character'),
+      g.vitals ? el('span', { class: 'minis', 'aria-label': 'Vital bars' }, g.vitals.map(function (v) {
+        var now = vitalNow(g, v);
+        return el('span', null, v.name, el('i', { style: '--w:' + now + '%;--c:' + VITAL_COLOR[v.key] }), String(now));
+      })) : null].filter(Boolean));
     if (!g) return;
     var c = $('char');
     c.replaceChildren();
@@ -1208,6 +1246,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       el('div', { class: 'track', role: 'img', 'aria-label': int(g.level_xp) + ' of ' + int(g.level_cost || 0) + ' XP to the next level' },
         el('div', { class: 'fill', style: 'width:' + into + '%' })),
       el('p', { class: 'sub' }, g.level_cost ? int(g.xp_to_next) + ' XP to level ' + (g.level + 1) : 'Max level reached'),
+      g.vitals ? vitalBars(g) : null,
       el('div', { class: 'char-facts' },
         el('div', null, el('span', { class: 'sub' }, 'Total XP'), el('span', { class: 'num' }, int(g.total_xp))),
         el('div', null, el('span', { class: 'sub' }, 'Avg / day, 14 days'), el('span', { class: 'num' }, g.avg_daily_xp_14d === null ? '–' : int(g.avg_daily_xp_14d)))),

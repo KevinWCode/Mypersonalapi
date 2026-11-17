@@ -4,12 +4,13 @@ A perk token is a one-time real-life reward. It's earned when the group's level 
 logging perk.<group>.<tier>.claimed (the dashboard will get a button). A few tokens also change that day's scoring.
 """
 
-# Group key -> (name, ability, stats in the group). A group's level is its highest stat level.
+# Group key -> (name, ability, stats in the group). A group's level is its highest stat level. Journal counts
+# toward both WIS (with social media) and PER (mindfulness).
 GROUPS = {
     "str": ("Strength & Athletics", "STR", ["kettlebell", "workout", "catch"]),
     "con": ("Vitality & Endurance", "CON", ["sleep", "heart", "steps"]),
     "int": ("Intelligence & Crafting", "INT", ["github", "email"]),
-    "wis": ("Focus & Mental Discipline", "WIS", ["social", "youtube"]),
+    "wis": ("Focus & Mental Discipline", "WIS", ["social", "youtube", "journal"]),
     "cha": ("Wealth & Economy", "CHA", ["stocks"]),
     "per": ("Mindfulness & Life Organization", "PER", ["journal", "calendar"]),
 }
