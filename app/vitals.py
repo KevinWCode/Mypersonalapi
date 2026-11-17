@@ -1,10 +1,12 @@
 """Four vital bars, each 0 to 100: HP, Stamina, Mana and Focus.
 
-Stamina, Mana and Focus tick down a fixed amount over each day, spread evenly across the hours. The day's stats top
-them back up (sleep, food, study, a journal entry...) or drain them further (poor sleep, too much social media).
-
-HP works the other way: a night's sleep resets it (7 h = 100, 8 h = a 110 bonus), it slowly regenerates through the
-day up to 100, and coffee and social media knock it down.
+A night's sleep resets HP, Stamina and Focus:
+- HP: 7 h = 100, 8 h = a 110 bonus. It slowly regenerates through the day up to 100; coffee and social media knock
+  it down.
+- Stamina: 10 per hour asleep. It drains through the day; a workout costs 33 and adds 10 to the next day's reset.
+- Focus: 12 per hour asleep. It drains heavily through the day; a workout, study, journalling, kept calendar
+  blocks and low social media top it up.
+Mana isn't reset: it drains every day and is refilled by sleep, journalling, reading and deep sleep.
 
 Like XP, the bars are worked out again from the stored stats on every request, starting at START_VALUE on GAME_START.
 
@@ -19,10 +21,16 @@ LOW = 25  # at or below this a bar shows as low
 # key -> (name, what it stands for, points it changes by over a full day: minus drains, plus regenerates)
 BARS = {
     "hp": ("HP", "Reset by sleep, regenerates slowly, lowered by coffee and social media", 12),
-    "stamina": ("Stamina", "Physical energy: mostly sleep, plus food and coffee", -25),
+    "stamina": ("Stamina", "Reset by sleep (10 an hour), drains through the day, workouts cost 33", -30),
     "mana": ("Mana", "Mental energy: sleep, journalling, reading and deep sleep", -20),
-    "focus": ("Focus", "Attention: sleep, study, journalling, kept blocks, low social media", -20),
+    "focus": ("Focus", "Reset by sleep (12 an hour), drains fast, workouts, study and journalling top it up", -45),
 }
+
+STAMINA_PER_SLEEP_HOUR = 10
+FOCUS_PER_SLEEP_HOUR = 12
+WORKOUT_STAMINA = -33
+WORKOUT_NEXT_DAY_STAMINA = 10
+WORKOUT_FOCUS = 15
 
 # HP sleep reset: 7 h asleep = 100, rising to 110 at 8 h. Less sleep resets it lower, in proportion (6 h = 86).
 HP_FULL_MINUTES = 420
@@ -48,7 +56,20 @@ def _part(x: float, full: float) -> float:
     return max(0.0, min(1.0, x / full)) if full else 0.0
 
 
-def effects(m: dict, youtube_minutes: float = 0) -> dict[str, list[dict]]:
+def worked_out(m: dict) -> bool:
+    """A synced workout session or a kettlebell session logged on the dashboard."""
+    return m.get("workout.sessions", 0) > 0 or any(
+        v > 0 for k, v in m.items() if k.startswith("kb.") and (k.endswith(".sets") or k.endswith(".done")))
+
+
+def after_sleep(minutes: float) -> dict[str, float]:
+    """What a night's sleep resets each bar to."""
+    hours = minutes / 60
+    return {"hp": hp_after_sleep(minutes), "stamina": min(TOP, STAMINA_PER_SLEEP_HOUR * hours),
+            "focus": min(TOP, FOCUS_PER_SLEEP_HOUR * hours)}
+
+
+def effects(m: dict, youtube_minutes: float = 0, workout_yesterday: bool = False) -> dict[str, list[dict]]:
     """Each bar's gains (+) and drains (-) from one day's stats, not counting the daily tick."""
     out: dict[str, list[dict]] = {k: [] for k in BARS}
 
@@ -58,7 +79,6 @@ def effects(m: dict, youtube_minutes: float = 0) -> dict[str, list[dict]]:
             out[bar].append({"label": label, "points": points})
 
     sleep = m.get("sleep.total_minutes")
-    kcal = m.get("food.kcal", 0)
     journal = m.get("journal.entries", 0)
     cups = min(m.get("coffee.cups", 0), 2)
     synced = "screen.total_minutes" in m
@@ -71,13 +91,12 @@ def effects(m: dict, youtube_minutes: float = 0) -> dict[str, list[dict]]:
     if synced:
         add("hp", "Social media", max(HP_SOCIAL_FLOOR, HP_SOCIAL_PER_10_MIN * social / 10))
 
-    # Stamina: mostly sleep. Under 6 h also costs 15 on top of the smaller refill.
-    if sleep:
-        add("stamina", "Sleep", 35 * _part(sleep, FULL_SLEEP_MINUTES))
-    if poor_sleep:
-        add("stamina", "Poor sleep (under 6 h)", -15)
-    add("stamina", "Food", 10 * _part(kcal, 2000))
-    add("stamina", "Coffee", 4 * cups)
+    # Stamina: sleep resets it (in run below); a workout uses 33 and gives 10 back the next day.
+    workout = worked_out(m)
+    if workout_yesterday:
+        add("stamina", "Yesterday's workout", WORKOUT_NEXT_DAY_STAMINA)
+    if workout:
+        add("stamina", "Workout", WORKOUT_STAMINA)
 
     # Mana: a night's sleep keeps it about level; journal, reading and plenty of deep + REM sleep raise it.
     if sleep:
@@ -91,9 +110,10 @@ def effects(m: dict, youtube_minutes: float = 0) -> dict[str, list[dict]]:
     if poor_sleep:
         add("mana", "Poor sleep (under 6 h)", -10)
 
-    # Focus: sleep, study, journal, kept calendar blocks and low screen time. Heavy social media or YouTube drains it.
-    if sleep:
-        add("focus", "Sleep", 8 * _part(sleep, FULL_SLEEP_MINUTES))
+    # Focus: sleep resets it (in run below). A workout, study, journal, kept calendar blocks and low screen time top
+    # it up; heavy social media or YouTube drains it.
+    if workout:
+        add("focus", "Workout", WORKOUT_FOCUS)
     add("focus", "Study", 8 * min(m.get("study.minutes", 0) / 30, 3))
     add("focus", "Journal entry", 8 if journal >= 1 else 0)
     add("focus", "Calendar blocks kept", 4 * min(blocks, 3))
@@ -105,8 +125,6 @@ def effects(m: dict, youtube_minutes: float = 0) -> dict[str, list[dict]]:
             add("focus", "Social media over 60 min", -15)
         if youtube_minutes > 60:
             add("focus", "YouTube over 60 min", -10)
-    if poor_sleep:
-        add("focus", "Poor sleep (under 6 h)", -10)
     return out
 
 
@@ -134,14 +152,17 @@ def run(days: list[tuple[date, dict, float]], today_elapsed: float = 1.0) -> lis
     0 to 1), so the bars move through the day."""
     values = {k: float(START_VALUE) for k in BARS}
     last = {}
+    yesterday: dict = {}
     for i, (d, m, yt) in enumerate(days):
-        fx = effects(m, yt)
+        fx = effects(m, yt, worked_out(yesterday))
+        yesterday = m
         share = today_elapsed if i == len(days) - 1 else 1.0
         start = dict(values)
         sleep = m.get("sleep.total_minutes")
         if sleep:
-            start["hp"] = hp_after_sleep(sleep)
-            fx["hp"].insert(0, {"label": f"Slept {sleep / 60:.1f} h: reset to {start['hp']:.0f}", "points": 0})
+            for k, v in after_sleep(sleep).items():
+                start[k] = v
+                fx[k].insert(0, {"label": f"Slept {sleep / 60:.1f} h: reset to {v:.0f}", "points": 0})
         for k, (_, _, tick) in BARS.items():
             gained = sum(e["points"] for e in fx[k])
             values[k] = end_value(k, start[k], gained, tick * share)
