@@ -1199,23 +1199,28 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   // ---- the game: level, class, today's XP and the six stat groups with their perk tokens ----
   // Vital bar colours, readable on the dark character card in every theme.
   var VITAL_COLOR = { hp: '#E5484D', stamina: '#F2A93B', mana: '#4C8DFF', focus: '#A77BF3' };
-  // Today's bars tick down with the local clock: the start-of-day value, plus today's gains, minus the share of
-  // the daily drain that has passed. Past days show the stored value.
+  // Today's bars move with the local clock: the start-of-day value plus today's gains, then the share of the daily
+  // tick that has passed. A drain takes the bar down; regeneration (HP) lifts it only up to 100, so a sleep bonus
+  // above 100 stays. Mirrors end_value in app/vitals.py. Past days show the stored value.
   function vitalNow(g, v) {
     if (g.date !== iso(new Date())) return v.value;
     var now = new Date(), share = (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) / 86400;
-    return Math.round(Math.max(0, Math.min(v.max, v.start_of_day + v.gained_today - v.drain_per_day * share)));
+    var top = v.top || v.max, tick = v.tick_per_day * share;
+    var x = Math.max(0, Math.min(top, v.start_of_day + v.gained_today));
+    x = tick <= 0 ? x + tick : Math.max(x, Math.min(v.max, x + tick));
+    return Math.round(Math.max(0, Math.min(top, x)));
   }
+  function tickText(v) { return v.tick_per_day < 0 ? 'drains ' + -v.tick_per_day + ' a day' : 'regenerates ' + v.tick_per_day + ' a day'; }
   function vitalBars(g) {
     return el('div', { class: 'vitals', 'aria-label': 'Vital bars' }, (g.vitals || []).map(function (v) {
       var now = vitalNow(g, v), low = now <= 25;
-      var why = v.today.length ? v.today.map(function (e) { return e.label + ' ' + (e.points > 0 ? '+' : '−') + Math.abs(Math.round(e.points)); }).join(' · ')
-        : 'Nothing has topped it up today';
+      var why = v.today.length ? v.today.map(function (e) { return e.points ? e.label + ' ' + (e.points > 0 ? '+' : '−') + Math.abs(Math.round(e.points)) : e.label; }).join(' · ')
+        : 'Nothing has changed it today';
       return el('div', { class: 'vital' + (low ? ' low' : ''), title: v.about },
-        el('div', { class: 'top' }, el('b', null, v.name), el('span', null, (low ? 'Low · ' : '') + now + ' / ' + v.max)),
+        el('div', { class: 'top' }, el('b', null, v.name), el('span', null, (low ? 'Low · ' : now > v.max ? 'Bonus · ' : '') + now + ' / ' + v.max)),
         el('div', { class: 'track', role: 'img', 'aria-label': v.name + ' ' + now + ' of ' + v.max },
-          el('div', { class: 'fill', style: 'width:' + now + '%;background:' + VITAL_COLOR[v.key] })),
-        el('span', { class: 'why' }, why + ' · drains ' + v.drain_per_day + ' a day'));
+          el('div', { class: 'fill', style: 'width:' + Math.min(100, now) + '%;background:' + VITAL_COLOR[v.key] })),
+        el('span', { class: 'why' }, why + ' · ' + tickText(v)));
     }));
   }
 
@@ -1232,7 +1237,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       el('span', { class: 'go' }, (g.level_cost ? int(g.xp_to_next) + ' XP to level ' + (g.level + 1) : 'Max level') + ' · Open character'),
       g.vitals ? el('span', { class: 'minis', 'aria-label': 'Vital bars' }, g.vitals.map(function (v) {
         var now = vitalNow(g, v);
-        return el('span', null, v.name, el('i', { style: '--w:' + now + '%;--c:' + VITAL_COLOR[v.key] }), String(now));
+        return el('span', null, v.name, el('i', { style: '--w:' + Math.min(100, now) + '%;--c:' + VITAL_COLOR[v.key] }), String(now));
       })) : null].filter(Boolean));
     if (!g) return;
     var c = $('char');

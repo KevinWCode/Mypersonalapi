@@ -18,15 +18,33 @@ def bars(m, yt=0):
     return {b["key"]: b for b in vitals.run([(date(2026, 10, 23), m, yt)])}
 
 
-def test_empty_day_just_ticks_down():
+def test_empty_day_ticks_down_but_hp_regenerates():
     b = bars({})
-    assert {k: v["value"] for k, v in b.items()} == {"hp": 40, "stamina": 45, "mana": 50, "focus": 50}
+    assert {k: v["value"] for k, v in b.items()} == {"hp": 82, "stamina": 45, "mana": 50, "focus": 50}
 
 
-def test_great_day_refills_hp():
-    m = {"sleep.total_minutes": 480, "food.kcal": 2100, "food.protein_g": 160, "water.ml": 3000, "health.steps": 11000}
-    b = bars(m)
-    assert b["hp"]["gained_today"] == 50 and b["hp"]["value"] == 90  # 70 + 50 - 30
+def test_sleep_resets_hp():
+    assert vitals.hp_after_sleep(420) == 100
+    assert vitals.hp_after_sleep(450) == 105
+    assert vitals.hp_after_sleep(480) == 110
+    assert vitals.hp_after_sleep(600) == 110
+    assert round(vitals.hp_after_sleep(360)) == 86
+
+
+def test_sleep_bonus_holds_and_regen_stops_at_100():
+    eight = bars({"sleep.total_minutes": 480, "food.kcal": 2000})
+    assert eight["hp"]["start_of_day"] == 110 and eight["hp"]["value"] == 110  # regen doesn't add to a bonus
+    six = bars({"sleep.total_minutes": 360})
+    assert six["hp"]["value"] == 98  # 86 + 12 regen
+
+
+def test_coffee_and_social_media_lower_hp_and_food_does_not_count():
+    b = bars({"sleep.total_minutes": 420, "coffee.cups": 2, "food.kcal": 2500,
+              "screen.total_minutes": 120, "screen.social_media_minutes": 60})
+    assert b["hp"]["gained_today"] == -22  # 2 coffees -10, 60 min social -12
+    assert b["hp"]["value"] == 90  # 100 - 22 + 12
+    heavy = bars({"screen.total_minutes": 400, "screen.social_media_minutes": 300})
+    assert heavy["hp"]["gained_today"] == -30  # capped
 
 
 def test_poor_sleep_drains_stamina_mana_and_focus():
@@ -46,17 +64,19 @@ def test_journal_and_social_media_move_mana_and_focus():
 
 
 def test_bars_stay_between_0_and_100_and_carry_over():
-    full = {"sleep.total_minutes": 480, "food.kcal": 2000, "food.protein_g": 150, "water.ml": 3000, "health.steps": 10000}
+    full = {"sleep.total_minutes": 480, "food.kcal": 2000, "coffee.cups": 2, "reading.minutes": 120}
     days = [(date(2026, 10, 23 + i), full, 0) for i in range(5)]
-    assert {b["key"]: b["value"] for b in vitals.run(days)}["hp"] == 100
+    assert {b["key"]: b["value"] for b in vitals.run(days)}["stamina"] == 75  # capped at 100, then the day's 25 drain
     empty = [(date(2026, 10, 1 + i), {}, 0) for i in range(10)]
     out = {b["key"]: b for b in vitals.run(empty)}
-    assert out["hp"]["value"] == 0 and out["hp"]["low"]
+    assert out["stamina"]["value"] == 0 and out["stamina"]["low"]
+    assert out["hp"]["value"] == 100  # regenerates to 100, never past it
 
 
 def test_today_drains_through_the_day():
     b = {x["key"]: x for x in vitals.run([(date(2026, 10, 23), {}, 0)], today_elapsed=0.5)}
-    assert b["hp"]["value"] == 55 and b["hp"]["end_of_day"] == 40
+    assert b["stamina"]["value"] == 58 and b["stamina"]["end_of_day"] == 45  # 70 - 12.5
+    assert b["hp"]["value"] == 76 and b["hp"]["end_of_day"] == 82
 
 
 def test_today_elapsed():
