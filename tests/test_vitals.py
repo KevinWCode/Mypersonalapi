@@ -41,10 +41,10 @@ def test_sleep_bonus_holds_and_regen_stops_at_100():
 def test_coffee_and_social_media_lower_hp_and_food_does_not_count():
     b = bars({"sleep.total_minutes": 420, "coffee.cups": 2, "food.kcal": 2500,
               "screen.total_minutes": 120, "screen.social_media_minutes": 60})
-    assert b["hp"]["gained_today"] == -22  # 2 coffees -10, 60 min social -12
+    assert b["hp"]["gained_today"] == -22  # 2 coffees -10, 60 min social -12 (1 per 5 min)
     assert b["hp"]["value"] == 90  # 100 - 22 + 12
     heavy = bars({"screen.total_minutes": 400, "screen.social_media_minutes": 300})
-    assert heavy["hp"]["gained_today"] == -30  # capped
+    assert heavy["hp"]["gained_today"] == -60  # no cap
 
 
 def test_sleep_resets_stamina_and_focus_by_the_hour():
@@ -70,8 +70,9 @@ def test_workout_costs_stamina_gives_focus_and_boosts_next_day():
 def test_journal_and_social_media_move_mana_and_focus():
     good = bars({"journal.entries": 1, "screen.total_minutes": 100, "screen.social_media_minutes": 10})
     bad = bars({"screen.total_minutes": 200, "screen.social_media_minutes": 90}, yt=120)
-    assert good["mana"]["gained_today"] == 25 and good["focus"]["gained_today"] == 18
-    assert bad["focus"]["gained_today"] == -25
+    assert good["mana"]["gained_today"] == 23 and good["focus"]["gained_today"] == 3  # 25 - 2; 8 - 5
+    # 90 min social: -45 Focus, -18 HP/Mana. 120 min YouTube: -20 Focus (per 6 min), -8 HP/Mana (per 15 min).
+    assert bad["focus"]["gained_today"] == -65 and bad["hp"]["gained_today"] == -26 and bad["mana"]["gained_today"] == -26
 
 
 def test_bars_stay_between_0_and_100_and_carry_over():
@@ -115,9 +116,15 @@ def test_journal_counts_for_wis_and_per():
 
 
 def test_full_night_and_low_social_top_up_focus():
-    b = bars({"sleep.total_minutes": 450, "screen.total_minutes": 100, "screen.social_media_minutes": 20})
-    assert b["focus"]["gained_today"] == 10 and b["focus"]["value"] == 40  # 90 + 10 - 60
-    assert b["mana"]["gained_today"] == 22.5  # 7.5 h of sleep
+    calm = {"sleep.total_minutes": 450, "screen.total_minutes": 100, "screen.social_media_minutes": 20}
+    b = bars(calm)
+    assert b["focus"]["gained_today"] == -10  # 20 min social, 1 per 2 min; the boost comes tomorrow
+    assert b["mana"]["gained_today"] == 18.5  # 22.5 from 7.5 h of sleep, -4 social
+    out = {x["key"]: x for x in vitals.run([(date(2026, 10, 23), calm, 0), (date(2026, 10, 24), {"sleep.total_minutes": 450}, 0)])}
+    assert out["focus"]["gained_today"] == 15  # under 25 min yesterday
+    busy = dict(calm, **{"screen.social_media_minutes": 25})
+    out = {x["key"]: x for x in vitals.run([(date(2026, 10, 23), busy, 0), (date(2026, 10, 24), {"sleep.total_minutes": 450}, 0)])}
+    assert out["focus"]["gained_today"] == 0
 
 
 def test_mana_has_four_refills_of_25():
