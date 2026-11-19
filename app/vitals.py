@@ -6,7 +6,9 @@ A night's sleep resets HP, Stamina and Focus:
 - Stamina: 10 per hour asleep. It drains 60 over the waking day (07:00-23:00); a real workout (kettlebells, or a 30+ min
   watch workout that isn't a walk) costs 33 and adds 10 to the next day's reset; each 250 ml of water adds 2.
 - Focus: 12 per hour asleep. It drains 60 over the waking day; water (2 per 250 ml), a workout, study,
-  journalling, kept calendar blocks and low social media top it up.
+  journalling, kept calendar blocks and a day under 25 min of social media (+15 the next day) top it up;
+  social media costs 1 per 2 min.
+Social media costs 1 HP and 1 Mana per 5 min; YouTube counts the same at a third of the strength.
 Mana isn't reset: it drains 60 over the waking day and has four refills of up to 25 each: sleep (15 at 6 h, 20 at 7 h, 25 at
 8 h), one journal entry, reading (12.5 per 30 min) and a night with 35%+ deep + REM sleep.
 
@@ -22,9 +24,9 @@ LOW = 25  # at or below this a bar shows as low
 
 # key -> (name, what it stands for, points it changes by over a full day: minus drains, plus regenerates)
 BARS = {
-    "hp": ("HP", "Reset by sleep, regenerates slowly, lowered by coffee and social media", 12),
+    "hp": ("HP", "Reset by sleep, regenerates slowly, lowered by coffee, social media and YouTube", 12),
     "stamina": ("Stamina", "Reset by sleep (10 an hour), drains 60 over the waking day, water and workouts move it", -60),
-    "mana": ("Mana", "Four refills of up to 25: sleep, one journal entry, reading, deep + REM sleep", -60),
+    "mana": ("Mana", "Four refills of up to 25: sleep, one journal entry, reading, deep + REM sleep; social media drains it", -60),
     "focus": ("Focus", "Reset by sleep (12 an hour), drains 60 over the waking day, water, workouts and study top it up", -60),
 }
 
@@ -49,8 +51,19 @@ HP_FULL_MINUTES = 420
 HP_BONUS_MINUTES = 480
 HP_BONUS_TOP = 110
 HP_COFFEE = -5  # per cup
-HP_SOCIAL_PER_10_MIN = -2  # per 10 min of social media
-HP_SOCIAL_FLOOR = -30
+# Social media: -1 HP and -1 Mana per full 5 minutes, -1 Focus per full 2 minutes, no daily cap. YouTube counts the
+# same way at a third of the strength (per 15 and 6 minutes). Under 25 minutes of social media gives +15 Focus the
+# next day.
+SOCIAL_HP_MANA_MINUTES = 5
+SOCIAL_FOCUS_MINUTES = 2
+YOUTUBE_FACTOR = 3
+CALM_SOCIAL_MINUTES = 25
+CALM_NEXT_DAY_FOCUS = 15
+
+
+def screen_drain(minutes: float, every: float) -> int:
+    """-1 for every full `every` minutes."""
+    return -int(minutes // every)
 
 
 def hp_after_sleep(minutes: float) -> float:
@@ -87,7 +100,8 @@ def after_sleep(minutes: float) -> dict[str, float]:
             "focus": min(TOP, FOCUS_PER_SLEEP_HOUR * hours)}
 
 
-def effects(m: dict, youtube_minutes: float = 0, workout_yesterday: bool = False) -> dict[str, list[dict]]:
+def effects(m: dict, youtube_minutes: float = 0, workout_yesterday: bool = False,
+            calm_yesterday: bool = False) -> dict[str, list[dict]]:
     """Each bar's gains (+) and drains (-) from one day's stats, not counting the daily tick."""
     out: dict[str, list[dict]] = {k: [] for k in BARS}
 
@@ -103,10 +117,15 @@ def effects(m: dict, youtube_minutes: float = 0, workout_yesterday: bool = False
     social = m.get("screen.social_media_minutes", 0)
     blocks = sum(1 for k, v in m.items() if k.startswith("cal.") and k.endswith(".done") and v > 0)
 
-    # HP: sleep resets it (in run below); coffee and social media knock it down.
+    # HP: sleep resets it (in run below); coffee, social media and YouTube knock it down.
     add("hp", "Coffee", HP_COFFEE * m.get("coffee.cups", 0))
     if synced:
-        add("hp", "Social media", max(HP_SOCIAL_FLOOR, HP_SOCIAL_PER_10_MIN * social / 10))
+        for bar in ("hp", "mana", "focus"):
+            every = SOCIAL_FOCUS_MINUTES if bar == "focus" else SOCIAL_HP_MANA_MINUTES
+            add(bar, f"Social media ({social:.0f} min)", screen_drain(social, every))
+    for bar in ("hp", "mana", "focus"):
+        every = (SOCIAL_FOCUS_MINUTES if bar == "focus" else SOCIAL_HP_MANA_MINUTES) * YOUTUBE_FACTOR
+        add(bar, f"YouTube ({youtube_minutes:.0f} min)", screen_drain(youtube_minutes, every))
 
     # Stamina: sleep resets it (in run below); a workout uses 33 and gives 10 back the next day.
     workout = worked_out(m)
@@ -134,13 +153,8 @@ def effects(m: dict, youtube_minutes: float = 0, workout_yesterday: bool = False
     add("focus", "Journal entry", 8 if journal >= 1 else 0)
     add("focus", "Calendar blocks kept", 4 * min(blocks, 3))
     add("focus", "Coffee", 3 * cups)
-    if synced:
-        if social < 30:
-            add("focus", "Social media under 30 min", 10)
-        elif social > 60:
-            add("focus", "Social media over 60 min", -15)
-        if youtube_minutes > 60:
-            add("focus", "YouTube over 60 min", -10)
+    if calm_yesterday:
+        add("focus", f"Social media under {CALM_SOCIAL_MINUTES} min yesterday", CALM_NEXT_DAY_FOCUS)
     return out
 
 
@@ -170,7 +184,8 @@ def run(days: list[tuple[date, dict, float]], today_elapsed: float = 1.0) -> lis
     last = {}
     yesterday: dict = {}
     for i, (d, m, yt) in enumerate(days):
-        fx = effects(m, yt, worked_out(yesterday))
+        calm = "screen.total_minutes" in yesterday and yesterday.get("screen.social_media_minutes", 0) < CALM_SOCIAL_MINUTES
+        fx = effects(m, yt, worked_out(yesterday), calm)
         yesterday = m
         share = today_elapsed if i == len(days) - 1 else 1.0
         start = dict(values)
