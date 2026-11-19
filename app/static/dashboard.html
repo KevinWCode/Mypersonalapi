@@ -1204,13 +1204,19 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   // above 100 stays. Mirrors end_value in app/vitals.py. Past days show the stored value.
   function vitalNow(g, v) {
     if (g.date !== iso(new Date())) return v.value;
-    var now = new Date(), share = (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()) / 86400;
+    var now = new Date(), hours = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
+    var from = v.tick_from_hour || 0, span = v.tick_hours || 24;
+    var share = Math.max(0, Math.min(1, (hours - from) / span));
     var top = v.top || v.max, tick = v.tick_per_day * share;
     var x = Math.max(0, Math.min(top, v.start_of_day + v.gained_today));
     x = tick <= 0 ? x + tick : Math.max(x, Math.min(v.max, x + tick));
     return Math.round(Math.max(0, Math.min(top, x)));
   }
-  function tickText(v) { return v.tick_per_day < 0 ? 'drains ' + -v.tick_per_day + ' a day' : 'regenerates ' + v.tick_per_day + ' a day'; }
+  function tickText(v) {
+    if (v.tick_per_day >= 0) return 'regenerates ' + v.tick_per_day + ' a day';
+    var from = v.tick_from_hour || 0, to = (from + (v.tick_hours || 24)) % 24;
+    return 'drains ' + -v.tick_per_day + ' from ' + pad(from) + ':00 to ' + pad(to) + ':00';
+  }
   function vitalBars(g) {
     return el('div', { class: 'vitals', 'aria-label': 'Vital bars' }, (g.vitals || []).map(function (v) {
       var now = vitalNow(g, v), low = now <= 25;
