@@ -3,8 +3,8 @@
 A night's sleep resets HP, Stamina and Focus:
 - HP: 7 h = 100, 8 h = a 110 bonus. It slowly regenerates through the day up to 100; coffee and social media knock
   it down.
-- Stamina: 10 per hour asleep. It drains 60 over the waking day (07:00-23:00); a workout costs 33 and adds 10 to
-  the next day's reset; each 250 ml of water adds 2.
+- Stamina: 10 per hour asleep. It drains 60 over the waking day (07:00-23:00); a real workout (kettlebells, or a 30+ min
+  watch workout that isn't a walk) costs 33 and adds 10 to the next day's reset; each 250 ml of water adds 2.
 - Focus: 12 per hour asleep. It drains 60 over the waking day; water (2 per 250 ml), a workout, study,
   journalling, kept calendar blocks and low social media top it up.
 Mana isn't reset: it drains 60 over the waking day and has four refills of up to 25 each: sleep (15 at 6 h, 20 at 7 h, 25 at
@@ -73,8 +73,10 @@ def mana_from_sleep(minutes: float) -> float:
 
 
 def worked_out(m: dict) -> bool:
-    """A synced workout session or a kettlebell session logged on the dashboard."""
-    return m.get("workout.sessions", 0) > 0 or any(
+    """A real workout: a kettlebell session logged on the dashboard or phone, or a watch workout of 30+ minutes
+    that isn't a walk (the phone app sends those as workout.counted_sessions). Shorter or walking sessions don't
+    count."""
+    return m.get("workout.counted_sessions", 0) > 0 or any(
         v > 0 for k, v in m.items() if k.startswith("kb.") and (k.endswith(".sets") or k.endswith(".done")))
 
 
