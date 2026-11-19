@@ -102,6 +102,12 @@ object Health {
         val sessions = client.readRecords(ReadRecordsRequest(ExerciseSessionRecord::class, TimeRangeFilter.between(start, end))).records
         sessions.groupBy { it.startTime.atZone(zone).toLocalDate() }.forEach { (day, rs) ->
             out += Observation(day, "workout.sessions", rs.size.toDouble(), "count")
+            // Sessions that count as a real workout for the vital bars: 30+ minutes and not a walk.
+            val counted = rs.count {
+                it.exerciseType != ExerciseSessionRecord.EXERCISE_TYPE_WALKING &&
+                    Duration.between(it.startTime, it.endTime).toMinutes() >= 30
+            }
+            out += Observation(day, "workout.counted_sessions", counted.toDouble(), "count")
         }
 
         return out.filter { it.date in days }

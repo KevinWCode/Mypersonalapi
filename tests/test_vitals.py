@@ -56,7 +56,7 @@ def test_sleep_resets_stamina_and_focus_by_the_hour():
 
 
 def test_workout_costs_stamina_gives_focus_and_boosts_next_day():
-    gym = {"sleep.total_minutes": 480, "workout.sessions": 1}
+    gym = {"sleep.total_minutes": 480, "workout.sessions": 1, "workout.counted_sessions": 1}
     rest = {"sleep.total_minutes": 480}
     out = {x["key"]: x for x in vitals.run([(date(2026, 10, 23), gym, 0), (date(2026, 10, 24), rest, 0)])}
     assert out["stamina"]["gained_today"] == 10 and out["stamina"]["value"] == 30  # 80 + 10 - 60
@@ -139,3 +139,12 @@ def test_drain_runs_over_waking_hours_only():
     assert vitals.awake_share(6 / 24) == 0 and vitals.awake_share(15 / 24) == 0.5 and vitals.awake_share(1.0) == 1
     early = {x["key"]: x for x in vitals.run([(date(2026, 10, 23), {}, 0)], today_elapsed=6 / 24)}
     assert early["mana"]["value"] == 70 and early["mana"]["tick_from_hour"] == 7 and early["mana"]["tick_hours"] == 16
+
+
+def test_only_real_workouts_cost_stamina():
+    # An 11-minute watch session or a walk (counted_sessions 0) doesn't count; kettlebells or 30+ min do.
+    short = bars({"workout.sessions": 1, "workout.minutes": 11, "workout.counted_sessions": 0})
+    assert short["stamina"]["gained_today"] == 0 and short["focus"]["gained_today"] == 0
+    assert bars({"workout.sessions": 1})["stamina"]["gained_today"] == 0  # older phone app: no counted_sessions
+    assert bars({"workout.counted_sessions": 1})["stamina"]["gained_today"] == -33
+    assert bars({"kb.clean.done": 1})["stamina"]["gained_today"] == -33
