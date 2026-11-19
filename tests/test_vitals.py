@@ -20,7 +20,7 @@ def bars(m, yt=0):
 
 def test_empty_day_ticks_down_but_hp_regenerates():
     b = bars({})
-    assert {k: v["value"] for k, v in b.items()} == {"hp": 82, "stamina": 40, "mana": 50, "focus": 25}
+    assert {k: v["value"] for k, v in b.items()} == {"hp": 82, "stamina": 10, "mana": 10, "focus": 10}
 
 
 def test_sleep_resets_hp():
@@ -49,8 +49,8 @@ def test_coffee_and_social_media_lower_hp_and_food_does_not_count():
 
 def test_sleep_resets_stamina_and_focus_by_the_hour():
     b = bars({"sleep.total_minutes": 300})
-    assert b["stamina"]["start_of_day"] == 50 and b["stamina"]["value"] == 20  # 5 h x 10, then the 30 drain
-    assert b["focus"]["start_of_day"] == 60 and b["focus"]["value"] == 15  # 5 h x 12, then the 45 drain
+    assert b["stamina"]["start_of_day"] == 50 and b["stamina"]["value"] == 0  # 5 h x 10, then the 60 drain
+    assert b["focus"]["start_of_day"] == 60 and b["focus"]["value"] == 0  # 5 h x 12, then the 60 drain
     long = bars({"sleep.total_minutes": 600})
     assert long["stamina"]["start_of_day"] == 100 and long["focus"]["start_of_day"] == 100  # capped
 
@@ -59,9 +59,9 @@ def test_workout_costs_stamina_gives_focus_and_boosts_next_day():
     gym = {"sleep.total_minutes": 480, "workout.sessions": 1}
     rest = {"sleep.total_minutes": 480}
     out = {x["key"]: x for x in vitals.run([(date(2026, 10, 23), gym, 0), (date(2026, 10, 24), rest, 0)])}
-    assert out["stamina"]["gained_today"] == 10 and out["stamina"]["value"] == 60  # 80 + 10 - 30
+    assert out["stamina"]["gained_today"] == 10 and out["stamina"]["value"] == 30  # 80 + 10 - 60
     day1 = bars(gym)
-    assert day1["stamina"]["gained_today"] == -33 and day1["stamina"]["value"] == 17  # 80 - 33 - 30
+    assert day1["stamina"]["gained_today"] == -33 and day1["stamina"]["value"] == 0  # 80 - 33 - 60, floored at 0
     assert day1["focus"]["gained_today"] == 15
     kb = bars({"kb.swing.done": 1})
     assert kb["stamina"]["gained_today"] == -33
@@ -77,7 +77,7 @@ def test_journal_and_social_media_move_mana_and_focus():
 def test_bars_stay_between_0_and_100_and_carry_over():
     full = {"sleep.total_minutes": 480, "food.kcal": 2000, "coffee.cups": 2, "reading.minutes": 120}
     days = [(date(2026, 10, 23 + i), full, 0) for i in range(5)]
-    assert {b["key"]: b["value"] for b in vitals.run(days)}["stamina"] == 50  # reset to 80 by 8 h sleep, then the 30 drain
+    assert {b["key"]: b["value"] for b in vitals.run(days)}["stamina"] == 20  # reset to 80 by 8 h sleep, then the 60 drain
     empty = [(date(2026, 10, 1 + i), {}, 0) for i in range(10)]
     out = {b["key"]: b for b in vitals.run(empty)}
     assert out["stamina"]["value"] == 0 and out["stamina"]["low"]
@@ -86,7 +86,8 @@ def test_bars_stay_between_0_and_100_and_carry_over():
 
 def test_today_drains_through_the_day():
     b = {x["key"]: x for x in vitals.run([(date(2026, 10, 23), {}, 0)], today_elapsed=0.5)}
-    assert b["stamina"]["value"] == 55 and b["stamina"]["end_of_day"] == 40  # 70 - 15
+    # Noon is 5 of the 16 waking hours: 70 - 60 x 5/16 = 51.25. HP regenerates over all 24 hours: 70 + 6.
+    assert b["stamina"]["value"] == 51 and b["stamina"]["end_of_day"] == 10
     assert b["hp"]["value"] == 76 and b["hp"]["end_of_day"] == 82
 
 
@@ -115,7 +116,7 @@ def test_journal_counts_for_wis_and_per():
 
 def test_full_night_and_low_social_top_up_focus():
     b = bars({"sleep.total_minutes": 450, "screen.total_minutes": 100, "screen.social_media_minutes": 20})
-    assert b["focus"]["gained_today"] == 10 and b["focus"]["value"] == 55  # 90 + 10 - 45
+    assert b["focus"]["gained_today"] == 10 and b["focus"]["value"] == 40  # 90 + 10 - 60
     assert b["mana"]["gained_today"] == 22.5  # 7.5 h of sleep
 
 
@@ -127,3 +128,14 @@ def test_mana_has_four_refills_of_25():
                  "journal.entries": 2, "reading.minutes": 90})
     assert best["mana"]["gained_today"] == 100  # 25 + 25 + 25 + 25: a second entry and a third half hour add nothing
     assert bars({"reading.minutes": 30})["mana"]["gained_today"] == 12.5
+
+
+def test_water_adds_2_stamina_and_focus_per_250_ml():
+    b = bars({"water.ml": 1100})  # four full 250 ml glasses
+    assert b["stamina"]["gained_today"] == 8 and b["focus"]["gained_today"] == 8
+
+
+def test_drain_runs_over_waking_hours_only():
+    assert vitals.awake_share(6 / 24) == 0 and vitals.awake_share(15 / 24) == 0.5 and vitals.awake_share(1.0) == 1
+    early = {x["key"]: x for x in vitals.run([(date(2026, 10, 23), {}, 0)], today_elapsed=6 / 24)}
+    assert early["mana"]["value"] == 70 and early["mana"]["tick_from_hour"] == 7 and early["mana"]["tick_hours"] == 16

@@ -3,10 +3,11 @@
 A night's sleep resets HP, Stamina and Focus:
 - HP: 7 h = 100, 8 h = a 110 bonus. It slowly regenerates through the day up to 100; coffee and social media knock
   it down.
-- Stamina: 10 per hour asleep. It drains through the day; a workout costs 33 and adds 10 to the next day's reset.
-- Focus: 12 per hour asleep. It drains heavily through the day; a workout, study, journalling, kept calendar
-  blocks and low social media top it up.
-Mana isn't reset: it drains 20 a day and has four refills of up to 25 each: sleep (15 at 6 h, 20 at 7 h, 25 at
+- Stamina: 10 per hour asleep. It drains 60 over the waking day (07:00-23:00); a workout costs 33 and adds 10 to
+  the next day's reset; each 250 ml of water adds 2.
+- Focus: 12 per hour asleep. It drains 60 over the waking day; water (2 per 250 ml), a workout, study,
+  journalling, kept calendar blocks and low social media top it up.
+Mana isn't reset: it drains 60 over the waking day and has four refills of up to 25 each: sleep (15 at 6 h, 20 at 7 h, 25 at
 8 h), one journal entry, reading (12.5 per 30 min) and a night with 35%+ deep + REM sleep.
 
 Like XP, the bars are worked out again from the stored stats on every request, starting at START_VALUE on GAME_START.
@@ -22,10 +23,20 @@ LOW = 25  # at or below this a bar shows as low
 # key -> (name, what it stands for, points it changes by over a full day: minus drains, plus regenerates)
 BARS = {
     "hp": ("HP", "Reset by sleep, regenerates slowly, lowered by coffee and social media", 12),
-    "stamina": ("Stamina", "Reset by sleep (10 an hour), drains through the day, workouts cost 33", -30),
-    "mana": ("Mana", "Four refills of up to 25: sleep, one journal entry, reading, deep + REM sleep", -20),
-    "focus": ("Focus", "Reset by sleep (12 an hour), drains fast, workouts, study and journalling top it up", -45),
+    "stamina": ("Stamina", "Reset by sleep (10 an hour), drains 60 over the waking day, water and workouts move it", -60),
+    "mana": ("Mana", "Four refills of up to 25: sleep, one journal entry, reading, deep + REM sleep", -60),
+    "focus": ("Focus", "Reset by sleep (12 an hour), drains 60 over the waking day, water, workouts and study top it up", -60),
 }
+
+# Stamina, Mana and Focus drain over the 16 waking hours, 07:00 to 23:00 (3.75 an hour). HP regenerates over all 24.
+AWAKE_FROM_HOUR = 7
+AWAKE_HOURS = 16
+WATER_PER_250_ML = 2  # Stamina and Focus, per 250 ml logged
+
+
+def awake_share(day_share: float) -> float:
+    """How much of the 16 waking hours has passed, from how much of the whole day has passed."""
+    return max(0.0, min(1.0, (day_share * 24 - AWAKE_FROM_HOUR) / AWAKE_HOURS))
 
 STAMINA_PER_SLEEP_HOUR = 10
 FOCUS_PER_SLEEP_HOUR = 12
@@ -101,6 +112,9 @@ def effects(m: dict, youtube_minutes: float = 0, workout_yesterday: bool = False
         add("stamina", "Yesterday's workout", WORKOUT_NEXT_DAY_STAMINA)
     if workout:
         add("stamina", "Workout", WORKOUT_STAMINA)
+    water = WATER_PER_250_ML * int(m.get("water.ml", 0) // 250)
+    add("stamina", "Water", water)
+    add("focus", "Water", water)
 
     # Mana: four refills of up to 25 each - sleep, one journal entry, reading and plenty of deep + REM sleep.
     if sleep:
@@ -165,7 +179,7 @@ def run(days: list[tuple[date, dict, float]], today_elapsed: float = 1.0) -> lis
                 fx[k].insert(0, {"label": f"Slept {sleep / 60:.1f} h: reset to {v:.0f}", "points": 0})
         for k, (_, _, tick) in BARS.items():
             gained = sum(e["points"] for e in fx[k])
-            values[k] = end_value(k, start[k], gained, tick * share)
+            values[k] = end_value(k, start[k], gained, tick * (share if tick > 0 else awake_share(share)))
             last[k] = {"start": start[k], "gained": gained, "effects": fx[k]}
     out = []
     for k, (name, about, tick) in BARS.items():
@@ -174,6 +188,8 @@ def run(days: list[tuple[date, dict, float]], today_elapsed: float = 1.0) -> lis
         out.append({
             "key": k, "name": name, "about": about, "value": round(value), "max": TOP,
             "low": value <= LOW, "tick_per_day": tick,
+            # A drain runs over the waking hours only; regeneration runs all day.
+            "tick_from_hour": AWAKE_FROM_HOUR if tick < 0 else 0, "tick_hours": AWAKE_HOURS if tick < 0 else 24,
             "top": HP_BONUS_TOP if k == "hp" else TOP,
             "start_of_day": round(info["start"], 1), "gained_today": round(info["gained"], 1),
             # Where the bar ends tonight if nothing else is logged.
