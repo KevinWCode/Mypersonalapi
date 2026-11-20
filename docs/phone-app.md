@@ -16,7 +16,16 @@ Since version 0.10 every sync is saved on the phone first, in the app's own data
 - **Back up phone data to a file** saves everything as one JSON file wherever you choose (Downloads, Google Drive...). Uninstalling the app deletes its database, so back up before you do.
 - **Also send my data to my PC server** is on when an upload token is set, so the PC dashboard keeps working. Turn it off and the app runs on its own. A failed upload doesn't stop the phone saving; it's tried again next sync.
 
-For now the home screen widget and the dashboard still read from the PC server. Moving the game, the dashboard and the widget onto the phone are the next steps.
+## Character (game on the phone)
+
+Since version 0.11 the app works out the game itself: level, tier, class, title, today's XP and buffs, the HP, Stamina, Mana and Focus bars, and streaks, from the phone's database. The rules are a port of the server's `app/game.py`, `app/vitals.py` and `app/perks.py`; `GameParityTest` checks the phone scores 52 days of random data exactly like the server (regenerate it with `tools/make_game_parity.py` after changing the server's rules).
+
+While the PC server is still running:
+
+- **Copy my history from the PC** (under PC server) copies every day since the game started (23 Oct 2026) so your level carries over. Do it once after installing.
+- Each sync with the PC upload on also copies the PC's totals for the last 3 days, which include what you log on the dashboard (journal, water, food, kettlebell ticks, perk claims). A day copied from the PC uses the PC's totals; other days use the phone's own data.
+
+The home screen widget and the dashboard still read from the PC server for now. Moving manual logging, the dashboard and the widget onto the phone are the next steps, and then the server can be switched off.
 
 ## Install
 
