@@ -144,7 +144,7 @@ class LocalStore private constructor(context: Context) :
         readableDatabase.rawQuery("SELECT date, source, metric, value FROM observations", null).use { c ->
             while (c.moveToNext()) rows += Triple(c.getString(0), c.getString(1), c.getString(2) to c.getDouble(3))
         }
-        return DayMetrics.mergeDays(rows, PC_SOURCE)
+        return DayMetrics.mergeDays(rows, PC_SOURCE, FOOD_SOURCE)
     }
 
     /** Replaces the PC copy for start..end with [days]. */

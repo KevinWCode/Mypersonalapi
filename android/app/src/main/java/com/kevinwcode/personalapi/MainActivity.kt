@@ -97,8 +97,28 @@ class MainActivity : AppCompatActivity() {
         }
 
         heading("Food")
+        // One tap per meal: Light, Standard or Heavy, with the most likely macros for that size.
+        for ((meal, presets) in Food.PRESETS.groupBy { it.meal }) {
+            root.addView(TextView(this).apply {
+                text = meal.replaceFirstChar { it.uppercase() }
+                setPadding(0, 16, 0, 0)
+            })
+            root.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                for (p in presets) addView(Button(this@MainActivity).apply {
+                    text = p.label
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    setOnClickListener {
+                        lifecycleScope.launch {
+                            withContext(Dispatchers.IO) { LocalStore.get(this@MainActivity).addMeals(listOf(p.toMeal(LocalDate.now()))) }
+                            afterLog("Logged ${p.tier.lowercase()} $meal, ${p.kcal.toInt()} kcal")
+                        }
+                    }
+                })
+            })
+        }
         val mealBox = EditText(this).apply {
-            hint = "Paste the meal line from your food AI"
+            hint = "Or paste a meal line, e.g. {\"meal\":\"lunch\",\"kcal\":640,\"protein_g\":42}"
             minLines = 2
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
         }.also { root.addView(it) }

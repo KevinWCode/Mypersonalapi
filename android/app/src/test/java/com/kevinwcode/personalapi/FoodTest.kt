@@ -54,4 +54,14 @@ class FoodTest {
         assertEquals(700.0, t.getValue("food.lunch.kcal"), 0.0)
         assertEquals(0.0, t.getValue("food.snack.kcal"), 0.0)
     }
+
+    @Test
+    fun matrixButtonsLogTheirMacrosAndSugar() {
+        assertEquals(12, Food.PRESETS.size)
+        val heavySnack = Food.PRESETS.single { it.meal == "snack" && it.tier == "Heavy" }.toMeal(today)
+        assertEquals(Food.Meal(today, "snack", 500.0, 9.0, 60.0, 24.0, 44.0, "heavy snack (estimate)"), heavySnack)
+        val t = Food.totals(today, Food.PRESETS.filter { it.tier == "Standard" }.map { it.toMeal(today) }).associate { it.metric to it.value }
+        assertEquals(2350.0, t.getValue("food.kcal"), 0.0)
+        assertEquals(89.0, t.getValue("food.sugar_g"), 0.0)
+    }
 }

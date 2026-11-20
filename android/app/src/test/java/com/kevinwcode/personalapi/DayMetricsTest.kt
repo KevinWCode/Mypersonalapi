@@ -55,12 +55,19 @@ class DayMetricsTest {
                 Triple("2026-11-01", "phone", "screen.app.com.instagram.android" to 20.0),
                 Triple("2026-11-01", "pc", "screen.social_media_minutes" to 20.0),
                 Triple("2026-11-01", "pc", "journal.entries" to 1.0),
+                // The PC's food (from its food AI files) is ignored; the phone's own meals count instead.
+                Triple("2026-11-01", "pc", "food.kcal" to 900.0),
+                Triple("2026-11-01", "food", "food.kcal" to 350.0),
                 Triple("2026-11-02", "phone", "screen.app.com.instagram.android" to 15.0),
                 Triple("2026-11-02", "manual", "kb.swing.sets" to 2.0),
+                // Before the switch, a PC day with no meals in the app keeps the PC's food.
+                Triple("2026-10-30", "pc", "food.kcal" to 700.0),
             ),
             "pc",
+            phoneFoodSince = java.time.LocalDate.parse("2026-10-31"),
         )
-        assertEquals(mapOf("screen.social_media_minutes" to 20.0, "journal.entries" to 1.0), days[java.time.LocalDate.parse("2026-11-01")])
+        assertEquals(mapOf("food.kcal" to 700.0), days[java.time.LocalDate.parse("2026-10-30")])
+        assertEquals(mapOf("screen.social_media_minutes" to 20.0, "journal.entries" to 1.0, "food.kcal" to 350.0), days[java.time.LocalDate.parse("2026-11-01")])
         val second = days.getValue(java.time.LocalDate.parse("2026-11-02"))
         assertEquals(15.0, second.getValue("screen.social_media_minutes"), 0.001)
         assertEquals(2.0, second.getValue("kb.swing.sets"), 0.001)
