@@ -17,8 +17,9 @@ object JsonMatch {
         e is Number && a is Number ->
             if (Math.abs(e.toDouble() - a.toDouble()) < 1e-9) null else "$path: expected $e but was $a"
         e is JSONObject && a is JSONObject -> {
-            val keys = e.keySet() + a.keySet()
-            keys.sorted().firstNotNullOfOrNull { k ->
+            // keys(), not keySet(): Android's own org.json, which tests compile against, has no keySet().
+            val keys = e.keys().asSequence().toSet() + a.keys().asSequence().toSet()
+            keys.sorted().firstNotNullOfOrNull { k: String ->
                 when {
                     !e.has(k) -> "$path.$k: not expected, was ${a.opt(k)}"
                     !a.has(k) -> "$path.$k: missing, expected ${e.opt(k)}"
