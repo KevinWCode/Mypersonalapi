@@ -6,7 +6,7 @@ import java.time.LocalDate
 
 /**
  * The widget's numbers worked out from the phone's own days: a port of the server's app/summary.py.
- * The last trade isn't stored on the phone yet, so it's left out (the widget says "No trades yet").
+ * The last trade comes from the Alpaca fills saved on the phone.
  */
 object LocalSummary {
     const val SOCIAL_LIMIT_MINUTES = 60.0
@@ -17,7 +17,8 @@ object LocalSummary {
 
     private fun avg(v: List<Double>): Double? = if (v.isEmpty()) null else v.sum() / v.size
 
-    fun build(days: Map<LocalDate, Map<String, Double>>, day: LocalDate, limit: Double = SOCIAL_LIMIT_MINUTES): Summary {
+    fun build(days: Map<LocalDate, Map<String, Double>>, day: LocalDate, limit: Double = SOCIAL_LIMIT_MINUTES,
+              lastTrade: Fill? = null): Summary {
         fun on(d: LocalDate) = days[d] ?: emptyMap()
         fun week(offset: Int) = (offset until offset + 7).mapNotNull { social(on(day.minusDays(it.toLong()))) }
         val thisWeek = week(0)
@@ -46,7 +47,7 @@ object LocalSummary {
             studyHoursWeek = weekValues("study.minutes").sum() / 60,
             readingHoursWeek = weekValues("reading.minutes").sum() / 60,
             pl7d = Math.rint(pl * 100) / 100,
-            lastTrade = null,
+            lastTrade = lastTrade?.toTrade(),
             socialDays = (6 downTo 0).map { social(on(day.minusDays(it.toLong()))) },
             limitMinutes = limit,
             youtubeToday = youtube(today),
@@ -56,6 +57,7 @@ object LocalSummary {
 
     /** The summary in the server's GET /summary shape, which the widget caches. */
     fun toJson(s: Summary): JSONObject {
+        val t = s.lastTrade
         fun n(v: Double?): Any = v ?: JSONObject.NULL
         return JSONObject()
             .put("date", s.date.toString())
@@ -71,6 +73,7 @@ object LocalSummary {
             .put("steps", n(s.steps)).put("steps_per_day", n(s.stepsPerDay)).put("resting_hr", n(s.restingHr))
             .put("workouts_week", n(s.workoutsWeek)).put("study_hours_week", n(s.studyHoursWeek))
             .put("reading_hours_week", n(s.readingHoursWeek)).put("pl_7d", n(s.pl7d))
-            .put("last_trade", JSONObject.NULL)
+            .put("last_trade", if (t == null) JSONObject.NULL else JSONObject().put("symbol", t.symbol).put("side", t.side)
+                .put("qty", t.qty).put("price", t.price).put("filled_at", t.filledAt?.toString() ?: JSONObject.NULL))
     }
 }

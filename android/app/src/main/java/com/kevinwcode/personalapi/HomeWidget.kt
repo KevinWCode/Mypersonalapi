@@ -22,8 +22,6 @@ import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -31,8 +29,7 @@ import java.time.ZoneId
 
 /**
  * Home screen widget: social media for the last 7 days as bars (green, amber, red against the daily limit), food, sleep, steps, heart rate, workouts, study and reading,
- * trading P/L and the last trade, worked out from the phone's own data ([LocalSummary]); the last trade still comes
- * from the PC server while its upload is on. It refreshes after each phone sync (every 15 minutes), after logging
+ * trading P/L and the last trade, all worked out from the phone's own data ([LocalSummary]). It refreshes after each phone sync (every 15 minutes), after logging
  * and when you tap the refresh arrow. Tapping anywhere else opens the dashboard in the app.
  */
 class HomeWidget : AppWidgetProvider() {
@@ -92,30 +89,13 @@ class HomeWidget : AppWidgetProvider() {
             val manager = AppWidgetManager.getInstance(context)
             if (manager.getAppWidgetIds(ComponentName(context, HomeWidget::class.java)).isEmpty()) return
             val text = withContext(Dispatchers.IO) {
-                val local = LocalSummary.toJson(LocalSummary.build(LocalStore.get(context).allDays(), LocalDate.now()))
-                // Trades aren't stored on the phone yet, so take the last one from the PC while its upload is on.
-                val settings = Settings(context)
-                if (settings.serverEnabled) runCatching {
-                    JSONObject(fetch(settings.serverUrl)).optJSONObject("last_trade")?.let { local.put("last_trade", it) }
-                }
-                local.toString()
+                val store = LocalStore.get(context)
+                LocalSummary.toJson(LocalSummary.build(store.allDays(), LocalDate.now(), lastTrade = store.trading().recent.firstOrNull()))
+                    .toString()
             }
             prefs(context).edit().putBoolean("offline", false).putString("summary", text)
                 .putLong("fetched_at", System.currentTimeMillis()).apply()
             show(context)
-        }
-
-        private fun fetch(serverUrl: String): String {
-            // The phone's own date, so "today" matches the phone's clock.
-            val conn = URL("$serverUrl/summary?date=${LocalDate.now()}").openConnection() as HttpURLConnection
-            try {
-                conn.connectTimeout = 10_000
-                conn.readTimeout = 15_000
-                check(conn.responseCode == 200) { "Server said ${conn.responseCode}" }
-                return conn.inputStream.bufferedReader().readText().also { parse(it) }
-            } finally {
-                conn.disconnect()
-            }
         }
 
         private fun parse(text: String): Summary {

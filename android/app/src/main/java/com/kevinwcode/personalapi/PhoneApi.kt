@@ -24,6 +24,8 @@ class PhoneApi(private val data: Data, private val today: () -> LocalDate = Loca
         fun log(day: LocalDate, entries: List<ManualLog.Entry>): Map<String, Double>
         /** Most recent save time (UTC, ISO) per source. */
         fun lastUpdates(): Map<String, String>
+        /** Saved Alpaca fills and positions. */
+        fun trading(): Trading = Trading.EMPTY
     }
 
     class Answer(val status: Int, val body: JSONObject)
@@ -50,7 +52,7 @@ class PhoneApi(private val data: Data, private val today: () -> LocalDate = Loca
                 Answer(200, GameJson.toJson(Game.build(data.days(), day, now = now())))
             }
             method == "GET" && path == "/summary" -> Answer(200, JSONObject().put("date", (date("date") ?: today()).toString()))
-            method == "GET" && path == "/trading" -> Answer(200, tradingJson(data.days(), today()))
+            method == "GET" && path == "/trading" -> Answer(200, tradingJson(data.days(), today(), data.trading()))
             method == "GET" && path == "/status" -> Answer(200, JSONObject().put("last_update", JSONObject(data.lastUpdates())))
             method == "GET" && path == "/meals" -> {
                 val day = date("date") ?: return error(400, "date is missing")
@@ -112,15 +114,24 @@ class PhoneApi(private val data: Data, private val today: () -> LocalDate = Loca
             .put("id", id).put("meal", m.meal).put("kcal", m.kcal).put("protein_g", m.proteinG).put("carbs_g", m.carbsG)
             .put("fat_g", m.fatG).put("sugar_g", m.sugarG).put("description", m.description).put("origin", "phone")
 
-        /** P/L and equity from the stored day totals. Trades and positions aren't on the phone yet, so those lists are empty. */
-        fun tradingJson(days: Map<LocalDate, Map<String, Double>>, today: LocalDate): JSONObject {
+        fun fillJson(f: Fill, withSide: Boolean = true): JSONObject = JSONObject().put("symbol", f.symbol)
+            .also { if (withSide) it.put("side", f.side) }.put("qty", f.qty).put("price", f.price).put("filled_at", f.filledAt)
+
+        /** The server's GET /trading: P/L and equity from the day totals, plus the saved fills and positions. */
+        fun tradingJson(days: Map<LocalDate, Map<String, Double>>, today: LocalDate, t: Trading = Trading.EMPTY): JSONObject {
             fun pl(n: Int) = Math.rint((0 until n).sumOf { days[today.minusDays(it.toLong())]?.get("trading.pl_day") ?: 0.0 } * 100) / 100
+            // All accounts added together on the latest day.
             val equity = days.filterValues { "trading.equity" in it }.maxByOrNull { it.key }?.value?.get("trading.equity")
             return JSONObject()
                 .put("equity", equity ?: JSONObject.NULL)
                 .put("pl_7d", pl(7)).put("pl_30d", pl(30))
-                .put("last_buy", JSONObject.NULL).put("last_sell", JSONObject.NULL)
-                .put("recent_trades", JSONArray()).put("top_positions", JSONArray())
+                .put("last_buy", t.lastBuy?.let { fillJson(it, withSide = false) } ?: JSONObject.NULL)
+                .put("last_sell", t.lastSell?.let { fillJson(it, withSide = false) } ?: JSONObject.NULL)
+                .put("recent_trades", JSONArray(t.recent.map { fillJson(it) }))
+                .put("top_positions", JSONArray(t.top.map {
+                    JSONObject().put("symbol", it.symbol).put("qty", it.qty).put("market_value", it.marketValue)
+                        .put("unrealized_pl", it.unrealizedPl)
+                }))
         }
     }
 }

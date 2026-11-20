@@ -68,6 +68,7 @@ class DashboardActivity : Activity() {
         override fun addMeals(meals: List<Food.Meal>) = store.addMeals(meals)
         override fun removeMeal(id: String) = store.removeMeal(id)
         override fun lastUpdates() = store.lastUpdates()
+        override fun trading() = store.trading()
 
         override fun log(day: LocalDate, entries: List<ManualLog.Entry>): Map<String, Double> {
             manual.log(day, *entries.toTypedArray())

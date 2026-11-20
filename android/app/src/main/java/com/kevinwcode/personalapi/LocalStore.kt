@@ -16,7 +16,7 @@ import java.util.UUID
  * day, metric and source, and saving a day again overwrites it instead of adding a copy.
  */
 class LocalStore private constructor(context: Context) :
-    SQLiteOpenHelper(context.applicationContext, "personal.db", null, 2) {
+    SQLiteOpenHelper(context.applicationContext, "personal.db", null, 3) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -31,10 +31,76 @@ class LocalStore private constructor(context: Context) :
             )"""
         )
         createMeals(db)
+        createTrading(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) createMeals(db)
+        if (oldVersion < 3) createTrading(db)
+    }
+
+    // Version 3: Alpaca fills and open positions, read by the phone itself.
+    private fun createTrading(db: SQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE trades (
+                id TEXT PRIMARY KEY,
+                filled_at TEXT NOT NULL,
+                symbol TEXT NOT NULL,
+                side TEXT NOT NULL,
+                qty REAL NOT NULL,
+                price REAL NOT NULL
+            )"""
+        )
+        db.execSQL(
+            """CREATE TABLE positions (
+                symbol TEXT PRIMARY KEY,
+                qty REAL NOT NULL,
+                market_value REAL NOT NULL,
+                unrealized_pl REAL NOT NULL,
+                updated_at TEXT NOT NULL
+            )"""
+        )
+    }
+
+    /** Saves new fills (a fill seen again is overwritten) and replaces the positions, which are a snapshot. */
+    fun saveTrading(fills: List<Fill>, positions: List<Position>) {
+        val db = writableDatabase
+        val now = Instant.now().toString()
+        db.beginTransaction()
+        try {
+            for (f in fills) db.insertWithOnConflict("trades", null, ContentValues().apply {
+                put("id", f.id)
+                put("filled_at", f.filledAt)
+                put("symbol", f.symbol)
+                put("side", f.side)
+                put("qty", f.qty)
+                put("price", f.price)
+            }, SQLiteDatabase.CONFLICT_REPLACE)
+            db.delete("positions", null, null)
+            for (p in positions) db.insertWithOnConflict("positions", null, ContentValues().apply {
+                put("symbol", p.symbol)
+                put("qty", p.qty)
+                put("market_value", p.marketValue)
+                put("unrealized_pl", p.unrealizedPl)
+                put("updated_at", now)
+            }, SQLiteDatabase.CONFLICT_REPLACE)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    /** The latest fills and the biggest positions, for the dashboard and widget. */
+    fun trading(): Trading {
+        val fills = readableDatabase.rawQuery(
+            "SELECT id, filled_at, symbol, side, qty, price FROM trades ORDER BY filled_at DESC LIMIT 200", null
+        ).use { c ->
+            buildList { while (c.moveToNext()) add(Fill(c.getString(0), c.getString(1), c.getString(2), c.getString(3), c.getDouble(4), c.getDouble(5))) }
+        }
+        val positions = readableDatabase.rawQuery("SELECT symbol, qty, market_value, unrealized_pl FROM positions", null).use { c ->
+            buildList { while (c.moveToNext()) add(Position(c.getString(0), c.getDouble(1), c.getDouble(2), c.getDouble(3))) }
+        }
+        return Alpaca.trading(fills, positions)
     }
 
     // Version 2: meals pasted into the app. The day's food.* totals are worked out from these rows.
