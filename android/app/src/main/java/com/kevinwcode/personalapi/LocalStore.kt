@@ -58,10 +58,40 @@ class LocalStore private constructor(context: Context) :
         return observations.size
     }
 
-    /** All rows for one day, as metric and value. */
-    fun day(date: LocalDate): List<Pair<String, Double>> =
-        readableDatabase.rawQuery("SELECT metric, value FROM observations WHERE date = ?", arrayOf(date.toString()))
-            .use { c -> buildList { while (c.moveToNext()) add(c.getString(0) to c.getDouble(1)) } }
+    /**
+     * Every day's metrics, ready for the game. A day copied from the PC uses the PC's totals (they already include
+     * what the phone sent, plus dashboard entries); any other day is built from the phone's own rows.
+     */
+    fun allDays(): Map<LocalDate, Map<String, Double>> {
+        val rows = mutableListOf<Triple<String, String, Pair<String, Double>>>()
+        readableDatabase.rawQuery("SELECT date, source, metric, value FROM observations", null).use { c ->
+            while (c.moveToNext()) rows += Triple(c.getString(0), c.getString(1), c.getString(2) to c.getDouble(3))
+        }
+        return DayMetrics.mergeDays(rows, PC_SOURCE)
+    }
+
+    /** Replaces the PC copy for start..end with [days]. */
+    fun replacePcDays(start: LocalDate, end: LocalDate, days: Map<LocalDate, Map<String, Double>>) {
+        val db = writableDatabase
+        val now = Instant.now().toString()
+        db.beginTransaction()
+        try {
+            db.delete("observations", "source = ? AND date BETWEEN ? AND ?", arrayOf(PC_SOURCE, start.toString(), end.toString()))
+            for ((date, metrics) in days) for ((metric, value) in metrics) {
+                db.insertWithOnConflict("observations", null, ContentValues().apply {
+                    put("date", date.toString())
+                    put("metric", metric)
+                    put("source", PC_SOURCE)
+                    put("value", value)
+                    put("unit", "")
+                    put("updated_at", now)
+                }, SQLiteDatabase.CONFLICT_REPLACE)
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
 
     /** How many days have any data, and the first of them. */
     fun span(): Pair<Int, String?> =
@@ -94,6 +124,8 @@ class LocalStore private constructor(context: Context) :
     }
 
     companion object {
+        const val PC_SOURCE = "pc"
+
         @Volatile private var instance: LocalStore? = null
         fun get(context: Context): LocalStore =
             instance ?: synchronized(this) { instance ?: LocalStore(context).also { instance = it } }

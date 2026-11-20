@@ -47,4 +47,22 @@ class DayMetricsTest {
             lines,
         )
     }
+
+    @Test
+    fun aDayCopiedFromThePcUsesThePcTotalsOnly() {
+        val days = DayMetrics.mergeDays(
+            listOf(
+                Triple("2026-11-01", "phone", "screen.app.com.instagram.android" to 20.0),
+                Triple("2026-11-01", "pc", "screen.social_media_minutes" to 20.0),
+                Triple("2026-11-01", "pc", "journal.entries" to 1.0),
+                Triple("2026-11-02", "phone", "screen.app.com.instagram.android" to 15.0),
+                Triple("2026-11-02", "manual", "kb.swing.sets" to 2.0),
+            ),
+            "pc",
+        )
+        assertEquals(mapOf("screen.social_media_minutes" to 20.0, "journal.entries" to 1.0), days[java.time.LocalDate.parse("2026-11-01")])
+        val second = days.getValue(java.time.LocalDate.parse("2026-11-02"))
+        assertEquals(15.0, second.getValue("screen.social_media_minutes"), 0.001)
+        assertEquals(2.0, second.getValue("kb.swing.sets"), 0.001)
+    }
 }

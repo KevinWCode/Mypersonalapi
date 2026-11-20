@@ -1,5 +1,6 @@
 package com.kevinwcode.personalapi
 
+import java.time.LocalDate
 import java.util.Locale
 
 /**
@@ -42,6 +43,16 @@ object DayMetrics {
         }
         return day
     }
+
+    /**
+     * rows: (date, source, metric to value). A day with rows from [pcSource] uses those (the PC's day totals, already
+     * built); any other day is built from the phone's own rows.
+     */
+    fun mergeDays(rows: List<Triple<String, String, Pair<String, Double>>>, pcSource: String): Map<LocalDate, Map<String, Double>> =
+        rows.groupBy { it.first }.entries.associate { (date, dayRows) ->
+            val pc = dayRows.filter { it.second == pcSource }
+            LocalDate.parse(date) to if (pc.isNotEmpty()) pc.associate { it.third } else build(dayRows.map { it.third })
+        }
 
     /** Short lines for the app's "Today on this phone" card. Stats with no data are left out. */
     fun summaryLines(day: Map<String, Double>): List<String> {
