@@ -1,12 +1,22 @@
 # Phone app
 
-A small Android app that sends your stats to the server. Once it's set up, a background sync every 15 minutes (the most often Android allows) between 07:00 and 22:00 reads:
+A small Android app that collects your stats, saves them in its own database on the phone, and (if you want) sends a copy to the PC server. Once it's set up, a background sync every 15 minutes (the most often Android allows) between 07:00 and 22:00 reads:
 
 - **Screen time** per app, from Android's usage stats. The server adds TikTok, Instagram, Facebook and Reddit into one social media total, and tracks YouTube on its own.
 - **Health data** from Health Connect: sleep and its stages, steps, heart rate, resting heart rate, HRV and workouts. Your Galaxy Watch gets there through Samsung Health.
 - **Manual entries** you add in the app: kettlebell sets, and catch distance.
 
-Each sync re-sends the last 3 days, so a missed sync fixes itself next time. No AI is involved: it's plain code on a timer.
+Each sync re-reads the last 3 days, so a missed sync fixes itself next time. No AI is involved: it's plain code on a timer.
+
+## Data on the phone
+
+Since version 0.10 every sync is saved on the phone first, in the app's own database (one row per day, metric and source, the same layout as the server's). It needs no network, server or account, and nothing leaves the phone unless the PC upload is on.
+
+- **Today on this phone** shows today's sleep, steps, resting heart rate, workouts, social media, YouTube, phone use and manual entries from that database, and how many days are stored.
+- **Back up phone data to a file** saves everything as one JSON file wherever you choose (Downloads, Google Drive...). Uninstalling the app deletes its database, so back up before you do.
+- **Also send my data to my PC server** is on when an upload token is set, so the PC dashboard keeps working. Turn it off and the app runs on its own. A failed upload doesn't stop the phone saving; it's tried again next sync.
+
+For now the home screen widget and the dashboard still read from the PC server. Moving the game, the dashboard and the widget onto the phone are the next steps.
 
 ## Install
 
@@ -16,14 +26,14 @@ Each sync re-sends the last 3 days, so a missed sync fixes itself next time. No 
 
 ## One-time setup in the app
 
-1. **Upload token:** paste the `INGEST_TOKEN` value from `.env` on the server. To get it onto your phone, copy it on the PC and send it to yourself (for example, a Google Keep note), then delete the note. The server address is already filled in (`http://100.80.206.11:8000`). Tap **Save**.
+1. **Upload token (only if you use the PC server):** paste the `INGEST_TOKEN` value from `.env` on the server. To get it onto your phone, copy it on the PC and send it to yourself (for example, a Google Keep note), then delete the note. The server address is already filled in (`http://100.80.206.11:8000`). Tap **Save**.
 2. **Allow Health Connect access:** tap the button and allow everything, including *Access data in the background*.
 3. **Allow usage access:** tap the button, find **Personal API** in the list, and turn it on.
 4. **Make Samsung Health share with Health Connect:** in Samsung Health, open Settings → Health Connect and allow it to write sleep, steps, heart rate and exercise.
 5. **Keep it running:** tap **Keep syncing in the background** and choose **Allow**. Samsung otherwise tends to pause background syncs. The status line then says `Background sync: every 15 min, 07:00 to 22:00`. Overnight it rests to save battery; the first sync in the morning sends the last 3 days again, so nothing is lost. **Sync now** works at any time. (The same setting lives in Android Settings → Apps → Personal API → Battery → **Unrestricted**.)
-6. Tap **Sync now**. The status line should show counts like `screen 25, health 14, manual 0`.
+6. Tap **Sync now**. The status line should show counts like `screen 25, health 14, manual 0, saved on phone, sent 39 to PC`.
 
-Tailscale has to be switched on for syncs to reach the server.
+Tailscale has to be switched on for syncs to reach the server. The phone saves its own copy either way.
 
 ## Open dashboard
 

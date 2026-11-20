@@ -13,6 +13,11 @@ class Settings(context: Context) {
         get() = prefs.getString("token", "")!!
         set(v) = prefs.edit().putString("token", v.trim()).apply()
 
+    /** Off by default for a phone with no token; on for Kevin's phone, which already has one. */
+    var serverEnabled: Boolean
+        get() = prefs.getBoolean("server_enabled", token.isNotEmpty())
+        set(v) = prefs.edit().putBoolean("server_enabled", v).apply()
+
     var lastSync: String
         get() = prefs.getString("last_sync", "never")!!
         set(v) = prefs.edit().putString("last_sync", v).apply()
