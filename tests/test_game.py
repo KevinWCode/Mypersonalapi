@@ -32,7 +32,7 @@ def test_level_curve_matches_the_spec():
 
 
 def test_daily_max():
-    assert game.DAILY_MAX == 1200
+    assert game.DAILY_MAX == 1050
 
 
 def test_full_day_scores_every_line():
@@ -49,7 +49,7 @@ def test_full_day_scores_every_line():
     g = client.get("/game", params={"date": d}).json()
     xp = {line["key"]: line["xp"] for line in g["today"]["metrics"]}
     assert xp == {"sleep": 125, "heart": 40, "steps": 100, "workout": 115, "kettlebell": 75, "catch": 50,
-                  "calendar": 0, "github": 100, "email": 0, "journal": 0, "youtube": 50, "social": 100, "stocks": 0}
+                  "github": 100, "email": 0, "journal": 0, "youtube": 50, "social": 100, "stocks": 0}
     # 755 from the stats, plus 10% for waking Well-Rested after 8 h.
     assert g["today"]["buffs"] == [{"name": "Well-Rested", "detail": "7.5 h+ sleep: +10% XP today", "xp": 76}]
     assert g["today"]["xp"] == 831
@@ -105,11 +105,11 @@ def test_before_game_start_is_level_one():
 
 
 def test_each_stat_has_its_own_level():
-    # Max sleep every day levels Sleep at the character's pace: 125/1200 of the character's curve.
+    # Max sleep every day levels Sleep at the character's pace: 125/1050 of the character's curve.
     sheet = game.stat_sheet("sleep", "Sleep", "Rest", 0, 125)
     assert sheet["level"] == 1 and sheet["rank"] == "Novice" and sheet["score"] == 8 and sheet["modifier"] == -1
-    assert sheet["level_cost"] == round(500 * 125 / 1200)
-    top = game.stat_sheet("sleep", "Sleep", "Rest", game.XP_TO_MAX * 125 / 1200, 125)
+    assert sheet["level_cost"] == round(500 * 125 / 1050)
+    top = game.stat_sheet("sleep", "Sleep", "Rest", game.XP_TO_MAX * 125 / 1050, 125)
     assert top["level"] == 110 and top["rank"] == "Master" and top["score"] == 20 and top["modifier"] == 5
 
 
@@ -117,7 +117,7 @@ def test_stats_in_game_response():
     d = "2026-10-24"
     post([obs(d, "sleep.total_minutes", 480, "minutes"), obs(d, "screen.app.com.zhiliaoapp.musically", 90, "minutes")])
     stats = {s["key"]: s for s in client.get("/game", params={"date": d}).json()["stats"]}
-    assert len(stats) == 13
+    assert len(stats) == 12
     assert stats["sleep"]["xp"] == 75 and stats["sleep"]["level"] == 2  # Sleep's level 1 costs 52 XP
     assert stats["social"]["xp"] == 0  # a penalty can't take a stat below 0
 

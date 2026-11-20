@@ -6,7 +6,7 @@ A night's sleep resets HP, Stamina and Focus:
 - Stamina: 10 per hour asleep. It drains 60 over the waking day (07:00-23:00); a real workout (kettlebells, or a 30+ min
   watch workout that isn't a walk) costs 33 and adds 10 to the next day's reset; each 250 ml of water adds 2.
 - Focus: 12 per hour asleep. It drains 60 over the waking day; water (2 per 250 ml), a workout, study,
-  journalling, kept calendar blocks and a day under 25 min of social media (+15 the next day) top it up;
+  journalling and a day under 25 min of social media (+15 the next day) top it up;
   social media costs 1 per 2 min.
 Social media costs 1 HP and 1 Mana per 5 min; YouTube counts the same at a third of the strength.
 Mana isn't reset: it drains 60 over the waking day and has four refills of up to 25 each: sleep (15 at 6 h, 20 at 7 h, 25 at
@@ -115,7 +115,6 @@ def effects(m: dict, youtube_minutes: float = 0, workout_yesterday: bool = False
     cups = min(m.get("coffee.cups", 0), 2)
     synced = "screen.total_minutes" in m
     social = m.get("screen.social_media_minutes", 0)
-    blocks = sum(1 for k, v in m.items() if k.startswith("cal.") and k.endswith(".done") and v > 0)
 
     # HP: sleep resets it (in run below); coffee, social media and YouTube knock it down.
     add("hp", "Coffee", HP_COFFEE * m.get("coffee.cups", 0))
@@ -145,13 +144,12 @@ def effects(m: dict, youtube_minutes: float = 0, workout_yesterday: bool = False
     add("mana", "Journal entry", MANA_PART if journal >= 1 else 0)
     add("mana", "Reading", min(MANA_PART, 12.5 * m.get("reading.minutes", 0) / 30))
 
-    # Focus: sleep resets it (in run below). A workout, study, journal, kept calendar blocks and low screen time top
+    # Focus: sleep resets it (in run below). A workout, study, journal and low screen time top
     # it up; heavy social media or YouTube drains it.
     if workout:
         add("focus", "Workout", WORKOUT_FOCUS)
     add("focus", "Study", 8 * min(m.get("study.minutes", 0) / 30, 3))
     add("focus", "Journal entry", 8 if journal >= 1 else 0)
-    add("focus", "Calendar blocks kept", 4 * min(blocks, 3))
     add("focus", "Coffee", 3 * cups)
     if calm_yesterday:
         add("focus", f"Social media under {CALM_SOCIAL_MINUTES} min yesterday", CALM_NEXT_DAY_FOCUS)

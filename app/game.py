@@ -8,7 +8,6 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 
 from app import db, perks, vitals
-from app.collectors import calendar
 from app.metrics import APP_PREFIX, build_days
 
 # Day 1 of the game: the first day with phone data.
@@ -187,15 +186,6 @@ def score_day(m: dict, ctx: dict) -> list[dict]:
     lines.append(_line("catch", "Catch drill", "DEX", 50 if catch else 0, 50,
                        f"{catch:.0f} yd" if catch else "No drill"))
 
-    # Calendar: blocks ticked done that day (on the dashboard), 50 XP each, up to 3.
-    blocks = sum(1 for k, v in m.items() if k.startswith("cal.") and k.endswith(".done") and v > 0)
-    planned = ctx.get("blocks_planned", 0)
-    if ctx.get("calendar_connected") or blocks:
-        detail = f"{blocks:.0f} of {planned} block(s) kept" if planned else f"{blocks:.0f} block(s) kept"
-    else:
-        detail = "Calendar not connected yet"
-    lines.append(_line("calendar", "Calendar blocks", "Quests", 50 * min(blocks, 3), 150, detail))
-
     commits = m.get("github.commits", 0)
     lines.append(_line("github", "GitHub commits", "Craft", 25 * min(int(commits), 4), 100, f"{commits:.0f} commit(s)"))
 
@@ -272,7 +262,6 @@ def build(conn, day: date) -> dict:
     lookback = GAME_START - timedelta(days=30)
     rows = db.fetch_range(conn, lookback.isoformat(), day.isoformat())
     by_date = {d["date"]: d["metrics"] for d in build_days(rows)}
-    planned = calendar.counts_by_day(conn, lookback.isoformat(), day.isoformat())
     youtube: dict[str, float] = defaultdict(float)
     for r in rows:
         if r["metric"] == APP_PREFIX + YOUTUBE_APP:
@@ -304,8 +293,7 @@ def build(conn, day: date) -> dict:
             buffs = []
 
             ctx = {"rhr_base": _avg(rhr_seen[-30:]), "hrv_base": _avg(hrv_seen[-30:]),
-                   "prev_equity": prev_equity, "youtube": youtube.get(key, 0),
-                   "blocks_planned": planned.get(key, 0), "calendar_connected": bool(planned)}
+                   "prev_equity": prev_equity, "youtube": youtube.get(key, 0)}
             lines = score_day(m, ctx)
             vital_days.append((d, m, youtube.get(key, 0)))
             by_key = {line["key"]: line for line in lines}
@@ -313,10 +301,6 @@ def build(conn, day: date) -> dict:
                 by_key["social"]["xp"] = max(0, by_key["social"]["xp"])
                 by_key["youtube"]["xp"] = by_key["youtube"]["max"]
                 buffs.append({"name": "Unrestricted Media Pass", "detail": "Social media and YouTube can't cost XP today", "xp": 0})
-            if ("per", 2) in active:
-                cal = by_key["calendar"]
-                cal["xp"] = min(cal["max"], cal["xp"] + 50)
-                buffs.append({"name": "Chef Exemption Pass", "detail": "One extra calendar block counted", "xp": 0})
 
             base = max(0, sum(line["xp"] for line in lines))
             rested = m.get("sleep.total_minutes", 0) >= WELL_RESTED_MINUTES
