@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS meals (
     protein_g   REAL NOT NULL,
     carbs_g     REAL NOT NULL,
     fat_g       REAL NOT NULL,
+    sugar_g     REAL NOT NULL DEFAULT 0,
     description TEXT NOT NULL,
     origin      TEXT NOT NULL,  -- paste, or inbox:<file name>
     added_at    TEXT NOT NULL
@@ -71,7 +72,16 @@ def connect(path: str | None = None) -> sqlite3.Connection:
     conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    _migrate(conn)
     return conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Adds columns that came after a table was first made. Meals from before sugar was tracked count as 0 g."""
+    columns = {r["name"] for r in conn.execute("PRAGMA table_info(meals)")}
+    if "sugar_g" not in columns:
+        conn.execute("ALTER TABLE meals ADD COLUMN sugar_g REAL NOT NULL DEFAULT 0")
+        conn.commit()
 
 
 def upsert(conn: sqlite3.Connection, rows: list[dict]) -> int:
