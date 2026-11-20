@@ -9,12 +9,14 @@ import android.text.InputType
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -24,15 +26,30 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 
 class MainActivity : AppCompatActivity() {
     private lateinit var settings: Settings
     private lateinit var manual: ManualLog
     private lateinit var status: TextView
+    private lateinit var todayCard: TextView
     private lateinit var root: LinearLayout
 
     private val requestHealth =
         registerForActivityResult(PermissionController.createRequestPermissionResultContract()) { refresh() }
+
+    // Lets the user pick where the backup file goes (Downloads, Google Drive, ...). The app never sends it anywhere itself.
+    private val saveBackup = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri == null) return@registerForActivityResult
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    contentResolver.openOutputStream(uri)!!.use { LocalStore.get(this@MainActivity).exportJson(it) }
+                }
+            }
+            toast(result.fold({ "Backed up $it entries" }, { "Backup failed: ${it.message}" }))
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,13 +79,25 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 0, 0, 24)
         }.also { root.addView(it) }
 
-        button("Open dashboard") { startActivity(OpenDashboardActivity.browserIntent(settings)) }
+        heading("Today on this phone")
+        todayCard = TextView(this).apply {
+            textSize = 16f
+            setLineSpacing(0f, 1.2f)
+        }.also { root.addView(it) }
+        button("Back up phone data to a file") { saveBackup.launch("personal-api-backup-${LocalDate.now()}.json") }
+
+        heading("PC server (optional)")
+        button("Open PC dashboard") { startActivity(OpenDashboardActivity.browserIntent(settings)) }
         root.addView(TextView(this).apply {
-            text = "Tip: for today's numbers on your home screen, long-press an empty spot, tap Widgets, then Personal API."
+            text = "Tip: for today's numbers on your home screen, long-press an empty spot, tap Widgets, then Personal API. For now the widget still reads its numbers from the PC server."
             setPadding(0, 8, 0, 0)
         })
 
-        heading("Connection")
+        root.addView(CheckBox(this).apply {
+            text = "Also send my data to my PC server"
+            isChecked = settings.serverEnabled
+            setOnCheckedChangeListener { _, on -> settings.serverEnabled = on; refresh() }
+        })
         val url = field("Server address", settings.serverUrl)
         val token = field("Upload token (INGEST_TOKEN from .env)", settings.token, secret = true)
         button("Save") {
@@ -120,7 +149,10 @@ class MainActivity : AppCompatActivity() {
         button("Undo today's manual entries") {
             val zeroed = manual.clearToday()
             lifecycleScope.launch {
-                runCatching { withContext(Dispatchers.IO) { Uploader.send(settings, "manual", zeroed) } }
+                withContext(Dispatchers.IO) {
+                    LocalStore.get(this@MainActivity).save("manual", zeroed)
+                    SyncWorker.uploadToServer(settings, listOf("manual" to zeroed))
+                }
                 refresh()
             }
         }
@@ -147,6 +179,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun refresh() {
         lifecycleScope.launch {
+            val (lines, span) = withContext(Dispatchers.IO) {
+                val store = LocalStore.get(this@MainActivity)
+                DayMetrics.summaryLines(DayMetrics.build(store.day(LocalDate.now()))) to store.span()
+            }
+            todayCard.text = buildString {
+                if (lines.isEmpty()) appendLine("Nothing saved yet today. Tap Sync now.")
+                lines.forEach { appendLine(it) }
+                append(
+                    if (span.first == 0) "Stored on this phone: nothing yet"
+                    else "Stored on this phone: ${span.first} days since ${span.second}"
+                )
+            }
             val health = if (Health.available(this@MainActivity)) {
                 val granted = HealthConnectClient.getOrCreate(this@MainActivity).permissionController.getGrantedPermissions()
                 "${granted.intersect(Health.PERMISSIONS).size}/${Health.PERMISSIONS.size} allowed"
@@ -156,6 +200,7 @@ class MainActivity : AppCompatActivity() {
                 appendLine("Screen time access: ${if (ScreenTime.hasAccess(this@MainActivity)) "allowed" else "not allowed"}")
                 appendLine("Background sync: ${if (backgroundAllowed()) "every 15 min, ${SyncHours.text}" else "may be paused, tap Keep syncing in the background"}")
                 appendLine("Today's manual entries: ${manual.today().size}")
+                appendLine("PC upload: ${if (settings.serverEnabled) "on" else "off, data stays on this phone"}")
                 append("Last sync: ${settings.lastSync.replace(", ", "\n  ")}")
             }
         }
