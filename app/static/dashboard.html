@@ -770,9 +770,11 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       var reclaimed = avg(prevDays) * curDays.length - sum(curDays);
       $('hero-label').textContent = 'Time reclaimed from social media';
       $('hero-value').textContent = (reclaimed < 0 ? '−' : '') + hm(Math.abs(reclaimed));
+      // Say the per-day gap and day count behind the total, to one decimal, so the sum checks out (10.7 x 7 = 75, not 11 x 7).
+      var perDay = Math.abs(reclaimed) / curDays.length, days = curDays.length + (curDays.length === 1 ? ' day' : ' days');
       $('hero-note').textContent = reclaimed >= 0
-        ? 'vs. ' + r.prevs + " social media. That's time back for training, building and people."
-        : 'More social media than ' + r.prev.toLowerCase() + '. A slower few days wins it back.';
+        ? perDay.toFixed(1) + ' min a day under ' + r.prevs + ' social media, over ' + days + ". That's time back for training, building and people."
+        : perDay.toFixed(1) + ' min a day more social media than ' + r.prev.toLowerCase() + ', over ' + days + '. A slower few days wins it back.';
     }
     if (curDays.length) side.push([r.period, Math.round(avg(curDays)) + ' min/day']);
     if (prevDays.length) side.push([r.prev, Math.round(avg(prevDays)) + ' min/day']);
@@ -786,9 +788,11 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     function avgOf(days, key) { return avg(values(days, metric(key))); }
     function sumOf(days, key) { var v = values(days, metric(key)); return v.length ? sum(v) : null; }
     function socialAvg(days) { return avg(values(days, function (d) { return social(d); })); }
+    // Per-day screen time gaps keep one decimal, so they multiply out to the headline total.
+    function mins1(v) { return v.toFixed(1) + ' min'; }
     var tiles = [
-      { label: 'Social media / day', get: socialAvg, fmt: function (v) { return Math.round(v) + ' min'; }, lowerIsGood: true },
-      { label: 'YouTube / day', get: function (d) { return avg(values(d, function (x) { return social(x, 'screen.youtube_minutes'); })); }, fmt: function (v) { return Math.round(v) + ' min'; }, lowerIsGood: true },
+      { label: 'Social media / day', get: socialAvg, fmt: function (v) { return Math.round(v) + ' min'; }, diff: mins1, lowerIsGood: true },
+      { label: 'YouTube / day', get: function (d) { return avg(values(d, function (x) { return social(x, 'screen.youtube_minutes'); })); }, fmt: function (v) { return Math.round(v) + ' min'; }, diff: mins1, lowerIsGood: true },
       { label: 'Sleep / night', get: function (d) { return avgOf(d, 'sleep.total_minutes'); }, fmt: hm, lowerIsGood: false },
       { label: 'Steps / day', get: function (d) { return avgOf(d, 'health.steps'); }, fmt: int, lowerIsGood: false },
       { label: 'Commits ' + range, get: function (d) { return sumOf(d, 'github.commits'); }, fmt: int, lowerIsGood: false },
@@ -799,7 +803,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     ];
     $('tiles').replaceChildren.apply($('tiles'), tiles.map(function (t) {
       var c = t.get(cur), p = t.get(prev);
-      var tr = trend(c, p, { diff: t.fmt, lowerIsGood: t.lowerIsGood, missing: t.missing });
+      var tr = trend(c, p, { diff: t.diff || t.fmt, lowerIsGood: t.lowerIsGood, missing: t.missing });
       return el('div', { class: 'tile' },
         el('p', { class: 'label' }, t.label),
         el('p', { class: 'num value' }, c === null ? '—' : t.fmt(c)),
