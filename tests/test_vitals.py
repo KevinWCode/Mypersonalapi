@@ -155,3 +155,17 @@ def test_only_real_workouts_cost_stamina():
     assert bars({"workout.sessions": 1})["stamina"]["gained_today"] == 0  # older phone app: no counted_sessions
     assert bars({"workout.counted_sessions": 1})["stamina"]["gained_today"] == -33
     assert bars({"kb.clean.done": 1})["stamina"]["gained_today"] == -33
+
+
+def test_sugar_costs_hp_and_gives_a_rush_for_that_day_only():
+    sleep = {"sleep.total_minutes": 480}
+    plain, sweet = bars(sleep), bars({**sleep, "food.sugar_g": 25.7})
+    assert plain["hp"]["gained_today"] - sweet["hp"]["gained_today"] == 25  # -1 HP per full gram
+    assert sweet["stamina"]["gained_today"] - plain["stamina"]["gained_today"] == 12  # +1 per full 2 g
+    rush = [e for e in sweet["stamina"]["today"] if e["label"].startswith("Sugar rush")]
+    assert rush == [{"label": "Sugar rush (26 g, today only)", "points": 12, "temporary": True}]
+    # The next day (no sleep synced, so nothing resets) the rush has worn off but the HP loss stays.
+    days = lambda s: vitals.run([(date(2026, 10, 23), {**sleep, "food.sugar_g": s}, 0), (date(2026, 10, 24), {}, 0)])
+    nxt = lambda s: {b["key"]: b["start_of_day"] for b in days(s)}
+    assert nxt(25.7)["stamina"] == nxt(0)["stamina"]
+    assert nxt(25.7)["hp"] < nxt(0)["hp"]

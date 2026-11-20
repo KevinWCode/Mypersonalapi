@@ -14,8 +14,8 @@ object Vitals {
     data class Bar(val key: String, val name: String, val about: String, val tickPerDay: Double)
 
     val BARS = listOf(
-        Bar("hp", "HP", "Reset by sleep, regenerates slowly, lowered by coffee, social media and YouTube", 12.0),
-        Bar("stamina", "Stamina", "Reset by sleep (10 an hour), drains 60 over the waking day, water and workouts move it", -60.0),
+        Bar("hp", "HP", "Reset by sleep, regenerates slowly, lowered by coffee, sugar, social media and YouTube", 12.0),
+        Bar("stamina", "Stamina", "Reset by sleep (10 an hour), drains 60 over the waking day, water, workouts and a sugar rush move it", -60.0),
         Bar("mana", "Mana", "Four refills of up to 25: sleep, one journal entry, reading, deep + REM sleep; social media drains it", -60.0),
         Bar("focus", "Focus", "Reset by sleep (12 an hour), drains 60 over the waking day, water, workouts and study top it up", -60.0),
     )
@@ -42,6 +42,9 @@ object Vitals {
     const val CALM_SOCIAL_MINUTES = 25.0
     const val CALM_NEXT_DAY_FOCUS = 15.0
     const val MANA_PART = 25.0
+    // Sugar: -1 HP per full gram, and a temporary +1 Stamina per full 2 g (that day only; gone by the next).
+    const val SUGAR_HP_PER_G = 1.0
+    const val SUGAR_STAMINA_EVERY_G = 2.0
 
     fun screenDrain(minutes: Double, every: Double): Double = -Math.floor(minutes / every)
 
@@ -70,16 +73,16 @@ object Vitals {
         )
     }
 
-    data class Effect(val label: String, val points: Double)
+    data class Effect(val label: String, val points: Double, val temporary: Boolean = false)
 
     fun effects(
         m: Map<String, Double>, youtubeMinutes: Double = 0.0, workoutYesterday: Boolean = false,
         calmYesterday: Boolean = false,
     ): Map<String, MutableList<Effect>> {
         val out = BARS.associate { it.key to mutableListOf<Effect>() }
-        fun add(bar: String, label: String, points: Double) {
+        fun add(bar: String, label: String, points: Double, temporary: Boolean = false) {
             val p = Math.rint(points * 10) / 10
-            if (p != 0.0) out.getValue(bar).add(Effect(label, p))
+            if (p != 0.0) out.getValue(bar).add(Effect(label, p, temporary))
         }
 
         val sleep = m["sleep.total_minutes"]
@@ -104,6 +107,10 @@ object Vitals {
         val workout = workedOut(m)
         if (workoutYesterday) add("stamina", "Yesterday's workout", WORKOUT_NEXT_DAY_STAMINA)
         if (workout) add("stamina", "Workout", WORKOUT_STAMINA)
+        val sugar = m["food.sugar_g"] ?: 0.0
+        val sugarLabel = Math.rint(sugar).toInt()
+        add("hp", "Sugar ($sugarLabel g)", -SUGAR_HP_PER_G * Math.floor(sugar))
+        add("stamina", "Sugar rush ($sugarLabel g, today only)", Math.floor(sugar / SUGAR_STAMINA_EVERY_G), temporary = true)
         val water = WATER_PER_250_ML * Math.floor((m["water.ml"] ?: 0.0) / 250)
         add("stamina", "Water", water)
         add("focus", "Water", water)
@@ -162,10 +169,13 @@ object Vitals {
                     fx.getValue(k).add(0, Effect("Slept ${"%.1f".format(java.util.Locale.UK, sleep / 60)} h: reset to ${Math.rint(v).toInt()}", 0.0))
                 }
             }
+            val isToday = i == days.size - 1
             for (bar in BARS) {
                 val gained = fx.getValue(bar.key).sumOf { it.points }
+                // A temporary boost (the sugar rush) shows on its own day but has worn off by the next.
+                val lasting = gained - fx.getValue(bar.key).filter { it.temporary }.sumOf { it.points }
                 val tick = bar.tickPerDay * (if (bar.tickPerDay > 0) share else awakeShare(share))
-                values[bar.key] = endValue(bar.key, start.getValue(bar.key), gained, tick)
+                values[bar.key] = endValue(bar.key, start.getValue(bar.key), if (isToday) gained else lasting, tick)
                 last[bar.key] = Triple(start.getValue(bar.key), gained, fx.getValue(bar.key))
             }
         }

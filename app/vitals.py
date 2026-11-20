@@ -9,6 +9,8 @@ A night's sleep resets HP, Stamina and Focus:
   journalling and a day under 25 min of social media (+15 the next day) top it up;
   social media costs 1 per 2 min.
 Social media costs 1 HP and 1 Mana per 5 min; YouTube counts the same at a third of the strength.
+Sugar costs 1 HP per gram and gives a sugar rush of 1 Stamina per 2 g that lasts that day only: it isn't carried into
+the next day.
 Mana isn't reset: it drains 60 over the waking day and has four refills of up to 25 each: sleep (15 at 6 h, 20 at 7 h, 25 at
 8 h), one journal entry, reading (12.5 per 30 min) and a night with 35%+ deep + REM sleep.
 
@@ -24,8 +26,8 @@ LOW = 25  # at or below this a bar shows as low
 
 # key -> (name, what it stands for, points it changes by over a full day: minus drains, plus regenerates)
 BARS = {
-    "hp": ("HP", "Reset by sleep, regenerates slowly, lowered by coffee, social media and YouTube", 12),
-    "stamina": ("Stamina", "Reset by sleep (10 an hour), drains 60 over the waking day, water and workouts move it", -60),
+    "hp": ("HP", "Reset by sleep, regenerates slowly, lowered by coffee, sugar, social media and YouTube", 12),
+    "stamina": ("Stamina", "Reset by sleep (10 an hour), drains 60 over the waking day, water, workouts and a sugar rush move it", -60),
     "mana": ("Mana", "Four refills of up to 25: sleep, one journal entry, reading, deep + REM sleep; social media drains it", -60),
     "focus": ("Focus", "Reset by sleep (12 an hour), drains 60 over the waking day, water, workouts and study top it up", -60),
 }
@@ -59,6 +61,9 @@ SOCIAL_FOCUS_MINUTES = 2
 YOUTUBE_FACTOR = 3
 CALM_SOCIAL_MINUTES = 25
 CALM_NEXT_DAY_FOCUS = 15
+# Sugar: -1 HP per full gram, and a temporary +1 Stamina per full 2 g (the rest of that day; gone by the next).
+SUGAR_HP_PER_G = 1
+SUGAR_STAMINA_EVERY_G = 2
 
 
 def screen_drain(minutes: float, every: float) -> int:
@@ -105,10 +110,10 @@ def effects(m: dict, youtube_minutes: float = 0, workout_yesterday: bool = False
     """Each bar's gains (+) and drains (-) from one day's stats, not counting the daily tick."""
     out: dict[str, list[dict]] = {k: [] for k in BARS}
 
-    def add(bar, label, points):
+    def add(bar, label, points, temporary=False):
         points = round(points, 1)
         if points:
-            out[bar].append({"label": label, "points": points})
+            out[bar].append({"label": label, "points": points, **({"temporary": True} if temporary else {})})
 
     sleep = m.get("sleep.total_minutes")
     journal = m.get("journal.entries", 0)
@@ -132,6 +137,10 @@ def effects(m: dict, youtube_minutes: float = 0, workout_yesterday: bool = False
         add("stamina", "Yesterday's workout", WORKOUT_NEXT_DAY_STAMINA)
     if workout:
         add("stamina", "Workout", WORKOUT_STAMINA)
+    # Sugar: costs HP for every gram; the Stamina rush only counts for that day (see run).
+    sugar = m.get("food.sugar_g", 0)
+    add("hp", f"Sugar ({sugar:.0f} g)", -SUGAR_HP_PER_G * int(sugar))
+    add("stamina", f"Sugar rush ({sugar:.0f} g, today only)", int(sugar // SUGAR_STAMINA_EVERY_G), temporary=True)
     water = WATER_PER_250_ML * int(m.get("water.ml", 0) // 250)
     add("stamina", "Water", water)
     add("focus", "Water", water)
@@ -192,9 +201,13 @@ def run(days: list[tuple[date, dict, float]], today_elapsed: float = 1.0) -> lis
             for k, v in after_sleep(sleep).items():
                 start[k] = v
                 fx[k].insert(0, {"label": f"Slept {sleep / 60:.1f} h: reset to {v:.0f}", "points": 0})
+        is_today = i == len(days) - 1
         for k, (_, _, tick) in BARS.items():
             gained = sum(e["points"] for e in fx[k])
-            values[k] = end_value(k, start[k], gained, tick * (share if tick > 0 else awake_share(share)))
+            # A temporary boost (the sugar rush) shows on its own day but has worn off by the next.
+            lasting = gained - sum(e["points"] for e in fx[k] if e.get("temporary"))
+            values[k] = end_value(k, start[k], gained if is_today else lasting,
+                                  tick * (share if tick > 0 else awake_share(share)))
             last[k] = {"start": start[k], "gained": gained, "effects": fx[k]}
     out = []
     for k, (name, about, tick) in BARS.items():

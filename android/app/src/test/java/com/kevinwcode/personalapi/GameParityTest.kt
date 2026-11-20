@@ -819,6 +819,22 @@ class GameParityTest {
         Triple("2026-11-22", "perk.per.2.claimed", 1.0),
         Triple("2026-11-25", "perk.wis.4.claimed", 1.0),
         Triple("2026-12-02", "perk.str.1.claimed", 1.0),
+        Triple("2026-10-23", "food.sugar_g", 27.1),
+        Triple("2026-10-26", "food.sugar_g", 33.6),
+        Triple("2026-10-29", "food.sugar_g", 55.5),
+        Triple("2026-11-01", "food.sugar_g", 27.9),
+        Triple("2026-11-04", "food.sugar_g", 30.5),
+        Triple("2026-11-07", "food.sugar_g", 35.2),
+        Triple("2026-11-10", "food.sugar_g", 11.1),
+        Triple("2026-11-13", "food.sugar_g", 30.7),
+        Triple("2026-11-16", "food.sugar_g", 37.8),
+        Triple("2026-11-19", "food.sugar_g", 47.6),
+        Triple("2026-11-22", "food.sugar_g", 5.6),
+        Triple("2026-11-25", "food.sugar_g", 18.2),
+        Triple("2026-11-28", "food.sugar_g", 5.4),
+        Triple("2026-12-01", "food.sugar_g", 48.6),
+        Triple("2026-12-04", "food.sugar_g", 41.6),
+        Triple("2026-12-07", "food.sugar_g", 2.5),
     )
 
     private val days: Map<LocalDate, Map<String, Double>> = rows.groupBy { LocalDate.parse(it.first) }
@@ -912,7 +928,7 @@ class GameParityTest {
         assertEquals(emptyList<String>(), g.buffs.map { "${it.name}=${it.xp}" })
         assertEquals(listOf("sleep=1875/18", "heart=890/16", "steps=1780/20", "workout=1180/12", "kettlebell=1200/19", "catch=300/10", "calendar=1250/13", "github=1400/18", "email=150/6", "journal=1825/21", "youtube=950/21", "social=400/8", "stocks=725/14"), g.stats.map { "${it.key}=${it.xp}/${it.level}" })
         assertEquals(listOf("str=19/1", "con=20/1", "int=18/1", "wis=21/1", "cha=14/1", "per=21/1"), g.groups.map { "${it.key}=${it.level}/${it.tier}" })
-        assertEquals(listOf("hp=85/85", "stamina=0/0", "mana=0/0", "focus=0/0"), g.vitals.map { "${it.key}=${it.value}/${it.endOfDay}" })
+        assertEquals(listOf("hp=80/80", "stamina=0/0", "mana=0/0", "focus=0/0"), g.vitals.map { "${it.key}=${it.value}/${it.endOfDay}" })
         assertEquals(listOf("social_ok=0", "well_rested=0", "committed=1"), g.streaks.map { "${it.key}=${it.days}" })
     }
 
@@ -933,7 +949,7 @@ class GameParityTest {
         assertEquals(emptyList<String>(), g.buffs.map { "${it.name}=${it.xp}" })
         assertEquals(listOf("sleep=2025/19", "heart=970/17", "steps=1920/21", "workout=1255/13", "kettlebell=1200/19", "catch=300/10", "calendar=1400/14", "github=1600/19", "email=150/6", "journal=2000/22", "youtube=1050/23", "social=400/8", "stocks=850/15"), g.stats.map { "${it.key}=${it.xp}/${it.level}" })
         assertEquals(listOf("str=19/1", "con=21/1", "int=19/1", "wis=23/1", "cha=15/1", "per=22/1"), g.groups.map { "${it.key}=${it.level}/${it.tier}" })
-        assertEquals(listOf("hp=75/75", "stamina=0/0", "mana=3/3", "focus=6/6"), g.vitals.map { "${it.key}=${it.value}/${it.endOfDay}" })
+        assertEquals(listOf("hp=57/57", "stamina=9/9", "mana=3/3", "focus=6/6"), g.vitals.map { "${it.key}=${it.value}/${it.endOfDay}" })
         assertEquals(listOf("social_ok=0", "well_rested=0", "committed=3"), g.streaks.map { "${it.key}=${it.days}" })
     }
 
@@ -996,7 +1012,7 @@ class GameParityTest {
         assertEquals(emptyList<String>(), g.buffs.map { "${it.name}=${it.xp}" })
         assertEquals(listOf("sleep=2775/23", "heart=1315/20", "steps=2690/26", "workout=1710/15", "kettlebell=1575/23", "catch=550/15", "calendar=2050/17", "github=2075/23", "email=150/6", "journal=2525/25", "youtube=1450/28", "social=850/13", "stocks=1000/17"), g.stats.map { "${it.key}=${it.xp}/${it.level}" })
         assertEquals(listOf("str=23/1", "con=26/1", "int=23/1", "wis=28/2", "cha=17/1", "per=25/1"), g.groups.map { "${it.key}=${it.level}/${it.tier}" })
-        assertEquals(listOf("hp=93/98", "stamina=32/0", "mana=60/28", "focus=54/21"), g.vitals.map { "${it.key}=${it.value}/${it.endOfDay}" })
+        assertEquals(listOf("hp=91/96", "stamina=33/1", "mana=60/28", "focus=54/21"), g.vitals.map { "${it.key}=${it.value}/${it.endOfDay}" })
         assertEquals(listOf("social_ok=0", "well_rested=0", "committed=3"), g.streaks.map { "${it.key}=${it.days}" })
     }
 
@@ -1017,7 +1033,7 @@ class GameParityTest {
         assertEquals(emptyList<String>(), g.buffs.map { "${it.name}=${it.xp}" })
         assertEquals(listOf("sleep=2775/23", "heart=1315/20", "steps=2690/26", "workout=1710/15", "kettlebell=1575/23", "catch=550/15", "calendar=2050/17", "github=2075/23", "email=150/6", "journal=2525/25", "youtube=1450/28", "social=850/13", "stocks=1000/17"), g.stats.map { "${it.key}=${it.xp}/${it.level}" })
         assertEquals(listOf("str=23/1", "con=26/1", "int=23/1", "wis=28/2", "cha=17/1", "per=25/1"), g.groups.map { "${it.key}=${it.level}/${it.tier}" })
-        assertEquals(listOf("hp=98/98", "stamina=0/0", "mana=28/28", "focus=21/21"), g.vitals.map { "${it.key}=${it.value}/${it.endOfDay}" })
+        assertEquals(listOf("hp=96/96", "stamina=1/1", "mana=28/28", "focus=21/21"), g.vitals.map { "${it.key}=${it.value}/${it.endOfDay}" })
         assertEquals(listOf("social_ok=0", "well_rested=0", "committed=3"), g.streaks.map { "${it.key}=${it.days}" })
     }
 
