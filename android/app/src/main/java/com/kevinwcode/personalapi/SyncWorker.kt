@@ -79,6 +79,12 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             parts += "saved on phone"
 
             parts += uploadToServer(settings, batches)
+            // Until the server is switched off, also take the PC's totals for these days, which include what was
+            // logged on the dashboard, so the phone's game scores the same as the PC's.
+            if (settings.serverEnabled) {
+                parts += runCatching { "copied ${PcHistory.copy(settings, store, days.first(), days.last())} days from PC" }
+                    .getOrElse { "PC copy failed (${it.message})" }
+            }
             return parts.joinToString(", ")
         }
 

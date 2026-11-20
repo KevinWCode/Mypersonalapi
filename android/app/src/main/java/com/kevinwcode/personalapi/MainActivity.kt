@@ -33,6 +33,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var manual: ManualLog
     private lateinit var status: TextView
     private lateinit var todayCard: TextView
+    private lateinit var characterCard: TextView
     private lateinit var root: LinearLayout
 
     private val requestHealth =
@@ -79,6 +80,12 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 0, 0, 24)
         }.also { root.addView(it) }
 
+        heading("Character")
+        characterCard = TextView(this).apply {
+            textSize = 16f
+            setLineSpacing(0f, 1.2f)
+        }.also { root.addView(it) }
+
         heading("Today on this phone")
         todayCard = TextView(this).apply {
             textSize = 16f
@@ -98,6 +105,7 @@ class MainActivity : AppCompatActivity() {
             isChecked = settings.serverEnabled
             setOnCheckedChangeListener { _, on -> settings.serverEnabled = on; refresh() }
         })
+        button("Copy my history from the PC") { copyHistory() }
         val url = field("Server address", settings.serverUrl)
         val token = field("Upload token (INGEST_TOKEN from .env)", settings.token, secret = true)
         button("Save") {
@@ -179,10 +187,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun refresh() {
         lifecycleScope.launch {
-            val (lines, span) = withContext(Dispatchers.IO) {
+            val today = LocalDate.now()
+            val (game, lines, span) = withContext(Dispatchers.IO) {
                 val store = LocalStore.get(this@MainActivity)
-                DayMetrics.summaryLines(DayMetrics.build(store.day(LocalDate.now()))) to store.span()
+                val days = store.allDays()
+                Triple(Game.build(days, today), DayMetrics.summaryLines(days[today] ?: emptyMap()), store.span())
             }
+            characterCard.text = (CharacterText.lines(game) + listOf("") + CharacterText.todayLines(game)).joinToString("\n").trim()
             todayCard.text = buildString {
                 if (lines.isEmpty()) appendLine("Nothing saved yet today. Tap Sync now.")
                 lines.forEach { appendLine(it) }
@@ -203,6 +214,18 @@ class MainActivity : AppCompatActivity() {
                 appendLine("PC upload: ${if (settings.serverEnabled) "on" else "off, data stays on this phone"}")
                 append("Last sync: ${settings.lastSync.replace(", ", "\n  ")}")
             }
+        }
+    }
+
+    /** One-time copy of every day since the game started, so the phone's level matches the PC's. */
+    private fun copyHistory() {
+        toast("Copying from the PC…")
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { PcHistory.copy(settings, LocalStore.get(this@MainActivity), Game.DEFAULT_GAME_START.minusDays(30), LocalDate.now()) }
+            }
+            toast(result.fold({ "Copied $it days from the PC" }, { "Couldn't reach the PC: ${it.message}" }))
+            refresh()
         }
     }
 
