@@ -44,14 +44,31 @@ object DayMetrics {
         return day
     }
 
+    const val FOOD_PREFIX = "food."
+
+    // From this day on, food comes only from meals logged in the app; the PC's food (its food AI files) is ignored.
+    // Earlier days keep the PC's food, so past XP doesn't change, unless the app has meals for that day.
+    val PHONE_FOOD_SINCE: LocalDate = LocalDate.of(2026, 11, 20)
+
     /**
      * rows: (date, source, metric to value). A day with rows from [pcSource] uses those (the PC's day totals, already
-     * built); any other day is built from the phone's own rows.
+     * built), with food from the phone's own meals ([foodSource]) as above. Any other day is built from the phone's
+     * own rows.
      */
-    fun mergeDays(rows: List<Triple<String, String, Pair<String, Double>>>, pcSource: String): Map<LocalDate, Map<String, Double>> =
+    fun mergeDays(
+        rows: List<Triple<String, String, Pair<String, Double>>>, pcSource: String, foodSource: String = "food",
+        phoneFoodSince: LocalDate = PHONE_FOOD_SINCE,
+    ): Map<LocalDate, Map<String, Double>> =
         rows.groupBy { it.first }.entries.associate { (date, dayRows) ->
-            val pc = dayRows.filter { it.second == pcSource }
-            LocalDate.parse(date) to if (pc.isNotEmpty()) pc.associate { it.third } else build(dayRows.map { it.third })
+            val day = LocalDate.parse(date)
+            val pc = dayRows.filter { it.second == pcSource }.map { it.third }
+            val food = dayRows.filter { it.second == foodSource }.map { it.third }
+            val phoneFood = day >= phoneFoodSince || food.any { it.second > 0 }
+            day to when {
+                pc.isEmpty() -> build(dayRows.map { it.third })
+                phoneFood -> pc.filterNot { it.first.startsWith(FOOD_PREFIX) }.toMap() + build(food)
+                else -> pc.toMap()
+            }
         }
 
     /** Short lines for the app's "Today on this phone" card. Stats with no data are left out. */

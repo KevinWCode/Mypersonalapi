@@ -90,6 +90,35 @@ object Food {
         ) + MEALS.map { meal -> Observation(day, "food.$meal.kcal", m.filter { it.meal == meal }.sumOf { it.kcal }, "kcal") }
     }
 
+    /** One button of the meal matrix: a meal at a calorie tier, with its most likely macros. */
+    data class Preset(val meal: String, val tier: String, val kcal: Double, val proteinG: Double, val carbsG: Double, val fatG: Double) {
+        val label get() = "$tier ${kcal.toInt()}"
+        fun toMeal(day: LocalDate) = Meal(
+            date = day, meal = meal, kcal = kcal, proteinG = proteinG, carbsG = carbsG, fatG = fatG,
+            description = "${tier.lowercase()} ${meal} (estimate)",
+        )
+    }
+
+    /**
+     * The 12-cell meal matrix from Kevin's doc "Most Likely Macronutrient Profiles Across the 12 Meal-Tier Calorie
+     * Matrix": UK-modelled protein, available carbs and fat for each meal at a Light, Standard and Heavy calorie tier.
+     * The doc gives no sugar, so these log 0 g sugar.
+     */
+    val PRESETS = listOf(
+        Preset("breakfast", "Light", 350.0, 15.0, 48.0, 10.0),
+        Preset("breakfast", "Standard", 550.0, 21.0, 64.0, 22.0),
+        Preset("breakfast", "Heavy", 850.0, 33.0, 74.0, 45.0),
+        Preset("lunch", "Light", 450.0, 25.0, 49.0, 16.0),
+        Preset("lunch", "Standard", 700.0, 28.0, 82.0, 27.0),
+        Preset("lunch", "Heavy", 1050.0, 36.0, 108.0, 51.0),
+        Preset("dinner", "Light", 500.0, 36.0, 46.0, 17.0),
+        Preset("dinner", "Standard", 800.0, 40.0, 88.0, 30.0),
+        Preset("dinner", "Heavy", 1200.0, 44.0, 122.0, 58.0),
+        Preset("snack", "Light", 150.0, 6.0, 18.0, 6.0),
+        Preset("snack", "Standard", 300.0, 7.0, 37.0, 13.0),
+        Preset("snack", "Heavy", 500.0, 9.0, 60.0, 24.0),
+    )
+
     fun line(m: Meal): String =
         "${m.meal.replaceFirstChar { it.uppercase() }}: ${m.kcal.toInt()} kcal, ${m.proteinG.toInt()} g protein, " +
             "${m.sugarG.toInt()} g sugar" + if (m.description.isNotEmpty()) " (${m.description})" else ""
