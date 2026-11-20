@@ -3,21 +3,34 @@ package com.kevinwcode.personalapi
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import android.widget.FrameLayout
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.time.LocalDate
 
 /**
- * The dashboard, inside the app, from the phone's own data. It's the same page the PC server serves; the page's
- * requests to the server are answered on the phone by [PhoneApi], so it needs no server.
+ * The app's main screen: the dashboard, from the phone's own data. It's the same page the PC server serves; the page's
+ * requests to the server are answered on the phone by [PhoneApi], so it needs no server. The page's settings cog
+ * has a Phone app card that syncs and opens the settings screen ([MainActivity]) through [App].
  */
 class DashboardActivity : Activity() {
     private lateinit var web: WebView
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var resumed = false
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,16 +39,57 @@ class DashboardActivity : Activity() {
         web.settings.javaScriptEnabled = true
         web.settings.domStorageEnabled = true
         web.addJavascriptInterface(Bridge(applicationContext), "PhoneApi")
+        web.addJavascriptInterface(App(), "PhoneApp")
         val page = assets.open("dashboard.html").bufferedReader().use { it.readText() }
         // Runs before the page's own script: sends its fetch() calls to the phone, and turns logging on.
         val html = page.replaceFirst("<head>", "<head><script>$SHIM</script>")
         web.loadDataWithBaseURL(BASE_URL, html, "text/html", "utf-8", null)
-        setContentView(web)
+        val frame = FrameLayout(this).apply { addView(web) }
+        setContentView(frame)
+        // Android 15 draws apps under the status and navigation bars, so keep the page clear of them.
+        ViewCompat.setOnApplyWindowInsetsListener(frame) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime())
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            WindowInsetsCompat.CONSUMED
+        }
+        // The dashboard is the first screen now, so it starts the background sync (the settings screen did before).
+        SyncWorker.schedule(this)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Back from the settings screen (or the phone was away): show the latest numbers.
+        if (resumed) reloadPage()
+        resumed = true
     }
 
     override fun onDestroy() {
+        scope.cancel()
         web.destroy()
         super.onDestroy()
+    }
+
+    private fun reloadPage() = web.evaluateJavascript("window.dashboardReload && window.dashboardReload()", null)
+
+    /** What the page's Phone app card calls. Runs on a WebView background thread. */
+    inner class App {
+        @JavascriptInterface
+        fun openSettings() = runOnUiThread { startActivity(Intent(this@DashboardActivity, MainActivity::class.java)) }
+
+        @JavascriptInterface
+        fun syncNow() {
+            scope.launch {
+                val settings = Settings(this@DashboardActivity)
+                settings.lastSync = withContext(Dispatchers.IO) {
+                    runCatching { "just now: ${SyncWorker.syncAll(this@DashboardActivity)}" }.getOrElse { "just now: failed, ${it.message}" }
+                }
+                HomeWidget.refresh(this@DashboardActivity)
+                reloadPage()
+            }
+        }
+
+        @JavascriptInterface
+        fun status(): String = statusText(this@DashboardActivity)
     }
 
     @Deprecated("Deprecated in Java")
@@ -78,6 +132,18 @@ class DashboardActivity : Activity() {
     }
 
     companion object {
+        /** Short status for the Phone app card: what's switched on and the last sync. */
+        fun statusText(context: Context): String {
+            val settings = Settings(context)
+            return listOf(
+                "Screen time access: ${if (ScreenTime.hasAccess(context)) "allowed" else "not allowed, open app settings"}",
+                "GitHub: ${if (settings.githubToken.isEmpty()) "no token saved" else "on"}",
+                "Alpaca: ${settings.alpacaAccounts.size.let { if (it == 0) "no keys saved" else "$it account(s), ${if (settings.alpacaLive) "live" else "paper"}" }}",
+                "PC upload: ${if (settings.serverEnabled) "on" else "off"}",
+                "Last sync: ${settings.lastSync}",
+            ).joinToString("\n")
+        }
+
         // Any https origin works; nothing is ever loaded from it. It gives the page its own storage.
         private const val BASE_URL = "https://phone.personal-api/dashboard"
 

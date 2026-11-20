@@ -34,6 +34,7 @@ nav { display: flex; gap: 8px; flex-wrap: wrap; }
 nav button { min-height: 44px; padding: 0 18px; border-radius: 22px; border: 1px solid var(--axis); background: var(--card); color: var(--ink); font: 500 14px var(--font-body); cursor: pointer; }
 nav button[aria-pressed="true"] { background: var(--raised); border-color: var(--raised); color: var(--on-raised); }
 .wrap[data-view="today"] [data-tab]:not([data-tab="today"]),
+.wrap[data-view="food"] [data-tab]:not([data-tab="food"]),
 .wrap[data-view="money"] [data-tab]:not([data-tab="money"]),
 .wrap[data-view="char"] [data-tab]:not([data-tab="char"]),
 .wrap[data-view="info"] [data-tab]:not([data-tab="info"]) { display: none !important; }
@@ -124,6 +125,10 @@ thead th { font-size: 13px; font-weight: 500; color: var(--muted); text-align: l
 .qbtn .s { font-size: 13px; color: var(--muted); }
 .qbtn[aria-pressed="true"] { background: var(--raised); border-color: var(--raised); color: var(--on-raised); }
 .qbtn[aria-pressed="true"] .s { color: var(--dark-sub); }
+.food-meal { margin: 14px 0 8px; font-size: 15px; font-weight: 600; text-transform: capitalize; }
+.food-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.food-grid .qbtn { min-height: 88px; }
+.food-grid .k { font-size: 20px; font-weight: 700; }
 .auth { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--muted); }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1px solid var(--axis); border-radius: 12px; padding: 10px 12px; font: 14px Inter, system-ui, sans-serif; color: var(--ink); background: var(--card); resize: vertical; }
@@ -298,6 +303,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 
 <nav aria-label="Dashboard sections" id="tabs">
   <button type="button" data-view="today" aria-pressed="true">Today</button>
+  <button type="button" data-view="food" aria-pressed="false" id="food-tab" hidden>Food</button>
   <button type="button" data-view="money" aria-pressed="false">Money</button>
   <button type="button" data-view="char" aria-pressed="false">Character</button>
 </nav>
@@ -418,6 +424,16 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   </div>
 </section>
 
+<section aria-labelledby="food-h" class="card" data-tab="food">
+  <div class="card-head"><h2 id="food-h">Log a meal</h2><span class="note">One tap logs the most likely macros for that size</span></div>
+  <div id="food-tiles"></div>
+</section>
+
+<section aria-labelledby="food-today-h" class="card" data-tab="food">
+  <div class="card-head"><h2 id="food-today-h">Eaten today</h2><span class="note" id="food-total"></span></div>
+  <ul class="meal-list" id="food-list" aria-label="Today's meals"></ul>
+</section>
+
 <section aria-label="Trading" class="grid" data-tab="money">
   <div class="card">
     <div class="card-head">
@@ -455,6 +471,15 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 </div>
 
 
+
+<section aria-labelledby="app-h" class="card" style="gap:12px" data-tab="info" id="app-card" hidden>
+  <div class="card-head"><h2 id="app-h">Phone app</h2><span class="note">Sync, keys, backup and permissions</span></div>
+  <p class="note" id="app-status" style="white-space:pre-line;font-size:14px"></p>
+  <div class="row">
+    <button class="btn" type="button" id="app-sync">Sync now</button>
+    <button class="btn" type="button" id="app-settings">Open app settings</button>
+  </div>
+</section>
 
 <section aria-labelledby="theme-h" class="card" data-tab="info">
   <div class="card-head"><h2 id="theme-h">Theme</h2><span class="note">Remembered on this device</span></div>
@@ -710,7 +735,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     { id: 'board', name: 'Quest Board', sample: 'linear-gradient(135deg,#7A4F2A,#EEDDB5)', font: 'IM+Fell+English&family=Crimson+Pro:wght@400;600' }
   ];
   var BASE_COLOR = { accent: COLOR.accent, ink: COLOR.ink, muted: COLOR.muted, good: COLOR.good, warn: COLOR.warn };
-  var VIEW_TITLES = { money: 'Money', char: 'Character', info: 'Settings and info' };
+  var VIEW_TITLES = { food: 'Food', money: 'Money', char: 'Character', info: 'Settings and info' };
   function setView(view) {
     state.view = view;
     $('wrap').dataset.view = view;
@@ -719,6 +744,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     if (view !== 'info') store('view', view);
     $('title').textContent = VIEW_TITLES[view] || RANGES[state.range].title;
     window.scrollTo(0, 0);
+    if (view === 'info') renderApp();
   }
 
   function applyTheme(id) {
@@ -1176,6 +1202,52 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     }, function (err) { failed(err); return false; });
   }
 
+  // ---- Food tab: the meal matrix buttons. Only the phone app serves them (GET /food/presets), so the tab stays
+  // hidden on the PC. ----
+  function loadPresets() {
+    getJSON('/food/presets').then(function (b) {
+      state.presets = b.presets || [];
+      $('food-tab').hidden = !state.presets.length;
+      if (store('view') === 'food' && state.presets.length) setView('food');
+      renderFood();
+    }, function () { $('food-tab').hidden = true; });
+  }
+  function renderFood() {
+    var presets = state.presets || [];
+    var meals = [];
+    presets.forEach(function (p) { if (meals.indexOf(p.meal) < 0) meals.push(p.meal); });
+    $('food-tiles').replaceChildren.apply($('food-tiles'), meals.reduce(function (out, meal) {
+      out.push(el('h3', { class: 'food-meal' }, meal));
+      out.push(el('div', { class: 'food-grid' }, presets.filter(function (p) { return p.meal === meal; }).map(function (p) {
+        var b = el('button', { type: 'button', class: 'qbtn', 'aria-label': 'Log ' + p.tier.toLowerCase() + ' ' + meal + ', ' + int(p.kcal) + ' kcal' },
+          el('span', { class: 'l' }, p.tier),
+          el('span', { class: 'k' }, int(p.kcal) + ' kcal'),
+          el('span', { class: 's' }, Math.round(p.protein_g) + 'P · ' + Math.round(p.carbs_g) + 'C · ' + Math.round(p.fat_g) + 'F · ' + Math.round(p.sugar_g) + ' g sugar'));
+        b.addEventListener('click', function () {
+          addMeals([{ meal: p.meal, kcal: p.kcal, protein_g: p.protein_g, carbs_g: p.carbs_g, fat_g: p.fat_g, sugar_g: p.sugar_g,
+            description: p.tier.toLowerCase() + ' ' + p.meal + ' (estimate)' }]);
+        });
+        return b;
+      })));
+      return out;
+    }, []));
+    var list = state.meals || [];
+    var kcal = list.reduce(function (t, ml) { return t + (ml.kcal || 0); }, 0);
+    $('food-total').textContent = list.length ? int(kcal) + ' / ' + int(GOALS.kcal) + ' kcal' : '';
+    $('food-list').replaceChildren.apply($('food-list'), list.length ? list.map(function (ml) {
+      var x = el('button', { type: 'button', class: 'x', 'aria-label': 'Remove ' + describe(ml) }, '×');
+      x.addEventListener('click', function () { removeMeal(ml); });
+      return el('li', null, el('div', { class: 'what' }, describe(ml), ml.description ? el('span', null, ml.description) : null), x);
+    }) : [el('li', null, el('div', { class: 'what' }, el('span', null, 'Nothing logged yet today. Tap a size above.')))]);
+  }
+
+  // ---- Phone app card in Settings: only inside the app, which adds window.PhoneApp ----
+  function renderApp() {
+    if (!window.PhoneApp) return;
+    $('app-card').hidden = false;
+    try { $('app-status').textContent = window.PhoneApp.status(); } catch (e) { $('app-status').textContent = ''; }
+  }
+
   function removeMeal(ml) {
     if (!state.token) { showAuth(); return; }
     var day = iso(state.today);
@@ -1327,7 +1399,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     }
     barChart($('ch-catch'), { series: [{ name: 'Best catch', color: COLOR.accent }], points: blocks, height: 160, xName: '3 weeks',
       goal: { value: 20, label: '20 yd goal' }, fmt: function (v) { return v + ' yd'; },
-      note: blocks.some(function (b) { return b.values; }) ? null : 'No catches logged yet. Log your max reliable catch in the phone app.' });
+      note: blocks.some(function (b) { return b.values; }) ? null : 'No catches logged yet. Log your max reliable catch in the phone app settings.' });
   }
 
   function renderSync() {
@@ -1352,6 +1424,8 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     renderTrading(cur);
     renderCatch();
     renderSync();
+    renderFood();
+    renderApp();
   }
 
   function clock(d) { return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
@@ -1425,12 +1499,20 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     b.addEventListener('click', function () { setView(b.dataset.view); });
   });
   $('char-mini').addEventListener('click', function () { setView('char'); });
+  $('app-sync').addEventListener('click', function () {
+    $('app-status').textContent = 'Syncing…';
+    window.PhoneApp.syncNow();
+  });
+  $('app-settings').addEventListener('click', function () { window.PhoneApp.openSettings(); });
+  // The app calls this after a sync and when it comes back from its settings screen.
+  window.dashboardReload = function () { load(); };
   $('info-btn').addEventListener('click', function () { setView(state.view === 'info' ? (store('view') || 'today') : 'info'); });
   var savedView = store('view');
   if (savedView === 'money' || savedView === 'char') setView(savedView);
   var saved = +store('range');
   if (RANGES[saved]) state.range = saved;
   load();
+  loadPresets();
   function tick() {
     if (document.hidden) return;
     if (Date.now() - lastLoad >= REFRESH_MS || iso(new Date()) !== iso(state.today)) load();
