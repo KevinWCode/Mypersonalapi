@@ -82,6 +82,16 @@ class MainActivity : AppCompatActivity() {
             text = "The dashboard is the app's main screen. Food, quick log, kettlebell ticks and perk claims are logged there."
             setPadding(0, 0, 0, 8)
         })
+        if (intent.getBooleanExtra(EXTRA_WELCOME, false)) root.addView(TextView(this).apply {
+            text = "Welcome! To get started:\n" +
+                "1. Allow Health Connect access (sleep, steps, heart rate and workouts from your watch or phone).\n" +
+                "2. Allow usage access, so screen time and social media minutes can be counted.\n" +
+                "3. Keep syncing in the background.\n" +
+                "GitHub, Alpaca and the PC server are optional. Everything stays on this phone."
+            textSize = 16f
+            setLineSpacing(0f, 1.2f)
+            setPadding(0, 16, 0, 8)
+        })
         button("Back to the dashboard") { finish() }
 
         heading("Sync and backup")
@@ -111,7 +121,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         heading("PC server (optional)")
-        button("Open PC dashboard") { startActivity(OpenDashboardActivity.browserIntent(settings)) }
+        button("Open PC dashboard") {
+            if (settings.serverUrl.isEmpty()) toast("Enter the server address below first")
+            else startActivity(OpenDashboardActivity.browserIntent(settings))
+        }
 
         root.addView(CheckBox(this).apply {
             text = "Also send my data to my PC server"
@@ -130,7 +143,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
         button("Copy my history from the PC") { copyHistory() }
-        val url = field("Server address", settings.serverUrl)
+        val url = field("Server address, e.g. http://100.x.x.x:8000", settings.serverUrl)
         val token = field("Upload token (INGEST_TOKEN from .env)", settings.token, secret = true)
         button("Save") {
             settings.serverUrl = url.text.toString()
@@ -281,6 +294,8 @@ class MainActivity : AppCompatActivity() {
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 
     companion object {
+        const val EXTRA_WELCOME = "welcome"
+
         val MOVES = linkedMapOf(
             "Swing" to "swing",
             "Clean" to "clean",

@@ -24,6 +24,8 @@ class PhoneApi(private val data: Data, private val today: () -> LocalDate = Loca
         fun log(day: LocalDate, entries: List<ManualLog.Entry>): Map<String, Double>
         /** Most recent save time (UTC, ISO) per source. */
         fun lastUpdates(): Map<String, String>
+        /** The day this phone's game starts. */
+        fun gameStart(): LocalDate = Game.DEFAULT_GAME_START
         /** Saved Alpaca fills and positions. */
         fun trading(): Trading = Trading.EMPTY
     }
@@ -49,7 +51,7 @@ class PhoneApi(private val data: Data, private val today: () -> LocalDate = Loca
             }
             method == "GET" && path == "/game" -> {
                 val day = date("date") ?: today()
-                Answer(200, GameJson.toJson(Game.build(data.days(), day, now = now())))
+                Answer(200, GameJson.toJson(Game.build(data.days(), day, gameStart = data.gameStart(), now = now())))
             }
             method == "GET" && path == "/summary" -> Answer(200, JSONObject().put("date", (date("date") ?: today()).toString()))
             method == "GET" && path == "/trading" -> Answer(200, tradingJson(data.days(), today(), data.trading()))

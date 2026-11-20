@@ -35,7 +35,7 @@ Since version 0.13 the dashboard and the home screen widget run from the phone's
 
 ## One-time setup in the app
 
-1. **Upload token (only if you use the PC server):** paste the `INGEST_TOKEN` value from `.env` on the server. To get it onto your phone, copy it on the PC and send it to yourself (for example, a Google Keep note), then delete the note. The server address is already filled in (`http://100.80.206.11:8000`). Tap **Save**.
+1. **Upload token (only if you use the PC server):** paste the `INGEST_TOKEN` value from `.env` on the server. To get it onto your phone, copy it on the PC and send it to yourself (for example, a Google Keep note), then delete the note. Enter the server's address too (for example `http://100.x.x.x:8000` on Tailscale). Tap **Save**.
 2. **Allow Health Connect access:** tap the button and allow everything, including *Access data in the background*.
 3. **Allow usage access:** tap the button, find **Personal API** in the list, and turn it on.
 4. **Make Samsung Health share with Health Connect:** in Samsung Health, open Settings → Health Connect and allow it to write sleep, steps, heart rate and exercise.
@@ -71,6 +71,15 @@ Long-press an empty spot on the home screen, tap **Widgets**, find **Personal AP
 - trading P/L over the last 7 days (green when up) and your last trade
 
 Since version 0.13 its numbers are worked out on the phone (the same sums as the server's `/summary`), so it keeps working with the PC off. Since 0.16 the last trade comes from the phone's own Alpaca reads too. It updates after every sync, after logging and when you tap the refresh arrow, and tapping anywhere else opens the dashboard in the app. The time in its corner is when it last updated.
+
+## On someone else's phone
+
+Since version 0.18 nothing in the app points at Kevin's PC, so anyone with an Android phone can use it on their own:
+
+- **Install:** the APK from the repo's Releases page (they need access to the repo, and must allow installs from that source). It's a debug build, signed with the CI's key.
+- **First launch:** the app opens a setup screen listing what to allow: Health Connect, usage access and background sync. GitHub, Alpaca and the PC server are optional and start switched off.
+- **Game start:** each phone's character starts on its own first day (the first day with data, or the install day), so a new player starts at level 1. A phone that already holds days from before 23 Oct 2026 (Kevin's copied history) keeps 23 Oct 2026.
+- **Still Kevin's for now:** the daily goals (2,000 kcal, 150 g protein, 3 L water, 400 mg caffeine, 60 min social media, 20 yd catch), the kettlebell moves and the flag football catch are fixed in the app.
 
 ## Main screen and settings
 
