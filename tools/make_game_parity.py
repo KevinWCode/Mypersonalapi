@@ -55,6 +55,11 @@ for day_off, metric in [(20, "perk.wis.1.claimed"), (25, "perk.con.1.claimed"), 
                         (33, "perk.wis.4.claimed"), (40, "perk.str.1.claimed")]:
     add(START + timedelta(days=day_off), metric, 1)
 
+# Sugar from the food AI on a few days (its own random stream, so the rows above stay the same).
+sugar = random.Random(11)
+for day_off in range(0, 46, 3):
+    add(START + timedelta(days=day_off), "food.sugar_g", round(sugar.uniform(0, 60), 1))
+
 game.db.fetch_range = lambda conn, a, b: [r for r in rows if a <= r["date"] <= b]
 game.calendar.counts_by_day = lambda conn, a, b: {}
 
