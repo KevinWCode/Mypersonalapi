@@ -11,9 +11,12 @@ android {
         applicationId = "com.kevinwcode.personalapi"
         minSdk = 29
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.12"
+        versionCode = 13
+        versionName = "0.13"
     }
+
+    // The dashboard page is the PC server's own file, bundled so the app can show it without the server.
+    sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/dashboard"))
 
     signingConfigs {
         // A fixed key so each new APK installs over the last one instead of needing an uninstall.
@@ -40,6 +43,12 @@ android {
         jvmTarget = "17"
     }
 }
+
+val copyDashboard = tasks.register<Copy>("copyDashboard") {
+    from(rootProject.file("../app/static/dashboard.html"))
+    into(layout.buildDirectory.dir("generated/dashboard"))
+}
+tasks.named("preBuild") { dependsOn(copyDashboard) }
 
 dependencies {
     implementation("androidx.core:core-ktx:1.16.0")

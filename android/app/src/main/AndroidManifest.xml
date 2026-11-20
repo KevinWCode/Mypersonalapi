@@ -54,7 +54,13 @@
             </intent-filter>
         </activity-alias>
 
-        <!-- Opens the dashboard from the home screen widget without showing the app. -->
+        <!-- The dashboard from the phone's own data; the home screen widget opens it too. -->
+        <activity
+            android:name=".DashboardActivity"
+            android:exported="false"
+            android:label="Dashboard" />
+
+        <!-- Opens the PC server's dashboard in the browser. -->
         <activity
             android:name=".OpenDashboardActivity"
             android:excludeFromRecents="true"
