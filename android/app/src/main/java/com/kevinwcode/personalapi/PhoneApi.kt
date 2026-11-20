@@ -7,7 +7,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
- * Answers the dashboard page's requests (GET /days, /game, /meals, /trading, /status, POST /log, POST /meals and
+ * Answers the dashboard page's requests (GET /days, /game, /meals, /trading, /status, /food/presets, POST /log, POST /meals and
  * DELETE /meals/<id>) from the phone's own data, in the same shapes as the PC server, so the page runs unchanged
  * inside the app. Kept apart from Android so it can be unit tested.
  */
@@ -69,6 +69,7 @@ class PhoneApi(private val data: Data, private val today: () -> LocalDate = Loca
                 val id = URLDecoder.decode(path.removePrefix("/meals/"), "UTF-8")
                 if (data.removeMeal(id)) Answer(200, JSONObject().put("ok", true)) else error(404, "no such meal")
             }
+            method == "GET" && path == "/food/presets" -> Answer(200, JSONObject().put("presets", presetsJson()))
             method == "GET" && path == "/health" -> Answer(200, JSONObject().put("ok", true))
             else -> error(404, "Not Found")
         }
@@ -109,6 +110,12 @@ class PhoneApi(private val data: Data, private val today: () -> LocalDate = Loca
             JSONArray(days.filterKeys { it in start..end }.toSortedMap().map { (d, m) ->
                 JSONObject().put("date", d.toString()).put("metrics", JSONObject(m.toSortedMap()))
             })
+
+        /** The Food tab's buttons: the meal matrix in [Food.PRESETS]. */
+        fun presetsJson(): JSONArray = JSONArray(Food.PRESETS.map { p ->
+            JSONObject().put("meal", p.meal).put("tier", p.tier).put("kcal", p.kcal).put("protein_g", p.proteinG)
+                .put("carbs_g", p.carbsG).put("fat_g", p.fatG).put("sugar_g", p.sugarG)
+        })
 
         fun mealJson(id: String, m: Food.Meal): JSONObject = JSONObject()
             .put("id", id).put("meal", m.meal).put("kcal", m.kcal).put("protein_g", m.proteinG).put("carbs_g", m.carbsG)

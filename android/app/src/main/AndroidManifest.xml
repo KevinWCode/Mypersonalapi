@@ -31,13 +31,11 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:usesCleartextTraffic="true">
 
+        <!-- The app's settings screen (sync, keys, backup, permissions), opened from the dashboard's cog. -->
         <activity
             android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+            android:exported="true"
+            android:label="Settings">
             <!-- Health Connect shows this when you tap "privacy policy" on the permission screen (Android 13 and below). -->
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
@@ -56,11 +54,16 @@
             </intent-filter>
         </activity-alias>
 
-        <!-- The dashboard from the phone's own data; the home screen widget opens it too. -->
+        <!-- The main screen: the dashboard from the phone's own data. The home screen widget opens it too. -->
         <activity
             android:name=".DashboardActivity"
-            android:exported="false"
-            android:label="Dashboard" />
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
         <!-- Opens the PC server's dashboard in the browser. -->
         <activity

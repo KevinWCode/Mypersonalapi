@@ -56,7 +56,7 @@ The keys stay on the phone in a file left out of Android's cloud backup. The sta
 
 ## Dashboard
 
-**Open dashboard** (under Today on this phone) shows the dashboard inside the app, from the phone's own data, so it works with the PC off. It's the same page the PC server serves (bundled into the app when it's built); the page's requests are answered on the phone, with the same numbers the server would give (`DashboardParityTest` checks this). Its Quick log buttons, food box, kettlebell ticks and perk claims save on the phone, and go to the PC on the next sync while the upload is on. The Money tab shows P/L and equity from the stored days; recent trades and positions come from the Alpaca fills the phone has read.
+Since version 0.17 the dashboard is the app's main screen: opening the app shows it. It runs inside the app, from the phone's own data, so it works with the PC off. It's the same page the PC server serves (bundled into the app when it's built); the page's requests are answered on the phone, with the same numbers the server would give (`DashboardParityTest` checks this). Its Quick log buttons, food box, kettlebell ticks and perk claims save on the phone, and go to the PC on the next sync while the upload is on. The Money tab shows P/L and equity from the stored days; recent trades and positions come from the Alpaca fills the phone has read.
 
 **Open PC dashboard** (under PC server) still opens the server's own dashboard in your browser, and passes it the upload token once so its logging works.
 
@@ -72,17 +72,14 @@ Long-press an empty spot on the home screen, tap **Widgets**, find **Personal AP
 
 Since version 0.13 its numbers are worked out on the phone (the same sums as the server's `/summary`), so it keeps working with the PC off. Since 0.16 the last trade comes from the phone's own Alpaca reads too. It updates after every sync, after logging and when you tap the refresh arrow, and tapping anywhere else opens the dashboard in the app. The time in its corner is when it last updated.
 
-## Logging in the app
+## Main screen and settings
 
-Since version 0.12 everything you used to log on the dashboard can be logged in the app. It saves on the phone straight away (and goes to the PC too while the upload is on).
+Since version 0.17 the app opens on the dashboard, with four tabs: **Today**, **Food**, **Money** and **Character**. The cog at the top opens **Settings and info**, which has a **Phone app** card (what's switched on and the last sync) with **Sync now** and **Open app settings**.
 
-- **Quick log:** +250 ml water, +1 coffee, +1 hour reading, +30 min study, Journal entry, and Workout done (ticks Swing, Clean and Clean & press for today). **Undo last tap** puts back what the last tap changed.
-- **Food buttons:** one tap logs a meal at its most likely macros, from the 12-cell meal matrix ("Most Likely Macronutrient Profiles Across the 12 Meal-Tier Calorie Matrix"). Breakfast Light 350 / Standard 550 / Heavy 850, Lunch 450 / 700 / 1,050, Dinner 500 / 800 / 1,200, Snack 150 / 300 / 500 kcal. Each also logs the matrix's total sugars (matrix v1.2.0: breakfast 14 / 20 / 22 g, lunch 13 / 20 / 28 g, dinner 9 / 17 / 30 g, snack 10 / 21 / 34 g), which count toward the sugar HP rule. A logged meal can be removed from the list under the food box.
-- **Food paste box:** or paste the line your food AI writes, for example `{"meal":"lunch","kcal":640,"protein_g":42,"carbs_g":55,"fat_g":20,"sugar_g":12,"description":"chicken wrap"}`, and tap **Add meal**. Several meals at once work too (one per line, or a list). A meal without a `date` goes on today. Each meal is listed under the box with **Remove this meal**. Sugar counts toward the game (1 HP per gram, and a short Stamina rush).
-- **Perk claims:** when a perk token is earned and not claimed, a **Claim** button appears under the Character card.
-- **Kettlebell set:** pick the move, enter reps and weight in lb, and tap **Add set**. Reps and sets add up for the day, and the heaviest weight is kept.
-- **Catch distance:** enter today's longest reliable catch in yards. The highest value for the day is kept.
-- **Undo today's manual entries** clears today's quick log, kettlebell and catch entries on the phone and on the server.
+- **Food tab:** the 12-cell meal matrix ("Most Likely Macronutrient Profiles Across the 12 Meal-Tier Calorie Matrix") as tiles. One tap logs that meal at its most likely macros: Breakfast Light 350 / Standard 550 / Heavy 850, Lunch 450 / 700 / 1,050, Dinner 500 / 800 / 1,200, Snack 150 / 300 / 500 kcal, each with the matrix's total sugars (v1.2.0: breakfast 14 / 20 / 22 g, lunch 13 / 20 / 28 g, dinner 9 / 17 / 30 g, snack 10 / 21 / 34 g), which count toward the sugar HP rule. Today's meals are listed below with an × to remove one, and each tap has an Undo. The tab only shows in the app (the PC server doesn't serve the matrix).
+- **Today tab:** Quick log (water, coffee, reading, study, journal, workout done), Fuel today with the paste box for a food AI line, and the kettlebell ticks.
+- **Character tab:** perk tokens are claimed here.
+- **App settings** (from the cog): Sync now, Back up phone data to a file, GitHub and Alpaca keys, the optional PC server, permissions (Health Connect, usage access, background sync), and manual entries: undo the last quick log tap, undo today's manual entries, a kettlebell set (move, reps, weight in lb) and the day's longest reliable catch in yards. Back returns to the dashboard.
 
 Log food in the app. The PC's food (its food AI inbox) is no longer read by the app.
 

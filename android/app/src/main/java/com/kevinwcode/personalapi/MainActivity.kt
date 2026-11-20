@@ -32,10 +32,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var settings: Settings
     private lateinit var manual: ManualLog
     private lateinit var status: TextView
-    private lateinit var todayCard: TextView
-    private lateinit var characterCard: TextView
-    private lateinit var perkButtons: LinearLayout
-    private lateinit var mealList: LinearLayout
     private lateinit var root: LinearLayout
 
     private val requestHealth =
@@ -70,7 +66,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         root.addView(TextView(this).apply {
-            text = "Personal API"
+            text = "Settings"
             textSize = 26f
             setTypeface(typeface, android.graphics.Typeface.BOLD)
             setPadding(0, 0, 0, 24)
@@ -82,70 +78,14 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 0, 0, 24)
         }.also { root.addView(it) }
 
-        heading("Character")
-        characterCard = TextView(this).apply {
-            textSize = 16f
-            setLineSpacing(0f, 1.2f)
-        }.also { root.addView(it) }
-
-        perkButtons = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { root.addView(it) }
-
-        heading("Quick log")
-        for (q in ManualLog.QUICK) button(q.label) { logged(q.done, *q.entries.toTypedArray()) }
-        button("Undo last tap") {
-            if (manual.undoLast()) afterLog("Undone") else toast("Nothing to undo")
-        }
-
-        heading("Food")
-        // One tap per meal: Light, Standard or Heavy, with the most likely macros for that size.
-        for ((meal, presets) in Food.PRESETS.groupBy { it.meal }) {
-            root.addView(TextView(this).apply {
-                text = meal.replaceFirstChar { it.uppercase() }
-                setPadding(0, 16, 0, 0)
-            })
-            root.addView(LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                for (p in presets) addView(Button(this@MainActivity).apply {
-                    text = p.label
-                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    setOnClickListener {
-                        lifecycleScope.launch {
-                            withContext(Dispatchers.IO) { LocalStore.get(this@MainActivity).addMeals(listOf(p.toMeal(LocalDate.now()))) }
-                            afterLog("Logged ${p.tier.lowercase()} $meal, ${p.kcal.toInt()} kcal")
-                        }
-                    }
-                })
-            })
-        }
-        val mealBox = EditText(this).apply {
-            hint = "Or paste a meal line, e.g. {\"meal\":\"lunch\",\"kcal\":640,\"protein_g\":42}"
-            minLines = 2
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-        }.also { root.addView(it) }
-        button("Add meal") {
-            val meals = try {
-                Food.parse(mealBox.text.toString(), LocalDate.now())
-            } catch (e: Food.BadMeal) {
-                return@button toast(e.message ?: "That isn't the meal format")
-            }
-            mealBox.text.clear()
-            lifecycleScope.launch {
-                withContext(Dispatchers.IO) { LocalStore.get(this@MainActivity).addMeals(meals) }
-                afterLog("Added ${meals.size} meal${if (meals.size == 1) "" else "s"}")
-            }
-        }
-        mealList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { root.addView(it) }
-
-        heading("Today on this phone")
-        todayCard = TextView(this).apply {
-            textSize = 16f
-            setLineSpacing(0f, 1.2f)
-        }.also { root.addView(it) }
-        button("Open dashboard") { startActivity(Intent(this, DashboardActivity::class.java)) }
         root.addView(TextView(this).apply {
-            text = "Tip: for today's numbers on your home screen, long-press an empty spot, tap Widgets, then Personal API."
-            setPadding(0, 8, 0, 0)
+            text = "The dashboard is the app's main screen. Food, quick log, kettlebell ticks and perk claims are logged there."
+            setPadding(0, 0, 0, 8)
         })
+        button("Back to the dashboard") { finish() }
+
+        heading("Sync and backup")
+        button("Sync now") { syncNow() }
         button("Back up phone data to a file") { saveBackup.launch("personal-api-backup-${LocalDate.now()}.json") }
 
         heading("GitHub and Alpaca")
@@ -212,6 +152,21 @@ class MainActivity : AppCompatActivity() {
             else startActivity(Intent(AndroidSettings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
         }
 
+        heading("Manual entries")
+        button("Undo last quick log tap") {
+            if (manual.undoLast()) afterLog("Undone") else toast("Nothing to undo")
+        }
+        button("Undo today's manual entries") {
+            val zeroed = manual.clearToday()
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) {
+                    LocalStore.get(this@MainActivity).save("manual", zeroed)
+                    SyncWorker.uploadToServer(settings, listOf("manual" to zeroed))
+                }
+                refresh()
+            }
+        }
+
         heading("Kettlebell set")
         val move = Spinner(this).apply {
             adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, MOVES.keys.toList())
@@ -236,31 +191,12 @@ class MainActivity : AppCompatActivity() {
             afterLog("Catch distance saved")
         }
 
-        heading("Sync")
-        button("Sync now") { syncNow() }
-        button("Undo today's manual entries") {
-            val zeroed = manual.clearToday()
-            lifecycleScope.launch {
-                withContext(Dispatchers.IO) {
-                    LocalStore.get(this@MainActivity).save("manual", zeroed)
-                    SyncWorker.uploadToServer(settings, listOf("manual" to zeroed))
-                }
-                refresh()
-            }
-        }
-
         SyncWorker.schedule(this)
     }
 
     override fun onResume() {
         super.onResume()
         refresh()
-    }
-
-    /** A quick log tap: saves it on the phone straight away, then syncs (which also sends it to the PC, if on). */
-    private fun logged(message: String, vararg entries: ManualLog.Entry) {
-        manual.log(LocalDate.now(), *entries)
-        afterLog(message)
     }
 
     private fun afterLog(message: String) {
@@ -288,44 +224,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun refresh() {
         lifecycleScope.launch {
-            val today = LocalDate.now()
-            val store = LocalStore.get(this@MainActivity)
-            val (game, lines, span) = withContext(Dispatchers.IO) {
-                val days = store.allDays()
-                Triple(Game.build(days, today), DayMetrics.summaryLines(days[today] ?: emptyMap()), store.span())
-            }
-            val meals = withContext(Dispatchers.IO) { store.meals(today) }
-            mealList.removeAllViews()
-            if (meals.isEmpty()) mealList.addView(TextView(this@MainActivity).apply { text = "No meals added in the app today" })
-            for ((id, meal) in meals) {
-                mealList.addView(TextView(this@MainActivity).apply { text = Food.line(meal); setPadding(0, 16, 0, 0) })
-                mealList.addView(Button(this@MainActivity).apply {
-                    text = "Remove this meal"
-                    setOnClickListener {
-                        lifecycleScope.launch {
-                            withContext(Dispatchers.IO) { store.removeMeal(id) }
-                            afterLog("Meal removed")
-                        }
-                    }
-                })
-            }
-            perkButtons.removeAllViews()
-            for (g in game.groups) for ((tier, perk) in g.earnedPerks) {
-                if (tier in g.claimed) continue
-                perkButtons.addView(Button(this@MainActivity).apply {
-                    text = "Claim ${perk.token} (${g.ability} ${Perks.TIERS.getValue(tier).first})"
-                    setOnClickListener { logged("Claimed ${perk.token}", ManualLog.perkClaim(g.key, tier)) }
-                })
-            }
-            characterCard.text = (CharacterText.lines(game) + listOf("") + CharacterText.todayLines(game)).joinToString("\n").trim()
-            todayCard.text = buildString {
-                if (lines.isEmpty()) appendLine("Nothing saved yet today. Tap Sync now.")
-                lines.forEach { appendLine(it) }
-                append(
-                    if (span.first == 0) "Stored on this phone: nothing yet"
-                    else "Stored on this phone: ${span.first} days since ${span.second}"
-                )
-            }
+            val span = withContext(Dispatchers.IO) { LocalStore.get(this@MainActivity).span() }
             val health = if (Health.available(this@MainActivity)) {
                 val granted = HealthConnectClient.getOrCreate(this@MainActivity).permissionController.getGrantedPermissions()
                 "${granted.intersect(Health.PERMISSIONS).size}/${Health.PERMISSIONS.size} allowed"
@@ -335,6 +234,7 @@ class MainActivity : AppCompatActivity() {
                 appendLine("Screen time access: ${if (ScreenTime.hasAccess(this@MainActivity)) "allowed" else "not allowed"}")
                 appendLine("Background sync: ${if (backgroundAllowed()) "every 15 min, ${SyncHours.text}" else "may be paused, tap Keep syncing in the background"}")
                 appendLine("Today's manual entries: ${manual.today().size}")
+                appendLine(if (span.first == 0) "Stored on this phone: nothing yet" else "Stored on this phone: ${span.first} days since ${span.second}")
                 appendLine("GitHub: ${if (settings.githubToken.isEmpty()) "no token saved" else "on"}")
                 appendLine("Alpaca: ${settings.alpacaAccounts.size.let { if (it == 0) "no keys saved" else "$it account(s), ${if (settings.alpacaLive) "live" else "paper"}" }}")
                 appendLine("PC upload: ${if (settings.serverEnabled) "on" else "off, data stays on this phone"}")
