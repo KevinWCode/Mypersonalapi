@@ -25,7 +25,7 @@ While the PC server is still running:
 - **Copy my history from the PC** (under PC server) copies every day since the game started (23 Oct 2026) so your level carries over. Do it once after installing.
 - Each sync with the PC upload on also copies the PC's totals for the last 3 days, which include what you log on the dashboard (journal, water, food, kettlebell ticks, perk claims). A day copied from the PC uses the PC's totals; other days use the phone's own data.
 
-The home screen widget and the dashboard still read from the PC server for now. Moving manual logging, the dashboard and the widget onto the phone are the next steps, and then the server can be switched off.
+The home screen widget and the dashboard still read from the PC server for now. Moving them onto the phone is the next step, and then the server can be switched off. Google Calendar is no longer part of the game (12 stats, 1,050 XP a day at most), on the phone or the server.
 
 ## Install
 
@@ -60,8 +60,17 @@ Long-press an empty spot on the home screen, tap **Widgets**, find **Personal AP
 
 It updates after every sync and when you tap the refresh arrow, and tapping anywhere else opens the dashboard. The time in its corner is when it last got numbers. If the server is off (the PC is shut down) it says **Offline** and keeps the last numbers, with the day they're from.
 
-## Manual entries
+## Logging in the app
 
+Since version 0.12 everything you used to log on the dashboard can be logged in the app. It saves on the phone straight away (and goes to the PC too while the upload is on).
+
+- **Quick log:** +250 ml water, +1 coffee, +1 hour reading, +30 min study, Journal entry, and Workout done (ticks Swing, Clean and Clean & press for today). **Undo last tap** puts back what the last tap changed.
+- **Food:** paste the line your food AI writes, for example `{"meal":"lunch","kcal":640,"protein_g":42,"carbs_g":55,"fat_g":20,"sugar_g":12,"description":"chicken wrap"}`, and tap **Add meal**. Several meals at once work too (one per line, or a list). A meal without a `date` goes on today. Each meal is listed under the box with **Remove this meal**. Sugar counts toward the game (1 HP per gram, and a short Stamina rush).
+- **Perk claims:** when a perk token is earned and not claimed, a **Claim** button appears under the Character card.
 - **Kettlebell set:** pick the move, enter reps and weight in lb, and tap **Add set**. Reps and sets add up for the day, and the heaviest weight is kept.
 - **Catch distance:** enter today's longest reliable catch in yards. The highest value for the day is kept.
-- **Undo today's manual entries** clears today's entries on the phone and on the server.
+- **Undo today's manual entries** clears today's quick log, kettlebell and catch entries on the phone and on the server.
+
+Log food in one place only while the PC is running: in the app, or the food AI's file on the PC, not both, or that meal counts twice. The same goes for the dashboard's Quick log buttons.
+
+Turning off **Also send my data to my PC server** drops the PC's copied totals for the last 3 days, so the phone's own numbers show from then on.

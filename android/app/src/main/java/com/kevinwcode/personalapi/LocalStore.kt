@@ -9,13 +9,14 @@ import org.json.JSONObject
 import java.io.OutputStream
 import java.time.Instant
 import java.time.LocalDate
+import java.util.UUID
 
 /**
  * The app's own database, kept only on this phone. Same layout as the server's observations table: one row per
  * day, metric and source, and saving a day again overwrites it instead of adding a copy.
  */
 class LocalStore private constructor(context: Context) :
-    SQLiteOpenHelper(context.applicationContext, "personal.db", null, 1) {
+    SQLiteOpenHelper(context.applicationContext, "personal.db", null, 2) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -29,9 +30,75 @@ class LocalStore private constructor(context: Context) :
                 PRIMARY KEY (date, metric, source)
             )"""
         )
+        createMeals(db)
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) createMeals(db)
+    }
+
+    // Version 2: meals pasted into the app. The day's food.* totals are worked out from these rows.
+    private fun createMeals(db: SQLiteDatabase) = db.execSQL(
+        """CREATE TABLE meals (
+            id TEXT PRIMARY KEY,
+            date TEXT NOT NULL,
+            meal TEXT NOT NULL,
+            kcal REAL NOT NULL,
+            protein_g REAL NOT NULL,
+            carbs_g REAL NOT NULL,
+            fat_g REAL NOT NULL,
+            sugar_g REAL NOT NULL,
+            description TEXT NOT NULL,
+            added_at TEXT NOT NULL
+        )"""
+    )
+
+    /** Stores meals and refreshes those days' food totals. */
+    fun addMeals(meals: List<Food.Meal>) {
+        val now = Instant.now().toString()
+        val db = writableDatabase
+        for (m in meals) {
+            db.insert("meals", null, ContentValues().apply {
+                put("id", UUID.randomUUID().toString())
+                put("date", m.date.toString())
+                put("meal", m.meal)
+                put("kcal", m.kcal)
+                put("protein_g", m.proteinG)
+                put("carbs_g", m.carbsG)
+                put("fat_g", m.fatG)
+                put("sugar_g", m.sugarG)
+                put("description", m.description)
+                put("added_at", now)
+            })
+        }
+        meals.map { it.date }.toSet().forEach { refreshFood(it) }
+    }
+
+    fun removeMeal(id: String) {
+        val date = readableDatabase.rawQuery("SELECT date FROM meals WHERE id = ?", arrayOf(id))
+            .use { c -> if (c.moveToFirst()) LocalDate.parse(c.getString(0)) else null } ?: return
+        writableDatabase.delete("meals", "id = ?", arrayOf(id))
+        refreshFood(date)
+    }
+
+    /** One day's meals with their ids, in the order they were added. */
+    fun meals(day: LocalDate): List<Pair<String, Food.Meal>> =
+        readableDatabase.rawQuery(
+            "SELECT id, meal, kcal, protein_g, carbs_g, fat_g, sugar_g, description FROM meals WHERE date = ? ORDER BY added_at",
+            arrayOf(day.toString()),
+        ).use { c ->
+            buildList {
+                while (c.moveToNext()) add(
+                    c.getString(0) to Food.Meal(day, c.getString(1), c.getDouble(2), c.getDouble(3), c.getDouble(4),
+                        c.getDouble(5), c.getDouble(6), c.getString(7))
+                )
+            }
+        }
+
+    /** The food totals saved for a day, to send to the PC. */
+    fun foodTotals(day: LocalDate): List<Observation> = Food.totals(day, meals(day).map { it.second })
+
+    private fun refreshFood(day: LocalDate) = save(FOOD_SOURCE, foodTotals(day))
 
     /**
      * Saves the observations from one source. Like the server, a re-sent day and metric replaces what was stored.
@@ -125,6 +192,7 @@ class LocalStore private constructor(context: Context) :
 
     companion object {
         const val PC_SOURCE = "pc"
+        const val FOOD_SOURCE = "food"
 
         @Volatile private var instance: LocalStore? = null
         fun get(context: Context): LocalStore =

@@ -33,6 +33,9 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
     }
 
     companion object {
+        const val PHONE_FOOD_SOURCE = "phone-food"
+        private const val UPLOADED = "sent"
+
         fun schedule(context: Context) {
             // No network needed: everything is saved on the phone first, and the PC upload just retries next time.
             val request = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES).build()
@@ -72,16 +75,24 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 }
             } else parts += "health: Health Connect not available"
 
-            val manual = ManualLog(context).today()
+            // The last 3 days, so a late entry or a perk claimed just after midnight still gets saved and sent.
+            val log = ManualLog(context)
+            val manual = days.flatMap { log.day(it) }
             store.save("manual", manual)
             batches += "manual" to manual
             parts += "manual ${manual.size}"
+            // Meals pasted in the app go to the PC as their own source, so they add to the PC's meals, not replace them.
+            // Always sent, zeros too, so a meal removed in the app is removed on the PC as well.
+            val food = days.flatMap { store.foodTotals(it) }
+            batches += PHONE_FOOD_SOURCE to food
             parts += "saved on phone"
 
-            parts += uploadToServer(settings, batches)
+            val upload = uploadToServer(settings, batches)
+            parts += upload
             // Until the server is switched off, also take the PC's totals for these days, which include what was
-            // logged on the dashboard, so the phone's game scores the same as the PC's.
-            if (settings.serverEnabled) {
+            // logged on the dashboard, so the phone's game scores the same as the PC's. Only after a successful
+            // upload: otherwise the copy would be missing what was just logged on the phone.
+            if (upload.startsWith(UPLOADED)) {
                 parts += runCatching { "copied ${PcHistory.copy(settings, store, days.first(), days.last())} days from PC" }
                     .getOrElse { "PC copy failed (${it.message})" }
             }
@@ -93,7 +104,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             if (!settings.serverEnabled) return "PC upload off"
             return try {
                 val sent = batches.sumOf { (source, obs) -> Uploader.send(settings, source, obs) }
-                "sent $sent to PC"
+                "$UPLOADED $sent to PC"
             } catch (e: Exception) {
                 "PC upload failed (${e.message}), will retry"
             }

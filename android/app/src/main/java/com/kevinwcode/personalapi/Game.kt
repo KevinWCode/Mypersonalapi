@@ -66,7 +66,7 @@ object Game {
 
     data class Ctx(
         val rhrBase: Double? = null, val hrvBase: Double? = null, val prevEquity: Double? = null,
-        val youtube: Double = 0.0, val blocksPlanned: Int = 0, val calendarConnected: Boolean = false,
+        val youtube: Double = 0.0,
     )
 
     private fun truthy(v: Double?) = v != null && v != 0.0
@@ -119,15 +119,6 @@ object Game {
         val catch = m["football.max_catch_yards"]
         lines += Line("catch", "Catch drill", "DEX", if (truthy(catch)) 50 else 0, 50,
             if (truthy(catch)) "${f0(catch!!)} yd" else "No drill")
-
-        val blocks = m.count { (k, v) -> k.startsWith("cal.") && k.endsWith(".done") && v > 0 }
-        val planned = ctx.blocksPlanned
-        val calDetail = when {
-            ctx.calendarConnected || blocks > 0 ->
-                if (planned > 0) "$blocks of $planned block(s) kept" else "$blocks block(s) kept"
-            else -> "Calendar not connected yet"
-        }
-        lines += Line("calendar", "Calendar blocks", "Quests", 50 * minOf(blocks, 3), 150, calDetail)
 
         val commits = m["github.commits"] ?: 0.0
         lines += Line("github", "GitHub commits", "Craft", 25 * minOf(commits.toInt(), 4), 100, "${f0(commits)} commit(s)")
@@ -279,12 +270,11 @@ object Game {
     private fun avg(values: List<Double>): Double? = if (values.isEmpty()) null else values.sum() / values.size
 
     /**
-     * Scores every day from [gameStart] to [day]. [days] maps a date to that day's metrics (from [DayMetrics.build]);
-     * [plannedBlocks] is calendar blocks planned per day, if the calendar is connected.
+     * Scores every day from [gameStart] to [day]. [days] maps a date to that day's metrics (from [DayMetrics.build]).
      */
     fun build(
         days: Map<LocalDate, Map<String, Double>>, day: LocalDate, gameStart: LocalDate = DEFAULT_GAME_START,
-        plannedBlocks: Map<LocalDate, Int> = emptyMap(), now: LocalDateTime = LocalDateTime.now(),
+        now: LocalDateTime = LocalDateTime.now(),
     ): State {
         val lookback = gameStart.minusDays(30)
         val sortedDates = days.keys.sorted()
@@ -322,7 +312,6 @@ object Game {
                 val ctx = Ctx(
                     rhrBase = avg(rhrSeen.takeLast(30)), hrvBase = avg(hrvSeen.takeLast(30)),
                     prevEquity = prevEquity, youtube = youtube,
-                    blocksPlanned = plannedBlocks[d] ?: 0, calendarConnected = plannedBlocks.isNotEmpty(),
                 )
                 val lines = scoreDay(m, ctx)
                 vitalDays += Vitals.DayInput(d, m, youtube)
@@ -331,11 +320,6 @@ object Game {
                     byKey.getValue("social").xp = maxOf(0, byKey.getValue("social").xp)
                     byKey.getValue("youtube").xp = byKey.getValue("youtube").max
                     buffs += Buff("Unrestricted Media Pass", "Social media and YouTube can't cost XP today", 0)
-                }
-                if (("per" to 2) in active) {
-                    val cal = byKey.getValue("calendar")
-                    cal.xp = minOf(cal.max, cal.xp + 50)
-                    buffs += Buff("Chef Exemption Pass", "One extra calendar block counted", 0)
                 }
 
                 val base = maxOf(0, lines.sumOf { it.xp })
