@@ -54,6 +54,17 @@ class DashboardActivity : Activity() {
         }
         // The dashboard is the first screen now, so it starts the background sync (the settings screen did before).
         SyncWorker.schedule(this)
+        // First launch on a new phone: fix the game's start day and show the setup steps (permissions, keys).
+        val settings = Settings(this)
+        if (settings.setupPending) {
+            settings.setupPending = false
+            scope.launch {
+                withContext(Dispatchers.IO) { settings.gameStart(LocalStore.get(this@DashboardActivity).span().second) }
+                if (!ScreenTime.hasAccess(this@DashboardActivity)) {
+                    startActivity(Intent(this@DashboardActivity, MainActivity::class.java).putExtra(MainActivity.EXTRA_WELCOME, true))
+                }
+            }
+        }
     }
 
     override fun onResume() {
@@ -116,6 +127,7 @@ class DashboardActivity : Activity() {
     class StoreData(context: Context) : PhoneApi.Data {
         private val store = LocalStore.get(context)
         private val manual = ManualLog(context)
+        private val settings = Settings(context)
 
         override fun days() = store.allDays()
         override fun meals(day: LocalDate) = store.meals(day)
@@ -123,6 +135,7 @@ class DashboardActivity : Activity() {
         override fun removeMeal(id: String) = store.removeMeal(id)
         override fun lastUpdates() = store.lastUpdates()
         override fun trading() = store.trading()
+        override fun gameStart() = settings.gameStart(store.span().second)
 
         override fun log(day: LocalDate, entries: List<ManualLog.Entry>): Map<String, Double> {
             manual.log(day, *entries.toTypedArray())

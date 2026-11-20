@@ -1,12 +1,13 @@
 package com.kevinwcode.personalapi
 
 import android.content.Context
+import java.time.LocalDate
 
 class Settings(context: Context) {
     private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     var serverUrl: String
-        get() = prefs.getString("server_url", DEFAULT_SERVER)!!
+        get() = prefs.getString("server_url", "")!!
         set(v) = prefs.edit().putString("server_url", v.trim().trimEnd('/')).apply()
 
     var token: String
@@ -17,6 +18,28 @@ class Settings(context: Context) {
     var serverEnabled: Boolean
         get() = prefs.getBoolean("server_enabled", token.isNotEmpty())
         set(v) = prefs.edit().putBoolean("server_enabled", v).apply()
+
+    /**
+     * The day this phone's game starts: XP, levels and vital bars count from here. Set once, on the first launch:
+     * the default start if the phone already holds days from before it (Kevin's copied history), else the first
+     * day this phone has data, or today.
+     */
+    fun gameStart(firstDataDay: String?): LocalDate {
+        prefs.getString("game_start", null)?.let { return LocalDate.parse(it) }
+        val first = firstDataDay?.let(LocalDate::parse)
+        val start = when {
+            first == null -> LocalDate.now()
+            first <= Game.DEFAULT_GAME_START -> Game.DEFAULT_GAME_START
+            else -> first
+        }
+        prefs.edit().putString("game_start", start.toString()).apply()
+        return start
+    }
+
+    /** True until the first-run setup screen has been shown once. */
+    var setupPending: Boolean
+        get() = !prefs.getBoolean("setup_shown", false)
+        set(v) = prefs.edit().putBoolean("setup_shown", !v).apply()
 
     var lastSync: String
         get() = prefs.getString("last_sync", "never")!!
@@ -47,7 +70,5 @@ class Settings(context: Context) {
     companion object {
         const val KEYS_FILE = "keys"
 
-        // Kevin's PC on Tailscale
-        const val DEFAULT_SERVER = "http://100.80.206.11:8000"
     }
 }

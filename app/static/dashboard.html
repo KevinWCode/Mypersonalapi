@@ -367,7 +367,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     <details id="paste-box" style="margin-top:6px">
       <summary>Add a meal by pasting instead</summary>
       <form id="paste-form" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-        <label for="paste" class="note">Only needed if a meal didn't reach the inbox folder. Paste the line from your food AI:</label>
+        <label for="paste" class="note">Paste the meal line from your food AI (or use the Food tab):</label>
         <div class="row">
           <textarea id="paste" rows="2" placeholder="Paste a meal line here"></textarea>
           <button class="btn" type="submit" id="paste-btn">Add meal</button>
@@ -492,13 +492,13 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     <span class="note" id="last-sync"></span>
   </div>
   <div class="chips">
-    <span class="chip auto"><span class="dot"></span>Galaxy Watch 6 · sleep, heart rate, SpO2, steps, workouts</span>
+    <span class="chip auto"><span class="dot"></span>Watch or phone via Health Connect · sleep, heart rate, SpO2, steps, workouts</span>
     <span class="chip auto"><span class="dot"></span>Phone usage stats · TikTok, Instagram, Facebook, Reddit, plus YouTube on its own</span>
-    <span class="chip auto"><span class="dot"></span>GitHub · commits</span>
-    <span class="chip auto"><span class="dot"></span>Alpaca paper · P/L, positions, trades</span>
-    <span class="chip manual"><span class="dot"></span>Food AI via the inbox folder · calories, protein, carbs, sugar, fat (you take the photo)</span>
+    <span class="chip auto"><span class="dot"></span>GitHub (optional) · commits</span>
+    <span class="chip auto"><span class="dot"></span>Alpaca (optional) · P/L, positions, trades</span>
+    <span class="chip manual"><span class="dot"></span>Food tab or a pasted food AI line · calories, protein, carbs, sugar, fat (manual)</span>
     <span class="chip manual"><span class="dot"></span>Quick log buttons · water, reading, study, coffee, workout done, journal entry (manual)</span>
-    <span class="chip manual"><span class="dot"></span>Phone app · kettlebell sets, catch distance (manual)</span>
+    <span class="chip manual"><span class="dot"></span>App settings · kettlebell sets, catch distance (manual)</span>
   </div>
 </section>
 
@@ -940,7 +940,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 
   function renderTrading(cur) {
     var r = RANGES[state.range], t = state.trading;
-    $('pl-range').textContent = r.eyebrow + ' · Alpaca paper';
+    $('pl-range').textContent = r.eyebrow + ' · Alpaca';
     var plDays = cur.filter(function (d) { return m(d, 'trading.pl_day') !== undefined; });
     var total = sum(plDays.map(function (d) { return m(d, 'trading.pl_day'); }));
     var plValue = $('pl-value');
@@ -1134,7 +1134,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     var MACRO_NAMES = { carbs_g: 'carbs ', sugar_g: 'of which sugar ', fat_g: 'fat ' };
     var macros = ['carbs_g', 'sugar_g', 'fat_g'].filter(function (k) { return tv('food.' + k) > 0; })
       .map(function (k) { return MACRO_NAMES[k] + Math.round(tv('food.' + k)) + ' g'; });
-    $('kcal-note').textContent = kcal === 0 ? 'Nothing logged yet today. Meals your food AI saves to the inbox show up here within a minute.'
+    $('kcal-note').textContent = kcal === 0 ? 'Nothing logged yet today. Tap a meal on the Food tab, or paste a food AI line below.'
       : [over ? int(kcal - GOALS.kcal) + ' kcal over' : int(GOALS.kcal - kcal) + ' kcal left'].concat(meals, macros).join(' · ');
 
     $('meal-list').replaceChildren.apply($('meal-list'), state.meals.map(function (ml) {
