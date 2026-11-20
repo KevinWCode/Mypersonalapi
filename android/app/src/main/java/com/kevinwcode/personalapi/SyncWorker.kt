@@ -85,6 +85,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             // Always sent, zeros too, so a meal removed in the app is removed on the PC as well.
             val food = days.flatMap { store.foodTotals(it) }
             batches += PHONE_FOOD_SOURCE to food
+            parts += collectOnline(settings, store, today)
             parts += "saved on phone"
 
             val upload = uploadToServer(settings, batches)
@@ -97,6 +98,26 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                     .getOrElse { "PC copy failed (${it.message})" }
             }
             return parts.joinToString(", ")
+        }
+
+        /**
+         * GitHub commits and Alpaca P/L, trades and positions, read straight from their websites when keys are saved.
+         * Kept on the phone only (the PC reads its own copy while it runs). A failure is reported, never thrown, so
+         * the rest of the sync still counts.
+         */
+        fun collectOnline(settings: Settings, store: LocalStore, today: LocalDate, http: Http = Http.DEFAULT): List<String> {
+            val parts = mutableListOf<String>()
+            if (settings.githubToken.isNotEmpty()) parts += runCatching {
+                "github ${store.save(GitHub.SOURCE, GitHub.fetch(settings.githubToken, today, http = http))}"
+            }.getOrElse { "github failed (${it.message})" }
+            val accounts = settings.alpacaAccounts
+            if (accounts.isNotEmpty()) parts += runCatching {
+                val r = Alpaca.fetch(accounts, settings.alpacaUrl, http)
+                r.rows.forEach { (source, obs) -> store.save(source, obs) }
+                store.saveTrading(r.fills, r.positions)
+                "alpaca ${accounts.size} account(s)"
+            }.getOrElse { "alpaca failed (${it.message})" }
+            return parts
         }
 
         /** Copies to the PC server when one is set up. Never throws: the data is already safe on the phone. */

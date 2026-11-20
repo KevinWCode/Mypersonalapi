@@ -11,8 +11,8 @@ android {
         applicationId = "com.kevinwcode.personalapi"
         minSdk = 29
         targetSdk = 35
-        versionCode = 15
-        versionName = "0.15"
+        versionCode = 16
+        versionName = "0.16"
     }
 
     // The dashboard page is the PC server's own file, bundled so the app can show it without the server.

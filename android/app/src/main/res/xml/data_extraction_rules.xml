@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12 and newer: the GitHub and Alpaca keys never go to the cloud backup. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="keys.xml" />
+    </cloud-backup>
+</data-extraction-rules>

@@ -148,6 +148,28 @@ class MainActivity : AppCompatActivity() {
         })
         button("Back up phone data to a file") { saveBackup.launch("personal-api-backup-${LocalDate.now()}.json") }
 
+        heading("GitHub and Alpaca")
+        root.addView(TextView(this).apply {
+            text = "Read straight from GitHub and Alpaca on each sync. The keys stay on this phone and are left out of cloud backups. " +
+                "Alpaca is read only: the app can't place trades."
+        })
+        val github = field("GitHub token (GITHUB_TOKEN from the PC's .env)", settings.githubToken, secret = true)
+        val alpaca = field("Alpaca keys: KEY_ID SECRET, then the next account's pair", settings.alpacaKeys, secret = true)
+        val live = CheckBox(this).apply {
+            text = "Alpaca live account (off = paper accounts)"
+            isChecked = settings.alpacaLive
+        }.also { root.addView(it) }
+        button("Save keys and sync") {
+            val typed = alpaca.text.toString()
+            val words = typed.split(Regex("[\\s,:;]+")).count { it.isNotEmpty() }
+            if (words % 2 != 0) return@button toast("Alpaca keys come in pairs: a key id, then its secret")
+            settings.githubToken = github.text.toString()
+            settings.alpacaKeys = typed
+            settings.alpacaLive = live.isChecked
+            toast("Saved: GitHub ${if (settings.githubToken.isEmpty()) "off" else "on"}, ${settings.alpacaAccounts.size} Alpaca account(s)")
+            syncNow()
+        }
+
         heading("PC server (optional)")
         button("Open PC dashboard") { startActivity(OpenDashboardActivity.browserIntent(settings)) }
 
@@ -313,6 +335,8 @@ class MainActivity : AppCompatActivity() {
                 appendLine("Screen time access: ${if (ScreenTime.hasAccess(this@MainActivity)) "allowed" else "not allowed"}")
                 appendLine("Background sync: ${if (backgroundAllowed()) "every 15 min, ${SyncHours.text}" else "may be paused, tap Keep syncing in the background"}")
                 appendLine("Today's manual entries: ${manual.today().size}")
+                appendLine("GitHub: ${if (settings.githubToken.isEmpty()) "no token saved" else "on"}")
+                appendLine("Alpaca: ${settings.alpacaAccounts.size.let { if (it == 0) "no keys saved" else "$it account(s), ${if (settings.alpacaLive) "live" else "paper"}" }}")
                 appendLine("PC upload: ${if (settings.serverEnabled) "on" else "off, data stays on this phone"}")
                 append("Last sync: ${settings.lastSync.replace(", ", "\n  ")}")
             }

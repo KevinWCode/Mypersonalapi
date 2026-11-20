@@ -25,7 +25,7 @@ While the PC server is still running:
 - **Copy my history from the PC** (under PC server) copies every day since the game started (23 Oct 2026) so your level carries over. Do it once after installing.
 - Each sync with the PC upload on also copies the PC's totals for the last 3 days, which include what you log on the dashboard (journal, water, food, kettlebell ticks, perk claims). A day copied from the PC uses the PC's totals, except food: from 20 Nov 2026 food comes only from meals logged in the app, so the food AI's files on the PC no longer count (earlier days keep the PC's food). Other days use the phone's own data.
 
-Since version 0.13 the dashboard and the home screen widget run from the phone's data too (see below). Left for the server: GitHub commits and Alpaca trades, which still come from the PC until the app fetches them itself. Google Calendar is no longer part of the game (12 stats, 1,050 XP a day at most), on the phone or the server.
+Since version 0.13 the dashboard and the home screen widget run from the phone's data too (see below). Since version 0.16 the app also reads GitHub commits and Alpaca trades itself (see GitHub and Alpaca below), so nothing is left that only the PC can do. Google Calendar is no longer part of the game (12 stats, 1,050 XP a day at most), on the phone or the server.
 
 ## Install
 
@@ -44,9 +44,19 @@ Since version 0.13 the dashboard and the home screen widget run from the phone's
 
 Tailscale has to be switched on for syncs to reach the server. The phone saves its own copy either way.
 
+## GitHub and Alpaca
+
+Under **GitHub and Alpaca**, paste the keys once and tap **Save keys and sync**. Every sync then reads them straight from their websites, the same way the PC server does:
+
+- **GitHub token:** the `GITHUB_TOKEN` value from `.env` on the PC (the username isn't needed). Gives the day's commit count for the GitHub commits XP line.
+- **Alpaca keys:** `ALPACA_KEY_ID` then `ALPACA_SECRET_KEY` from `.env`, then `ALPACA_KEY_ID_2` and `ALPACA_SECRET_KEY_2` and so on for each trading bot, separated by spaces. The accounts add up as one, like on the PC. Gives equity, daily P/L, trades and positions. Only GET requests are made, so the app can't place or change a trade.
+- **Alpaca live account:** leave it off for paper accounts (the PC's default). Tick it only if `.env` sets `ALPACA_BASE_URL` to `https://api.alpaca.markets`.
+
+The keys stay on the phone in a file left out of Android's cloud backup. The status card says whether each one is on, and the last sync line shows `github …` and `alpaca …`, or the error if a key is wrong.
+
 ## Dashboard
 
-**Open dashboard** (under Today on this phone) shows the dashboard inside the app, from the phone's own data, so it works with the PC off. It's the same page the PC server serves (bundled into the app when it's built); the page's requests are answered on the phone, with the same numbers the server would give (`DashboardParityTest` checks this). Its Quick log buttons, food box, kettlebell ticks and perk claims save on the phone, and go to the PC on the next sync while the upload is on. The Money tab shows P/L and equity from the stored days; recent trades and positions stay empty until the app reads Alpaca itself.
+**Open dashboard** (under Today on this phone) shows the dashboard inside the app, from the phone's own data, so it works with the PC off. It's the same page the PC server serves (bundled into the app when it's built); the page's requests are answered on the phone, with the same numbers the server would give (`DashboardParityTest` checks this). Its Quick log buttons, food box, kettlebell ticks and perk claims save on the phone, and go to the PC on the next sync while the upload is on. The Money tab shows P/L and equity from the stored days; recent trades and positions come from the Alpaca fills the phone has read.
 
 **Open PC dashboard** (under PC server) still opens the server's own dashboard in your browser, and passes it the upload token once so its logging works.
 
@@ -60,7 +70,7 @@ Long-press an empty spot on the home screen, tap **Widgets**, find **Personal AP
 - study and reading hours over the last 7 days
 - trading P/L over the last 7 days (green when up) and your last trade
 
-Since version 0.13 its numbers are worked out on the phone (the same sums as the server's `/summary`), so it keeps working with the PC off. Only the last trade still comes from the PC, while the upload is on. It updates after every sync, after logging and when you tap the refresh arrow, and tapping anywhere else opens the dashboard in the app. The time in its corner is when it last updated.
+Since version 0.13 its numbers are worked out on the phone (the same sums as the server's `/summary`), so it keeps working with the PC off. Since 0.16 the last trade comes from the phone's own Alpaca reads too. It updates after every sync, after logging and when you tap the refresh arrow, and tapping anywhere else opens the dashboard in the app. The time in its corner is when it last updated.
 
 ## Logging in the app
 

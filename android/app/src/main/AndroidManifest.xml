@@ -27,6 +27,8 @@
         android:label="Personal API"
         android:icon="@android:drawable/ic_menu_today"
         android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:usesCleartextTraffic="true">
 
         <activity
