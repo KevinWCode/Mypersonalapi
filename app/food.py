@@ -31,17 +31,23 @@ class Meal(BaseModel):
     protein_g: float = Field(default=0, ge=0, le=1000)
     carbs_g: float = Field(default=0, ge=0, le=1000)
     fat_g: float = Field(default=0, ge=0, le=1000)
+    sugar_g: float = Field(default=0, ge=0, le=1000)
     description: str = ""
 
     @model_validator(mode="before")
     @classmethod
     def _tidy(cls, data):
-        """Accepts what an AI tends to write: "Lunch" or "snacks", "calories" for kcal, an items list, nulls."""
+        """Accepts what an AI tends to write: "Lunch" or "snacks", "calories" for kcal, "sugar" or "sugars_g" for sugar_g, an items list, nulls."""
         if not isinstance(data, dict):
             return data
         data = {k: v for k, v in data.items() if v is not None}
         if "kcal" not in data and "calories" in data:
             data["kcal"] = data["calories"]
+        if "sugar_g" not in data:
+            for alias in ("sugars_g", "sugar", "sugars"):
+                if alias in data:
+                    data["sugar_g"] = data[alias]
+                    break
         if isinstance(data.get("meal"), str):
             data["meal"] = data["meal"].strip().lower().removesuffix("s")
         if not data.get("description") and isinstance(data.get("items"), list):
@@ -55,9 +61,9 @@ def add(conn: sqlite3.Connection, meals: list[Meal], origin: str, ids: list[str]
     ids = ids or [uuid.uuid4().hex for _ in meals]
     now = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
     conn.executemany(
-        """INSERT OR REPLACE INTO meals (id, date, meal, kcal, protein_g, carbs_g, fat_g, description, origin, added_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        [(i, m.date.isoformat(), m.meal, m.kcal, m.protein_g, m.carbs_g, m.fat_g, m.description, origin, now)
+        """INSERT OR REPLACE INTO meals (id, date, meal, kcal, protein_g, carbs_g, fat_g, sugar_g, description, origin, added_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        [(i, m.date.isoformat(), m.meal, m.kcal, m.protein_g, m.carbs_g, m.fat_g, m.sugar_g, m.description, origin, now)
          for i, m in zip(ids, meals)],
     )
     recompute(conn, {m.date.isoformat() for m in meals})
@@ -75,7 +81,7 @@ def remove(conn: sqlite3.Connection, meal_id: str) -> bool:
 
 def for_day(conn: sqlite3.Connection, day: str) -> list[dict]:
     return [dict(r) for r in conn.execute(
-        "SELECT id, meal, kcal, protein_g, carbs_g, fat_g, description, origin FROM meals WHERE date = ? ORDER BY added_at",
+        "SELECT id, meal, kcal, protein_g, carbs_g, fat_g, sugar_g, description, origin FROM meals WHERE date = ? ORDER BY added_at",
         (day,),
     )]
 
@@ -83,14 +89,14 @@ def for_day(conn: sqlite3.Connection, day: str) -> list[dict]:
 def recompute(conn: sqlite3.Connection, days: set[str]) -> None:
     rows = []
     for day in days:
-        kcal, protein, carbs, fat = conn.execute(
-            "SELECT COALESCE(SUM(kcal), 0), COALESCE(SUM(protein_g), 0), COALESCE(SUM(carbs_g), 0), COALESCE(SUM(fat_g), 0) "
-            "FROM meals WHERE date = ?",
+        kcal, protein, carbs, fat, sugar = conn.execute(
+            "SELECT COALESCE(SUM(kcal), 0), COALESCE(SUM(protein_g), 0), COALESCE(SUM(carbs_g), 0), COALESCE(SUM(fat_g), 0), "
+            "COALESCE(SUM(sugar_g), 0) FROM meals WHERE date = ?",
             (day,),
         ).fetchone()
         by_meal = dict(conn.execute("SELECT meal, SUM(kcal) FROM meals WHERE date = ? GROUP BY meal", (day,)).fetchall())
         values = [("food.kcal", kcal, "kcal"), ("food.protein_g", protein, "g"), ("food.carbs_g", carbs, "g"),
-                  ("food.fat_g", fat, "g")] + [(f"food.{m}.kcal", by_meal.get(m, 0), "kcal") for m in MEALS]
+                  ("food.fat_g", fat, "g"), ("food.sugar_g", sugar, "g")] + [(f"food.{m}.kcal", by_meal.get(m, 0), "kcal") for m in MEALS]
         rows += [{"date": day, "metric": k, "value": v, "unit": u, "source": "food"} for k, v, u in values]
     db.upsert(conn, rows)
 

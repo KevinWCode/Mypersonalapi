@@ -482,7 +482,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     <span class="chip auto"><span class="dot"></span>Phone usage stats · TikTok, Instagram, Facebook, Reddit, plus YouTube on its own</span>
     <span class="chip auto"><span class="dot"></span>GitHub · commits</span>
     <span class="chip auto"><span class="dot"></span>Alpaca paper · P/L, positions, trades</span>
-    <span class="chip manual"><span class="dot"></span>Food AI via the inbox folder · calories, protein, carbs, fat (you take the photo)</span>
+    <span class="chip manual"><span class="dot"></span>Food AI via the inbox folder · calories, protein, carbs, sugar, fat (you take the photo)</span>
     <span class="chip manual"><span class="dot"></span>Quick log buttons · water, reading, study, coffee, workout done, journal entry (manual)</span>
     <span class="chip manual"><span class="dot"></span>Phone app · kettlebell sets, catch distance (manual)</span>
   </div>
@@ -1117,14 +1117,16 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     $('kcal-bar').style.background = over ? COLOR.warn : COLOR.accent;
     var meals = MEALS.filter(function (ml) { return tv('food.' + ml + '.kcal') > 0; })
       .map(function (ml) { return (ml === 'snack' ? 'snacks' : ml) + ' ' + int(tv('food.' + ml + '.kcal')); });
-    var macros = ['carbs_g', 'fat_g'].filter(function (k) { return tv('food.' + k) > 0; })
-      .map(function (k) { return (k === 'carbs_g' ? 'carbs ' : 'fat ') + Math.round(tv('food.' + k)) + ' g'; });
+    var MACRO_NAMES = { carbs_g: 'carbs ', sugar_g: 'of which sugar ', fat_g: 'fat ' };
+    var macros = ['carbs_g', 'sugar_g', 'fat_g'].filter(function (k) { return tv('food.' + k) > 0; })
+      .map(function (k) { return MACRO_NAMES[k] + Math.round(tv('food.' + k)) + ' g'; });
     $('kcal-note').textContent = kcal === 0 ? 'Nothing logged yet today. Meals your food AI saves to the inbox show up here within a minute.'
       : [over ? int(kcal - GOALS.kcal) + ' kcal over' : int(GOALS.kcal - kcal) + ' kcal left'].concat(meals, macros).join(' · ');
 
     $('meal-list').replaceChildren.apply($('meal-list'), state.meals.map(function (ml) {
       var name = ml.meal.charAt(0).toUpperCase() + ml.meal.slice(1);
-      var facts = [int(ml.kcal) + ' kcal'].concat(ml.protein_g ? [Math.round(ml.protein_g) + ' g protein'] : []).join(' · ');
+      var facts = [int(ml.kcal) + ' kcal'].concat(ml.protein_g ? [Math.round(ml.protein_g) + ' g protein'] : [],
+        ml.sugar_g ? [Math.round(ml.sugar_g) + ' g sugar'] : []).join(' · ');
       var x = el('button', { type: 'button', class: 'x', 'aria-label': 'Remove ' + describe(ml) }, '×');
       x.addEventListener('click', function () { removeMeal(ml); });
       return el('li', null, el('div', { class: 'what' }, el('b', null, name + ' · ' + facts), ml.description ? el('span', null, ml.description) : null), x);
@@ -1155,7 +1157,8 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       var meal = String(o.meal || '').trim().toLowerCase().replace(/s$/, '');
       if (MEALS.indexOf(meal) < 0) return { error: 'Meal must be breakfast, lunch, dinner or snack, not "' + (o.meal || '') + '".' };
       var item = { meal: meal, description: String(o.description || (Array.isArray(o.items) ? o.items.join(', ') : '')).slice(0, 300) };
-      var fields = [['kcal', o.kcal !== undefined ? o.kcal : o.calories, 5000], ['protein_g', o.protein_g, 1000], ['carbs_g', o.carbs_g, 1000], ['fat_g', o.fat_g, 1000]];
+      var fields = [['kcal', o.kcal !== undefined ? o.kcal : o.calories, 5000], ['protein_g', o.protein_g, 1000], ['carbs_g', o.carbs_g, 1000], ['fat_g', o.fat_g, 1000],
+        ['sugar_g', [o.sugar_g, o.sugars_g, o.sugar, o.sugars].filter(function (v) { return v !== undefined && v !== null; })[0], 1000]];
       for (var j = 0; j < fields.length; j++) {
         var f = fields[j];
         if (f[1] === undefined || f[1] === null) { if (f[0] === 'kcal') return { error: 'The meal line needs "kcal".' }; continue; }
@@ -1190,7 +1193,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     var day = iso(state.today);
     api('DELETE', '/meals/' + encodeURIComponent(ml.id)).then(refreshToday).then(function () {
       toast('Removed ' + describe(ml), function () {
-        var again = { meal: ml.meal, kcal: ml.kcal, protein_g: ml.protein_g, carbs_g: ml.carbs_g, fat_g: ml.fat_g, description: ml.description };
+        var again = { meal: ml.meal, kcal: ml.kcal, protein_g: ml.protein_g, carbs_g: ml.carbs_g, fat_g: ml.fat_g, sugar_g: ml.sugar_g, description: ml.description };
         api('POST', '/meals', { date: day, meals: [again] }).then(refreshToday).then(function () { toast('Undone'); }, failed);
       });
     }, failed);

@@ -40,7 +40,7 @@ phone app  ── POST /ingest ┼──> observations table (SQLite) ──> GE
 | `kb.<move>.reps`, `kb.<move>.sets`, `kb.<move>.top_weight_lb` | Quick entry in the phone app | No, about 10 seconds per set |
 | `football.max_catch_yards` | Quick entry in the phone app | No |
 | `trading.equity`, `trading.pl_day` | Alpaca portfolio history, hourly (read-only) | Yes |
-| `food.kcal`, `food.protein_g`, `food.carbs_g`, `food.fat_g`, `food.<meal>.kcal` | Meal files your food AI saves into the inbox folder, or lines pasted on the dashboard (see below) | Partly: the AI does the work, you take the photo |
+| `food.kcal`, `food.protein_g`, `food.carbs_g`, `food.sugar_g`, `food.fat_g`, `food.<meal>.kcal` | Meal files your food AI saves into the inbox folder, or lines pasted on the dashboard (see below) | Partly: the AI does the work, you take the photo |
 | `water.ml`, `coffee.cups`, `reading.minutes`, `study.minutes`, `food.protein_g`, `kb.<move>.done` | Quick log buttons and kettlebell ticks on the dashboard | No, one tap each |
 
 ## Food
@@ -48,8 +48,8 @@ phone app  ── POST /ingest ┼──> observations table (SQLite) ──> GE
 The server checks `data/inbox` (on the PC: `C:\Users\kevin\personal-api\data\inbox`) every minute. Each `.json` file there is one meal (or a list of meals). It's added to that day's totals and moved to `inbox/done`; a file that can't be read goes to `inbox/failed`. An AI that works out meals from photos and can save files on the PC only needs this instruction:
 
 > After working out a meal from my photo, save a new file in C:\Users\kevin\personal-api\data\inbox named with the date, time and meal (for example 2026-10-26-1305-lunch.json), containing only:
-> `{"date":"2026-10-26","meal":"lunch","kcal":640,"protein_g":42,"carbs_g":55,"fat_g":20,"description":"chicken wrap, apple"}`
-> meal is breakfast, lunch, dinner or snack.
+> `{"date":"2026-10-26","meal":"lunch","kcal":640,"protein_g":42,"carbs_g":55,"sugar_g":12,"fat_g":20,"description":"chicken wrap, apple"}`
+> meal is breakfast, lunch, dinner or snack. sugar_g is the sugar in grams (part of carbs_g); `sugar` or `sugars_g` work too.
 
 The same line can be pasted into the Fuel today card instead, for example from an AI app on the phone. A meal without a `date` goes on the day it's imported. The AI is only how the numbers get worked out; the server runs no AI.
 

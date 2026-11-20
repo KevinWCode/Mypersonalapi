@@ -61,6 +61,7 @@ def build(conn, day: date) -> dict:
         "youtube": {"today_minutes": youtube(today), "week_per_day": _avg(youtube_week)},
         "kcal": today.get("food.kcal"),
         "protein_g": today.get("food.protein_g"),
+        "sugar_g": today.get("food.sugar_g"),
         # Sleep is filed under the day you wake up, so today's is last night's.
         "sleep_minutes": today.get("sleep.total_minutes"),
         "steps": today.get("health.steps"),

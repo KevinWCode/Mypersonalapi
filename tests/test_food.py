@@ -78,3 +78,34 @@ def test_pasted_meals_add_up_and_can_be_removed():
 def test_bad_meals_are_refused():
     for meal in [{"meal": "brunch", "kcal": 300}, {"meal": "lunch"}, {"meal": "lunch", "kcal": -5}]:
         assert client.post("/meals", json={"date": DAY, "meals": [meal]}, headers=AUTH).status_code == 422
+
+
+def test_sugar_is_stored_and_added_up(tmp_path):
+    inbox = tmp_path / "inbox"
+    inbox.mkdir()
+    write(inbox, "lunch.json", {"date": DAY, "meal": "lunch", "kcal": 640, "carbs_g": 55, "sugar_g": 12.5})
+    write(inbox, "snack.json", {"date": DAY, "meal": "snack", "kcal": 150, "sugars": 20})  # the AI's other spellings
+    write(inbox, "old.json", {"date": DAY, "meal": "dinner", "kcal": 700})  # no sugar given counts as 0
+    food.import_inbox(db.connect(), inbox)
+    assert totals()["food.sugar_g"] == 32.5
+    client.post("/meals", json={"date": DAY, "meals": [{"meal": "breakfast", "kcal": 300, "sugar": 7}]}, headers=AUTH)
+    assert totals()["food.sugar_g"] == 39.5
+    meals = client.get("/meals", params={"date": DAY}).json()["meals"]
+    assert sorted(m["sugar_g"] for m in meals) == [0, 7, 12.5, 20]
+    assert client.post("/meals", json={"date": DAY, "meals": [{"meal": "lunch", "kcal": 1, "sugar_g": -1}]},
+                       headers=AUTH).status_code == 422
+
+
+def test_older_database_gets_the_sugar_column(tmp_path):
+    path = str(tmp_path / "old.db")
+    old = food.sqlite3.connect(path)
+    old.execute("""CREATE TABLE meals (id TEXT PRIMARY KEY, date TEXT NOT NULL, meal TEXT NOT NULL, kcal REAL NOT NULL,
+                   protein_g REAL NOT NULL, carbs_g REAL NOT NULL, fat_g REAL NOT NULL, description TEXT NOT NULL,
+                   origin TEXT NOT NULL, added_at TEXT NOT NULL)""")
+    old.execute("INSERT INTO meals VALUES ('a', ?, 'lunch', 500, 30, 40, 10, '', 'paste', 'x')", (DAY,))
+    old.commit()
+    old.close()
+    conn = db.connect(path)
+    assert food.for_day(conn, DAY)[0]["sugar_g"] == 0
+    food.add(conn, [food.Meal(date=DAY, meal="snack", kcal=100, sugar_g=9)], origin="paste")
+    assert sorted(m["sugar_g"] for m in food.for_day(conn, DAY)) == [0, 9]
