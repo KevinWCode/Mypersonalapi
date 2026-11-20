@@ -12,7 +12,7 @@ GROUPS = {
     "int": ("Intelligence & Crafting", "INT", ["github", "email"]),
     "wis": ("Focus & Mental Discipline", "WIS", ["social", "youtube", "journal"]),
     "cha": ("Wealth & Economy", "CHA", ["stocks"]),
-    "per": ("Mindfulness & Life Organization", "PER", ["journal", "calendar"]),
+    "per": ("Mindfulness & Life Organization", "PER", ["journal"]),
 }
 
 # Tier -> (rank, group level that unlocks it).
@@ -63,7 +63,7 @@ PERKS = {
     ("per", 1): ("Chronicler of Fate", "Stationery Upgrade",
                  "A premium hardcover journal or a high-quality pen."),
     ("per", 2): ("Master of the Daily Block", "Chef Exemption Pass",
-                 "Skip a cooking block for a quality takeaway. The day you claim it counts one extra calendar block."),
+                 "Skip cooking one night for a quality takeaway."),
     ("per", 3): ("Grand Strategist", "Wildcard Schedule Day",
                  "Clear a full day's calendar and do whatever comes up."),
     ("per", 4): ("Architect of Life", "Custom Leather Journal / Desk Artifact",

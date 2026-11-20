@@ -4,13 +4,12 @@ import logging
 import time
 
 from app import config, db, food
-from app.collectors import alpaca, calendar, github
+from app.collectors import alpaca, github
 
 # Each collector takes the database connection and returns how many rows it stored.
 COLLECTORS = {
     "github": lambda conn: db.upsert(conn, github.fetch()),
     "alpaca": alpaca.collect,
-    "calendar": calendar.collect,
 }
 
 log = logging.getLogger("collect")
