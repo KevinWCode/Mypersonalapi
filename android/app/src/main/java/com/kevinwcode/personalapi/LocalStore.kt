@@ -53,13 +53,14 @@ class LocalStore private constructor(context: Context) :
         )"""
     )
 
-    /** Stores meals and refreshes those days' food totals. */
-    fun addMeals(meals: List<Food.Meal>) {
+    /** Stores meals and refreshes those days' food totals. Returns the new meals' ids. */
+    fun addMeals(meals: List<Food.Meal>): List<String> {
         val now = Instant.now().toString()
         val db = writableDatabase
-        for (m in meals) {
+        val ids = meals.map { UUID.randomUUID().toString() }
+        for ((m, id) in meals.zip(ids)) {
             db.insert("meals", null, ContentValues().apply {
-                put("id", UUID.randomUUID().toString())
+                put("id", id)
                 put("date", m.date.toString())
                 put("meal", m.meal)
                 put("kcal", m.kcal)
@@ -72,14 +73,23 @@ class LocalStore private constructor(context: Context) :
             })
         }
         meals.map { it.date }.toSet().forEach { refreshFood(it) }
+        return ids
     }
 
-    fun removeMeal(id: String) {
+    /** Returns false when there's no such meal. */
+    fun removeMeal(id: String): Boolean {
         val date = readableDatabase.rawQuery("SELECT date FROM meals WHERE id = ?", arrayOf(id))
-            .use { c -> if (c.moveToFirst()) LocalDate.parse(c.getString(0)) else null } ?: return
+            .use { c -> if (c.moveToFirst()) LocalDate.parse(c.getString(0)) else null } ?: return false
         writableDatabase.delete("meals", "id = ?", arrayOf(id))
         refreshFood(date)
+        return true
     }
+
+    /** Most recent save time per source, like the server's /status. */
+    fun lastUpdates(): Map<String, String> =
+        readableDatabase.rawQuery("SELECT source, MAX(updated_at) FROM observations GROUP BY source", null).use { c ->
+            buildMap { while (c.moveToNext()) put(c.getString(0), c.getString(1)) }
+        }
 
     /** One day's meals with their ids, in the order they were added. */
     fun meals(day: LocalDate): List<Pair<String, Food.Meal>> =

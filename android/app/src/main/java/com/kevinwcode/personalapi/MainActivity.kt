@@ -121,14 +121,15 @@ class MainActivity : AppCompatActivity() {
             textSize = 16f
             setLineSpacing(0f, 1.2f)
         }.also { root.addView(it) }
+        button("Open dashboard") { startActivity(Intent(this, DashboardActivity::class.java)) }
+        root.addView(TextView(this).apply {
+            text = "Tip: for today's numbers on your home screen, long-press an empty spot, tap Widgets, then Personal API."
+            setPadding(0, 8, 0, 0)
+        })
         button("Back up phone data to a file") { saveBackup.launch("personal-api-backup-${LocalDate.now()}.json") }
 
         heading("PC server (optional)")
         button("Open PC dashboard") { startActivity(OpenDashboardActivity.browserIntent(settings)) }
-        root.addView(TextView(this).apply {
-            text = "Tip: for today's numbers on your home screen, long-press an empty spot, tap Widgets, then Personal API. For now the widget still reads its numbers from the PC server."
-            setPadding(0, 8, 0, 0)
-        })
 
         root.addView(CheckBox(this).apply {
             text = "Also send my data to my PC server"

@@ -9,8 +9,7 @@ import java.time.LocalDateTime
  * The phone's game must score exactly like the server's app/game.py and app/vitals.py.
  * Generated: a random 52-day fixture of raw rows, with the expected numbers from the Python code.
  */
-class GameParityTest {
-    private val rows: List<Triple<String, String, Double>> = listOf(
+internal val PARITY_ROWS: List<Triple<String, String, Double>> = listOf(
         Triple("2026-10-17", "sleep.total_minutes", 405.0),
         Triple("2026-10-17", "sleep.deep_minutes", 90.0),
         Triple("2026-10-17", "sleep.rem_minutes", 56.0),
@@ -835,17 +834,21 @@ class GameParityTest {
         Triple("2026-12-01", "food.sugar_g", 48.6),
         Triple("2026-12-04", "food.sugar_g", 41.6),
         Triple("2026-12-07", "food.sugar_g", 2.5),
-    )
+)
 
-    private val days: Map<LocalDate, Map<String, Double>> = rows.groupBy { LocalDate.parse(it.first) }
-        .mapValues { (_, rs) -> DayMetrics.build(rs.map { it.second to it.third }) }
+internal val PARITY_DAYS: Map<LocalDate, Map<String, Double>> = PARITY_ROWS.groupBy { LocalDate.parse(it.first) }
+    .mapValues { (_, rs) -> DayMetrics.build(rs.map { it.second to it.third }) }
+
+internal fun parityNow(day: LocalDate, share: Double): LocalDateTime =
+    // share 1.0 is the end of the day, which todayElapsed reads as a past day.
+    if (share >= 1.0) day.plusDays(1).atStartOfDay() else day.atStartOfDay().plusSeconds(Math.round(share * 86400))
+
+class GameParityTest {
+    private val days = PARITY_DAYS
 
     private fun at(day: String, share: Double): Game.State {
         val d = LocalDate.parse(day)
-        val seconds = Math.round(share * 86400).toLong()
-        // share 1.0 is the end of the day, which todayElapsed reads as a past day.
-        val now = if (share >= 1.0) d.plusDays(1).atStartOfDay() else d.atStartOfDay().plusSeconds(seconds)
-        return Game.build(days, d, now = now)
+        return Game.build(days, d, now = parityNow(d, share))
     }
 
     @Test

@@ -31,9 +31,9 @@ import java.time.ZoneId
 
 /**
  * Home screen widget: social media for the last 7 days as bars (green, amber, red against the daily limit), food, sleep, steps, heart rate, workouts, study and reading,
- * trading P/L and the last trade, from the server's GET /summary.
- * It refreshes after each phone sync (every 15 minutes) and when you tap the refresh arrow. Tapping anywhere else
- * opens the dashboard. When the server can't be reached it keeps showing the last numbers it got.
+ * trading P/L and the last trade, worked out from the phone's own data ([LocalSummary]); the last trade still comes
+ * from the PC server while its upload is on. It refreshes after each phone sync (every 15 minutes), after logging
+ * and when you tap the refresh arrow. Tapping anywhere else opens the dashboard in the app.
  */
 class HomeWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
@@ -80,18 +80,28 @@ class HomeWidget : AppWidgetProvider() {
         // Widgets shorter than this get the compact layout.
         private const val COMPACT_BELOW_DP = 330f
 
+        /** Redraws the widget from the phone's data in the background, e.g. after logging on the dashboard. */
+        fun refreshFromPhone(context: Context) = refreshSoon(context, ExistingWorkPolicy.REPLACE)
+
         private fun refreshSoon(context: Context, policy: ExistingWorkPolicy) {
             WorkManager.getInstance(context).enqueueUniqueWork("widget-now", policy, OneTimeWorkRequestBuilder<RefreshWorker>().build())
         }
 
-        /** Fetches the latest numbers and redraws the widget. Does nothing if no widget is on the home screen. */
+        /** Works out the latest numbers from the phone's data and redraws the widget. Does nothing if no widget is on the home screen. */
         suspend fun refresh(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
             if (manager.getAppWidgetIds(ComponentName(context, HomeWidget::class.java)).isEmpty()) return
-            val text = withContext(Dispatchers.IO) { runCatching { fetch(Settings(context).serverUrl) }.getOrNull() }
-            val edit = prefs(context).edit().putBoolean("offline", text == null)
-            if (text != null) edit.putString("summary", text).putLong("fetched_at", System.currentTimeMillis())
-            edit.apply()
+            val text = withContext(Dispatchers.IO) {
+                val local = LocalSummary.toJson(LocalSummary.build(LocalStore.get(context).allDays(), LocalDate.now()))
+                // Trades aren't stored on the phone yet, so take the last one from the PC while its upload is on.
+                val settings = Settings(context)
+                if (settings.serverEnabled) runCatching {
+                    JSONObject(fetch(settings.serverUrl)).optJSONObject("last_trade")?.let { local.put("last_trade", it) }
+                }
+                local.toString()
+            }
+            prefs(context).edit().putBoolean("offline", false).putString("summary", text)
+                .putLong("fetched_at", System.currentTimeMillis()).apply()
             show(context)
         }
 
@@ -205,7 +215,7 @@ class HomeWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.updated, if (updating) "Updating…" else t.updated)
             views.setTextColor(R.id.updated, ContextCompat.getColor(context, if (t.offline && !updating) R.color.widget_warn else R.color.widget_sub))
 
-            val open = Intent(context, OpenDashboardActivity::class.java)
+            val open = Intent(context, DashboardActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             views.setOnClickPendingIntent(R.id.root, PendingIntent.getActivity(context, 0, open, PendingIntent.FLAG_IMMUTABLE))
             val refresh = Intent(context, HomeWidget::class.java).setAction(ACTION_REFRESH)
             views.setOnClickPendingIntent(R.id.refresh, PendingIntent.getBroadcast(context, 0, refresh, PendingIntent.FLAG_IMMUTABLE))
