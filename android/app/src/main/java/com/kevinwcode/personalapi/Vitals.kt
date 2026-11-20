@@ -90,7 +90,6 @@ object Vitals {
         val cups = minOf(m["coffee.cups"] ?: 0.0, 2.0)
         val synced = "screen.total_minutes" in m
         val social = m["screen.social_media_minutes"] ?: 0.0
-        val blocks = m.count { (k, v) -> k.startsWith("cal.") && k.endsWith(".done") && v > 0 }
 
         add("hp", "Coffee", HP_COFFEE * (m["coffee.cups"] ?: 0.0))
         if (synced) {
@@ -126,7 +125,6 @@ object Vitals {
         if (workout) add("focus", "Workout", WORKOUT_FOCUS)
         add("focus", "Study", 8 * minOf((m["study.minutes"] ?: 0.0) / 30, 3.0))
         add("focus", "Journal entry", if (journal >= 1) 8.0 else 0.0)
-        add("focus", "Calendar blocks kept", 4.0 * minOf(blocks, 3))
         add("focus", "Coffee", 3 * cups)
         if (calmYesterday) add("focus", "Social media under ${CALM_SOCIAL_MINUTES.toInt()} min yesterday", CALM_NEXT_DAY_FOCUS)
         return out

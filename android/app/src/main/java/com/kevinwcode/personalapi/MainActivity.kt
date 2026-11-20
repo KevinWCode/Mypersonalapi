@@ -34,6 +34,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var status: TextView
     private lateinit var todayCard: TextView
     private lateinit var characterCard: TextView
+    private lateinit var perkButtons: LinearLayout
+    private lateinit var mealList: LinearLayout
     private lateinit var root: LinearLayout
 
     private val requestHealth =
@@ -86,6 +88,34 @@ class MainActivity : AppCompatActivity() {
             setLineSpacing(0f, 1.2f)
         }.also { root.addView(it) }
 
+        perkButtons = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { root.addView(it) }
+
+        heading("Quick log")
+        for (q in ManualLog.QUICK) button(q.label) { logged(q.done, *q.entries.toTypedArray()) }
+        button("Undo last tap") {
+            if (manual.undoLast()) afterLog("Undone") else toast("Nothing to undo")
+        }
+
+        heading("Food")
+        val mealBox = EditText(this).apply {
+            hint = "Paste the meal line from your food AI"
+            minLines = 2
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+        }.also { root.addView(it) }
+        button("Add meal") {
+            val meals = try {
+                Food.parse(mealBox.text.toString(), LocalDate.now())
+            } catch (e: Food.BadMeal) {
+                return@button toast(e.message ?: "That isn't the meal format")
+            }
+            mealBox.text.clear()
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) { LocalStore.get(this@MainActivity).addMeals(meals) }
+                afterLog("Added ${meals.size} meal${if (meals.size == 1) "" else "s"}")
+            }
+        }
+        mealList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }.also { root.addView(it) }
+
         heading("Today on this phone")
         todayCard = TextView(this).apply {
             textSize = 16f
@@ -103,7 +133,18 @@ class MainActivity : AppCompatActivity() {
         root.addView(CheckBox(this).apply {
             text = "Also send my data to my PC server"
             isChecked = settings.serverEnabled
-            setOnCheckedChangeListener { _, on -> settings.serverEnabled = on; refresh() }
+            setOnCheckedChangeListener { _, on ->
+                settings.serverEnabled = on
+                // Without the PC, recent days go back to the phone's own data instead of the last copy from the PC.
+                if (!on) lifecycleScope.launch {
+                    withContext(Dispatchers.IO) {
+                        val today = LocalDate.now()
+                        LocalStore.get(this@MainActivity).replacePcDays(today.minusDays(2), today, emptyMap())
+                    }
+                    refresh()
+                }
+                refresh()
+            }
         })
         button("Copy my history from the PC") { copyHistory() }
         val url = field("Server address", settings.serverUrl)
@@ -140,7 +181,7 @@ class MainActivity : AppCompatActivity() {
             if (r == null || w == null) return@button toast("Enter reps and weight")
             manual.addKettlebellSet(MOVES.getValue(move.selectedItem as String), r, w)
             reps.text.clear()
-            syncNow()
+            afterLog("Set added")
         }
 
         heading("Flag football")
@@ -149,7 +190,7 @@ class MainActivity : AppCompatActivity() {
             val y = catch.text.toString().toDoubleOrNull() ?: return@button toast("Enter yards")
             manual.setCatchDistance(y)
             catch.text.clear()
-            syncNow()
+            afterLog("Catch distance saved")
         }
 
         heading("Sync")
@@ -173,6 +214,23 @@ class MainActivity : AppCompatActivity() {
         refresh()
     }
 
+    /** A quick log tap: saves it on the phone straight away, then syncs (which also sends it to the PC, if on). */
+    private fun logged(message: String, vararg entries: ManualLog.Entry) {
+        manual.log(LocalDate.now(), *entries)
+        afterLog(message)
+    }
+
+    private fun afterLog(message: String) {
+        toast(message)
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                val today = LocalDate.now()
+                LocalStore.get(this@MainActivity).save("manual", manual.day(today))
+            }
+            syncNow()
+        }
+    }
+
     private fun syncNow() {
         status.text = "Syncing…"
         lifecycleScope.launch {
@@ -188,10 +246,33 @@ class MainActivity : AppCompatActivity() {
     private fun refresh() {
         lifecycleScope.launch {
             val today = LocalDate.now()
+            val store = LocalStore.get(this@MainActivity)
             val (game, lines, span) = withContext(Dispatchers.IO) {
-                val store = LocalStore.get(this@MainActivity)
                 val days = store.allDays()
                 Triple(Game.build(days, today), DayMetrics.summaryLines(days[today] ?: emptyMap()), store.span())
+            }
+            val meals = withContext(Dispatchers.IO) { store.meals(today) }
+            mealList.removeAllViews()
+            if (meals.isEmpty()) mealList.addView(TextView(this@MainActivity).apply { text = "No meals added in the app today" })
+            for ((id, meal) in meals) {
+                mealList.addView(TextView(this@MainActivity).apply { text = Food.line(meal); setPadding(0, 16, 0, 0) })
+                mealList.addView(Button(this@MainActivity).apply {
+                    text = "Remove this meal"
+                    setOnClickListener {
+                        lifecycleScope.launch {
+                            withContext(Dispatchers.IO) { store.removeMeal(id) }
+                            afterLog("Meal removed")
+                        }
+                    }
+                })
+            }
+            perkButtons.removeAllViews()
+            for (g in game.groups) for ((tier, perk) in g.earnedPerks) {
+                if (tier in g.claimed) continue
+                perkButtons.addView(Button(this@MainActivity).apply {
+                    text = "Claim ${perk.token} (${g.ability} ${Perks.TIERS.getValue(tier).first})"
+                    setOnClickListener { logged("Claimed ${perk.token}", ManualLog.perkClaim(g.key, tier)) }
+                })
             }
             characterCard.text = (CharacterText.lines(game) + listOf("") + CharacterText.todayLines(game)).joinToString("\n").trim()
             todayCard.text = buildString {

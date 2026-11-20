@@ -61,7 +61,6 @@ for day_off in range(0, 46, 3):
     add(START + timedelta(days=day_off), "food.sugar_g", round(sugar.uniform(0, 60), 1))
 
 game.db.fetch_range = lambda conn, a, b: [r for r in rows if a <= r["date"] <= b]
-game.calendar.counts_by_day = lambda conn, a, b: {}
 
 def lst(items): return 'listOf(' + ', '.join(items) + ')' if items else 'emptyList<String>()'
 def kt(s): return '"' + str(s).replace('"', '\\"').replace('$', '\\$') + '"'

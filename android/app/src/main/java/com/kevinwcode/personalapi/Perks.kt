@@ -15,7 +15,7 @@ object Perks {
         "int" to Group("Intelligence & Crafting", "INT", listOf("github", "email")),
         "wis" to Group("Focus & Mental Discipline", "WIS", listOf("social", "youtube", "journal")),
         "cha" to Group("Wealth & Economy", "CHA", listOf("stocks")),
-        "per" to Group("Mindfulness & Life Organization", "PER", listOf("journal", "calendar")),
+        "per" to Group("Mindfulness & Life Organization", "PER", listOf("journal")),
     )
 
     /** Tier to (rank, group level that unlocks it). */
@@ -48,7 +48,7 @@ object Perks {
         ("cha" to 3) to Perk("Master of Assets", "Fine Dining Voucher", "A high-end restaurant meal to celebrate."),
         ("cha" to 4) to Perk("Economic Paragon", "Major Asset Dividend Claim", "A long-term luxury item you've held off buying for 6+ months."),
         ("per" to 1) to Perk("Chronicler of Fate", "Stationery Upgrade", "A premium hardcover journal or a high-quality pen."),
-        ("per" to 2) to Perk("Master of the Daily Block", "Chef Exemption Pass", "Skip a cooking block for a quality takeaway. The day you claim it counts one extra calendar block."),
+        ("per" to 2) to Perk("Master of the Daily Block", "Chef Exemption Pass", "Skip cooking one night for a quality takeaway."),
         ("per" to 3) to Perk("Grand Strategist", "Wildcard Schedule Day", "Clear a full day's calendar and do whatever comes up."),
         ("per" to 4) to Perk("Architect of Life", "Custom Leather Journal / Desk Artifact", "A bespoke item, like an engraved notebook or desk plaque, celebrating mastery."),
     )
