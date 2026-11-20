@@ -18,7 +18,7 @@ Since version 0.10 every sync is saved on the phone first, in the app's own data
 
 ## Character (game on the phone)
 
-Since version 0.11 the app works out the game itself: level, tier, class, title, today's XP and buffs, the HP, Stamina, Mana and Focus bars, and streaks, from the phone's database. The rules are a port of the server's `app/game.py`, `app/vitals.py` and `app/perks.py`; `GameParityTest` checks the phone scores 52 days of random data exactly like the server (regenerate it with `tools/gen_game_parity_test.py` after changing the server's rules).
+Since version 0.11 the app works out the game itself: level, tier, class, title, today's XP and buffs, the HP, Stamina, Mana and Focus bars, and streaks, from the phone's database. The rules are a port of the server's `app/game.py`, `app/vitals.py` and `app/perks.py`; `GameParityTest` checks the phone scores 52 days of random data exactly like the server (regenerate it with `tools/make_game_parity.py` after changing the server's rules).
 
 While the PC server is still running:
 

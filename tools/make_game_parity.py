@@ -2,7 +2,7 @@
 
 Re-run after changing app/game.py, app/vitals.py or app/perks.py, then port the change to the Kotlin files until
 the Android unit tests pass:
-    python tools/gen_game_parity_test.py android/app/src/test/java/com/kevinwcode/personalapi/GameParityTest.kt
+    python tools/make_game_parity.py android/app/src/test/java/com/kevinwcode/personalapi/GameParityTest.kt
 """
 import random, sys
 from datetime import date, timedelta
