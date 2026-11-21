@@ -201,6 +201,105 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 .perk .what span { font-size: 12px; color: var(--muted); }
 .perk .state { font-size: 12px; font-weight: 600; white-space: nowrap; }
 .perk .btn { min-height: 44px; padding: 0 16px; }
+
+/* ---- Character tab: framed RPG panels. Colours come from the theme; --reward is the gold used for rewards. ---- */
+:root { --reward: #A86F0A; --reward-raised: #E9C46A; --reward-soft: #FBF1D9; }
+:root[data-theme="dark"] { --reward: #E9C46A; --reward-raised: #E9C46A; --reward-soft: #2E2610; }
+:root[data-theme="glass"] { --reward: #8F5D06; --reward-raised: #F2CF7A; --reward-soft: rgba(233,196,106,.25); }
+:root[data-theme="fantasy"] { --reward: #F6D58A; --reward-raised: #F6D58A; --reward-soft: #4A3416; }
+:root[data-theme="cyber"] { --reward: #FFE14D; --reward-raised: #FFE14D; --reward-soft: #2A2610; }
+:root[data-theme="system"] { --reward: #E9C46A; --reward-raised: #E9C46A; --reward-soft: #2A220C; }
+:root[data-theme="gothic"] { --reward: #E3C07A; --reward-raised: #E3C07A; --reward-soft: #2E2214; }
+:root[data-theme="board"] { --reward: #8A5A0A; --reward-raised: #E0B36A; --reward-soft: #E8D3A0; }
+.rpg { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr)); gap: 16px; align-items: start; }
+.frame { position: relative; --corner: var(--accent-deep); }
+.frame::after { content: ''; position: absolute; inset: 5px; border: 1px solid var(--line); border-radius: max(0px, calc(var(--radius) - 5px)); pointer-events: none; opacity: .8; }
+.frame > .cn { position: absolute; width: 18px; height: 18px; border: 0 solid var(--corner); pointer-events: none; }
+.frame > .cn.tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; border-top-left-radius: var(--radius); }
+.frame > .cn.tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; border-top-right-radius: var(--radius); }
+.frame > .cn.bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; border-bottom-left-radius: var(--radius); }
+.frame > .cn.br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; border-bottom-right-radius: var(--radius); }
+.char.frame { --corner: var(--raised-fill); }
+.char.frame::after { border-color: var(--raised-track); }
+.rune { display: flex; align-items: center; gap: 10px; font: 700 14px var(--font-head); letter-spacing: .14em; text-transform: uppercase; color: var(--accent-deep); margin: 0; }
+.rune::before, .rune::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--accent)); }
+.rune::after { background: linear-gradient(90deg, var(--accent), transparent); }
+.rune i { font-style: normal; color: var(--accent); font-size: 11px; }
+.rpg-hero { display: flex; gap: 18px; align-items: center; }
+.portrait { position: relative; width: 120px; height: 150px; flex: none; color: var(--raised-fill); }
+.portrait svg { display: block; }
+.lvl-badge { position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%); width: 48px; height: 48px; display: grid; place-items: center; font: 700 18px var(--font-head); color: var(--raised); background: var(--reward-raised); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.who { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.who .cls { font: 700 26px var(--font-head); line-height: 1.1; }
+.who .ttl { font: 600 16px var(--font-head); color: var(--raised-fill); }
+.who .tier { font: 600 12px var(--font-body); letter-spacing: .12em; text-transform: uppercase; color: var(--reward-raised); margin-top: 4px; }
+.char .xpline { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; letter-spacing: .04em; color: var(--dark-sub); }
+.char .track.xpseg { position: relative; }
+.char .track.xpseg::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), var(--raised) calc(10% - 2px) 10%); opacity: .7; }
+.buff.reward { background: transparent; border: 1px solid var(--reward-raised); color: var(--reward-raised); }
+.vital .reason { margin-top: 4px; padding: 8px 10px; border-left: 3px solid var(--warn); background: var(--warm); color: var(--warm-ink); border-radius: 0 8px 8px 0; font-size: 13px; display: flex; flex-direction: column; gap: 3px; }
+.vital .reason b { font-weight: 700; }
+.card .vital .why { color: var(--muted); }
+.card .vital .top b::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 7px; border-radius: 2px; background: var(--c); }
+.card .vital.low .top span { color: var(--warn); }
+.card .vital .track { height: 10px; }
+.attrs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.attr { position: relative; border: 1px solid var(--line); border-radius: calc(var(--radius) / 2); padding: 10px 6px 8px; text-align: center; background: var(--bg); display: flex; flex-direction: column; gap: 2px; }
+.attr.top { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.attr .a { font: 700 12px var(--font-head); letter-spacing: .14em; color: var(--muted); }
+.attr .s { font: 700 30px var(--font-head); line-height: 1; }
+.attr .m { font-size: 12px; color: var(--muted); }
+.attr .d { position: absolute; top: 6px; right: 7px; font-size: 11px; font-weight: 700; color: var(--good); }
+.attr .d.dn { color: var(--warn); }
+.equip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.slot { position: relative; min-height: 112px; border: 1px solid var(--line); border-radius: calc(var(--radius) / 2); background: var(--bg); color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 10px 6px; text-align: center; font: inherit; }
+.slot svg { width: 32px; height: 32px; flex: none; }
+.slot b { font-size: 12px; font-weight: 600; line-height: 1.2; color: var(--ink); overflow-wrap: anywhere; }
+.slot small { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.slot.empty { border-style: dashed; opacity: .75; }
+.slot.empty b { color: var(--muted); font-weight: 500; }
+.slot.on { border-color: var(--reward); background: var(--reward-soft); color: var(--reward); }
+.slot.ready { border-color: var(--reward); background: var(--reward-soft); color: var(--reward); box-shadow: 0 0 0 1px var(--reward), 0 0 14px color-mix(in srgb, var(--reward) 45%, transparent); cursor: pointer; }
+.slot.ready::before { content: 'Claim'; position: absolute; top: -9px; right: -4px; padding: 1px 6px; border-radius: 4px; background: var(--reward); color: var(--card); font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+:root[data-theme="board"] .slot.ready::before { color: #EEDDB5; }
+.cpath { display: flex; align-items: flex-start; justify-content: space-between; gap: 2px; }
+.cnode { flex: 1; min-width: 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.cnode .g { width: 48px; height: 48px; display: grid; place-items: center; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: var(--line); color: var(--muted); font: 700 12px var(--font-head); margin-bottom: 4px; }
+.cnode.done .g { background: var(--soft); color: var(--soft-ink); }
+.cnode.now .g { background: var(--accent); color: var(--card); }
+.cnode.next .g { background: var(--soft); color: var(--accent); font-size: 18px; }
+.cnode b { font: 700 14px var(--font-head); white-space: nowrap; }
+.cnode span { font-size: 12px; color: var(--muted); }
+.carrow { color: var(--accent); font: 700 18px var(--font-head); padding-top: 12px; }
+.hint { border-top: 1px solid var(--line); padding-top: 10px; font-size: 13px; color: var(--muted); }
+.hint b { color: var(--ink); }
+.tree-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.tree-head .box { font: 700 22px var(--font-head); color: var(--reward); border: 1px solid var(--reward); background: var(--reward-soft); padding: 0 10px; border-radius: 4px; min-width: 40px; text-align: center; }
+.tree { display: block; width: 100%; max-width: 420px; height: auto; margin: 0 auto; }
+.tree-legend { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--muted); }
+.tree-legend span::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; transform: rotate(45deg); vertical-align: 1px; }
+.tree-legend .l1::before { background: var(--accent); } .tree-legend .l2::before { background: var(--reward); } .tree-legend .l3::before { border: 1px dashed var(--accent); }
+.groups-h { margin-top: 8px; }
+/* Level-up popup */
+.levelup { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 70px 16px 24px; background: rgba(0,0,0,.6) radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--accent) 30%, transparent), rgba(0,0,0,.85) 70%); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); overflow-y: auto; }
+.lu-card { position: relative; width: min(380px, 100%); padding: 64px 20px 22px; text-align: center; background: var(--raised); color: var(--on-raised); border: 1px solid var(--raised-fill); border-radius: var(--radius); box-shadow: 0 0 40px color-mix(in srgb, var(--raised-fill) 45%, transparent); display: flex; flex-direction: column; gap: 10px; }
+.lu-card::after { content: ''; position: absolute; inset: 6px; border: 1px solid var(--reward-raised); opacity: .4; border-radius: max(0px, calc(var(--radius) - 6px)); pointer-events: none; }
+.lu-crest { position: absolute; left: 50%; top: -52px; transform: translateX(-50%); color: var(--reward-raised); }
+:root .levelup .lu-card h2 { font: 700 30px var(--font-head); letter-spacing: .12em; text-transform: uppercase; color: var(--reward-raised); }
+.lu-rule { height: 1px; margin: 0 20px; background: linear-gradient(90deg, transparent, var(--reward-raised), transparent); }
+.lu-big { display: flex; align-items: center; justify-content: center; gap: 16px; font: 700 46px var(--font-head); }
+.lu-big .old { font-size: 30px; color: var(--dark-sub); opacity: .7; }
+.lu-big .ar { font-size: 26px; color: var(--reward-raised); }
+.lu-sub { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--raised-fill); }
+.lu-card table { font-size: 14px; text-align: left; margin-top: 6px; }
+.lu-card td { border-bottom: 0; border-top: 1px solid var(--raised-track); padding: 8px 4px; }
+.lu-card td.n { text-align: right; color: var(--dark-sub); width: 44px; }
+.lu-card td.a { text-align: center; color: var(--raised-fill); width: 22px; font-size: 12px; }
+:root[data-theme="glass"] .lu-btn { color: #161820; }
+.lu-card td.v { text-align: right; font-weight: 700; width: 44px; }
+.lu-new { padding: 10px; border: 1px solid var(--reward-raised); border-radius: 8px; font-size: 13px; color: var(--dark-sub); }
+.lu-new b { display: block; font: 700 15px var(--font-head); color: var(--reward-raised); margin-bottom: 2px; }
+.lu-btn { margin-top: 6px; min-height: 48px; border: 0; cursor: pointer; font: 700 16px var(--font-head); letter-spacing: .2em; text-transform: uppercase; color: var(--raised); background: var(--raised-fill); clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 14px 100%, 0 50%); }
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 20; display: none; align-items: center; gap: 14px; width: max-content; max-width: calc(100% - 32px); background: var(--ink); color: #FFFFFF; border-radius: 14px; padding: 10px 10px 10px 16px; font-size: 14px; box-shadow: 0 6px 20px rgba(22, 25, 29, .2); }
 #toast button { background: none; border: 0; color: #9DB5F0; font: 600 14px Inter, sans-serif; cursor: pointer; padding: 8px 10px; }
 #tip { position: fixed; z-index: 10; display: none; pointer-events: none; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 20px rgba(22, 25, 29, .12); padding: 10px 12px; font-size: 13px; min-width: 120px; }
@@ -282,7 +381,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 /* Notes pinned to the board. */
 :root[data-theme="board"] .card, :root[data-theme="board"] .tile { position: relative; }
 :root[data-theme="board"] .card::before, :root[data-theme="board"] .tile::before { content: ''; position: absolute; top: 8px; left: 50%; width: 12px; height: 12px; margin-left: -6px; border-radius: 6px; background: #A3241C; box-shadow: 0 2px 3px rgba(0,0,0,.4); }
-:root[data-theme="board"] header h1, :root[data-theme="board"] header .eyebrow, :root[data-theme="board"] #game-h, :root[data-theme="board"] #game-note { color: #F4E6C4; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+:root[data-theme="board"] header h1, :root[data-theme="board"] header .eyebrow, :root[data-theme="board"] #game-h, :root[data-theme="board"] #game-note, :root[data-theme="board"] #groups-h { color: #F4E6C4; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
 :root[data-theme="cyber"] h1, :root[data-theme="cyber"] h2 { text-transform: uppercase; letter-spacing: .06em; }
 :root[data-theme="system"] h2 { text-transform: uppercase; letter-spacing: .08em; color: var(--accent-deep); }
 :root[data-theme="fantasy"] h1, :root[data-theme="fantasy"] h2 { color: var(--accent-deep); }
@@ -321,9 +420,18 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 
 <section aria-labelledby="game-h" id="game" class="game" data-tab="char" hidden>
 <div class="card-head"><h2 id="game-h">Character</h2><span class="note" id="game-note"></span></div>
-<div class="char" id="char"></div>
+<div class="rpg">
+  <div class="char frame" id="char"></div>
+  <div class="card frame" id="rpg-vitals"></div>
+  <div class="card frame" id="rpg-attrs"></div>
+  <div class="card frame" id="rpg-equip"></div>
+  <div class="card frame" id="rpg-class"></div>
+  <div class="card frame" id="rpg-tree"></div>
+</div>
+<h2 class="groups-h" id="groups-h">Stat groups</h2>
 <div class="groups" id="groups"></div>
 </section>
+<div class="levelup" id="levelup" role="dialog" aria-modal="true" aria-labelledby="lu-h" hidden></div>
 
 <nav aria-label="Time range" id="range" data-tab="today">
   <button type="button" data-days="7" aria-pressed="true">This week</button>
@@ -539,7 +647,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   function monthYear(s) { return parseDay(s).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }); }
   function svgEl(tag, attrs) {
     var e = document.createElementNS('http://www.w3.org/2000/svg', tag);
-    Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    Object.keys(attrs).forEach(function (k) { if (attrs[k] !== null && attrs[k] !== undefined) e.setAttribute(k, attrs[k]); });
     return e;
   }
   function longDay(d) { return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); }
@@ -1280,17 +1388,314 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     var from = v.tick_from_hour || 0, to = (from + (v.tick_hours || 24)) % 24;
     return 'drains ' + -v.tick_per_day + ' from ' + pad(from) + ':00 to ' + pad(to) + ':00';
   }
-  function vitalBars(g) {
-    return el('div', { class: 'vitals', 'aria-label': 'Vital bars' }, (g.vitals || []).map(function (v) {
+  // ---- Character tab: framed RPG panels (hero, vitals, attributes, equipment, class path, perk tree, level-up) ----
+  var GROUP_ORDER = ['str', 'con', 'int', 'wis', 'cha', 'per'];
+  // Same tables as app/perks.py; the page only uses them to name the class you could become next.
+  var PURE_CLASSES = { str: 'Juggernaut', con: 'Warden', 'int': 'Artificer', wis: 'Sage', cha: 'Merchant', per: 'Strategist' };
+  var DUAL_CLASSES = { 'con+str': 'Ironclad', 'int+str': 'Forgeknight', 'str+wis': 'Battle Monk', 'cha+str': 'Mercenary', 'per+str': 'Ranger',
+    'con+int': 'Alchemist', 'con+wis': 'Druid', 'cha+con': 'Steward', 'con+per': 'Pathfinder', 'int+wis': 'Runesmith', 'cha+int': 'Guildmaster',
+    'int+per': 'Tactician', 'cha+wis': 'Oracle', 'per+wis': 'Seer', 'cha+per': 'Diplomat' };
+  function dualClass(a, b) { return DUAL_CLASSES[[a, b].sort().join('+')]; }
+  // Class sigils on the portrait, drawn around (0, 0).
+  var SIGIL = {
+    str: 'M-12 0h24M-12-6v12M-8-8v16M12-6v12M8-8v16',
+    con: 'M0 10C-12 2-12-8-5-9-2-10 0-7 0-5 0-7 2-10 5-9 12-8 12 2 0 10z',
+    'int': 'M-6-9l-7 9 7 9M6-9l7 9-7 9M3-11l-6 22',
+    wis: 'M-13 0C-7-9 7-9 13 0 7 9-7 9-13 0zM0-3a3 3 0 1 1 0 6a3 3 0 1 1 0-6',
+    cha: 'M0-10a10 10 0 1 1 0 20a10 10 0 1 1 0-20M4-5h-6a2.5 2.5 0 0 0 0 5h4a2.5 2.5 0 0 1 0 5h-6',
+    per: 'M0-12l3 9 9 3-9 3-3 9-3-9-9-3 9-3z',
+    none: 'M0-10l8 10-8 10-8-10z'
+  };
+  // Equipment slot icons, 24 x 24.
+  var GEAR = {
+    str: 'M8 7a4 4 0 0 1 8 0M7 9h10l1.5 9a3 3 0 0 1-3 3.5h-7a3 3 0 0 1-3-3.5z',
+    con: 'M3 15h18M5 15v-4a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v4M4 19v-4M20 19v-4M8 11h3',
+    'int': 'M3 7h18v10H3zM7 11h.01M11 11h.01M15 11h.01M8 14h8',
+    wis: 'M3 5h18v12H3zM10 9l5 2.5-5 2.5zM8 21h8',
+    cha: 'M12 3a9 9 0 1 1 0 18a9 9 0 1 1 0-18M15 8h-4.5a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9M12 6v12',
+    per: 'M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5M8 7h7',
+    empty: 'M12 4a8 8 0 1 1 0 16a8 8 0 1 1 0-16M12 9v3M12 15h.01'
+  };
+  function corners() { return ['tl', 'tr', 'bl', 'br'].map(function (c) { return el('i', { class: 'cn ' + c, 'aria-hidden': 'true' }); }); }
+  function rune(text) { return el('h3', { class: 'rune' }, el('i', { 'aria-hidden': 'true' }, '◆'), text, el('i', { 'aria-hidden': 'true' }, '◆')); }
+  function glyph(d, size, cls) {
+    var s = svgEl('svg', { viewBox: '0 0 24 24', width: size, height: size, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6,
+      'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' });
+    if (cls) s.setAttribute('class', cls);
+    s.append(svgEl('path', { d: d }));
+    return s;
+  }
+  function signed(n) { return (n >= 0 ? '+' : '−') + Math.abs(n); }
+  function article(word) { return /^[AEIOU]/.test(word) ? 'an ' + word : 'a ' + word; }
+  function groupsByKey(g) { var out = {}; (g ? g.groups : []).forEach(function (x) { out[x.key] = x; }); return out; }
+
+  function portrait(g) {
+    var s = svgEl('svg', { viewBox: '0 0 120 150', width: 120, height: 150, 'aria-hidden': 'true' });
+    var arch = 'M6 146V48a54 54 0 0 1 108 0v98z';
+    s.append(svgEl('path', { d: arch, style: 'fill:var(--raised-track);fill-opacity:.55' }));
+    s.append(svgEl('circle', { cx: 60, cy: 54, r: 38, fill: 'none', stroke: 'currentColor', 'stroke-opacity': '.35', 'stroke-dasharray': '2 5' }));
+    // A hooded figure: an original silhouette, the same for every class; the sigil on the chest shows the class.
+    s.append(svgEl('path', { d: 'M60 30c-14 0-22 11-22 25 0 8 3 14 6 18l-2 6c-14 4-26 12-30 30v37h96v-37c-4-18-16-26-30-30l-2-6c3-4 6-10 6-18 0-14-8-25-22-25z',
+      style: 'fill:var(--raised);stroke:currentColor;stroke-opacity:.8' }));
+    s.append(svgEl('ellipse', { cx: 60, cy: 58, rx: 12, ry: 15, style: 'fill:#000;fill-opacity:.65' }));
+    s.append(svgEl('circle', { cx: 54.5, cy: 59, r: 1.7, fill: 'currentColor' }));
+    s.append(svgEl('circle', { cx: 65.5, cy: 59, r: 1.7, fill: 'currentColor' }));
+    var groups = g['class'].groups.length ? g['class'].groups : ['none'];
+    groups.forEach(function (k, i) {
+      var x = groups.length === 2 ? (i ? 74 : 46) : 60;
+      s.append(svgEl('path', { d: SIGIL[k], transform: 'translate(' + x + ' 102)', fill: 'none', 'stroke-width': 1.6,
+        'stroke-linecap': 'round', 'stroke-linejoin': 'round', style: 'stroke:var(--reward-raised)' }));
+    });
+    s.append(svgEl('path', { d: arch, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.5 }));
+    s.append(svgEl('path', { d: 'M11 146V48a49 49 0 0 1 98 0v98', fill: 'none', stroke: 'currentColor', 'stroke-opacity': '.35' }));
+    s.append(svgEl('path', { d: 'M60 -1l5 8-5 8-5-8z', style: 'fill:var(--reward-raised)' }));
+    return el('div', { class: 'portrait' }, s, el('div', { class: 'lvl-badge', 'aria-label': 'Level ' + g.level }, String(g.level)));
+  }
+
+  function renderHeroPanel(g) {
+    var into = g.level_cost ? Math.round(g.level_xp / g.level_cost * 100) : 100;
+    var chips = [];
+    g.today.buffs.forEach(function (b) { chips.push(el('span', { class: 'buff reward', title: b.detail }, b.name + (b.xp ? ' +' + int(b.xp) + ' XP' : ''))); });
+    (g.streaks || []).filter(function (k) { return k.days > 0; }).forEach(function (k) {
+      var fire = glyph('M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.2 1-3.6 2.2-4.8.3 1.6 1.1 2.6 2.3 3C11 9 11 6 12 3z', 16);
+      chips.push(el('span', { class: 'streak' }, fire, el('b', null, k.days + ' ' + k.unit + (k.days === 1 ? '' : 's')), ' ' + k.label));
+    });
+    $('char').replaceChildren.apply($('char'), corners().concat([
+      el('div', { class: 'rpg-hero' }, portrait(g),
+        el('div', { class: 'who' },
+          el('span', { class: 'cls' }, g['class'].name),
+          g.title ? el('span', { class: 'ttl' }, g.title) : null,
+          el('span', { class: 'sub' }, g['class'].detail),
+          el('span', { class: 'tier' }, g.tier + ' · Day ' + g.day_number))),
+      chips.length ? el('div', { class: 'buffs' }, chips) : null,
+      el('div', { class: 'xpline' }, el('span', null, g.level_cost ? 'Level ' + g.level + ' → ' + (g.level + 1) : 'Level ' + g.level),
+        el('span', null, g.level_cost ? int(g.level_xp) + ' / ' + int(g.level_cost) + ' XP · ' + int(g.xp_to_next) + ' to go' : 'Max level reached')),
+      el('div', { class: 'track xpseg', role: 'img', 'aria-label': int(g.level_xp) + ' of ' + int(g.level_cost || 0) + ' XP to the next level' },
+        el('div', { class: 'fill', style: 'width:' + into + '%' })),
+      el('div', { class: 'xpline' }, el('span', null, 'Today ' + int(g.today.xp) + ' / ' + int(g.today.max) + ' XP'),
+        el('span', null, 'Total ' + int(g.total_xp) + ' XP')),
+      g.avg_daily_xp_14d && g.max_level_date ? el('p', { class: 'sub' }, 'At your 14-day pace of ' + int(g.avg_daily_xp_14d) +
+        ' XP a day, you reach level ' + g.max_level + ' around ' + monthYear(g.max_level_date) + '.') : null
+    ]).filter(Boolean));
+  }
+
+  // How to lift each bar, from the rules in app/vitals.py.
+  var VITAL_FIX = {
+    hp: 'sleep 7 h for a full reset; it regenerates 12 a day. Skip coffee, sugar and social media.',
+    stamina: 'drink water (+2 per 250 ml); sleep resets it at 10 an hour.',
+    mana: 'write a journal entry, read for 30 min (+12.5) or sleep 8 h.',
+    focus: 'drink water (+2 per 250 ml) or study. Under 25 min of social media today gives +15 tomorrow.'
+  };
+  // The daily tick taken so far today (negative for a drain), as in vitalNow.
+  function tickSoFar(g, v) {
+    if (g.date !== iso(new Date())) return 0;
+    var now = new Date(), hours = now.getHours() + now.getMinutes() / 60;
+    var from = v.tick_from_hour || 0, span = v.tick_hours || 24;
+    return v.tick_per_day * Math.max(0, Math.min(1, (hours - from) / span));
+  }
+  function renderRpgVitals(g) {
+    var box = $('rpg-vitals');
+    box.hidden = !g.vitals;
+    if (!g.vitals) return;
+    var bars = g.vitals.map(function (v) {
       var now = vitalNow(g, v), low = now <= 25;
-      var why = v.today.length ? v.today.map(function (e) { return e.points ? e.label + ' ' + (e.points > 0 ? '+' : '−') + Math.abs(Math.round(e.points)) : e.label; }).join(' · ')
+      var why = v.today.length ? v.today.map(function (e) { return e.points ? e.label + ' ' + signed(Math.round(e.points)) : e.label; }).join(' · ')
         : 'Nothing has changed it today';
+      var reason = null;
+      if (low) {
+        var costs = v.today.filter(function (e) { return e.points < 0; }).map(function (e) { return e.label + ' ' + signed(Math.round(e.points)); });
+        var drain = Math.round(tickSoFar(g, v));
+        if (drain < 0) costs.push('daily drain ' + signed(drain) + ' so far');
+        reason = el('div', { class: 'reason' },
+          el('span', null, el('b', null, 'Why it’s low: '), costs.length ? costs.join(' · ') : 'a short night’s sleep'),
+          el('span', null, el('b', null, 'Raise it: '), VITAL_FIX[v.key]));
+      }
       return el('div', { class: 'vital' + (low ? ' low' : ''), title: v.about },
-        el('div', { class: 'top' }, el('b', null, v.name), el('span', null, (low ? 'Low · ' : now > v.max ? 'Bonus · ' : '') + now + ' / ' + v.max)),
+        el('div', { class: 'top' }, el('b', { style: '--c:' + VITAL_COLOR[v.key] }, v.name), el('span', null, (low ? 'Low · ' : now > v.max ? 'Bonus · ' : '') + now + ' / ' + v.max)),
         el('div', { class: 'track', role: 'img', 'aria-label': v.name + ' ' + now + ' of ' + v.max },
           el('div', { class: 'fill', style: 'width:' + Math.min(100, now) + '%;background:' + VITAL_COLOR[v.key] })),
-        el('span', { class: 'why' }, why + ' · ' + tickText(v)));
-    }));
+        reason || el('span', { class: 'why' }, why + ' · ' + tickText(v)));
+    });
+    box.replaceChildren.apply(box, corners().concat([rune('Vitals'), el('div', { class: 'vitals' }, bars)]));
+  }
+
+  function renderAttributes(g) {
+    var week = groupsByKey(state.gameWeek), top = g['class'].groups, box = $('rpg-attrs');
+    var tiles = GROUP_ORDER.map(function (k) {
+      var grp = groupsByKey(g)[k];
+      if (!grp) return null;
+      var before = week[k], d = before ? grp.score - before.score : 0;
+      return el('div', { class: 'attr' + (top.indexOf(k) >= 0 ? ' top' : ''), title: grp.name },
+        d ? el('span', { class: 'd' + (d < 0 ? ' dn' : ''), 'aria-label': (d > 0 ? 'up ' : 'down ') + Math.abs(d) + ' since last week' }, (d > 0 ? '▲' : '▼') + Math.abs(d)) : null,
+        el('span', { class: 'a' }, grp.ability), el('span', { class: 's' }, String(grp.score)),
+        el('span', { class: 'm' }, 'Lv ' + grp.level + ' · ' + signed(grp.modifier)));
+    }).filter(Boolean);
+    box.replaceChildren.apply(box, corners().concat([rune('Attributes'), el('div', { class: 'attrs' }, tiles),
+      el('p', { class: 'note' }, state.gameWeek ? 'Arrows show the change since last week. Highlighted scores make your class.' : 'Highlighted scores make your class.')]));
+  }
+
+  function renderEquipment(g) {
+    var box = $('rpg-equip');
+    var slots = GROUP_ORDER.map(function (k) {
+      var grp = groupsByKey(g)[k];
+      if (!grp) return null;
+      var ready = grp.perks.filter(function (p) { return p.earned && !p.claimed_on; })[0];
+      var worn = grp.perks.filter(function (p) { return p.claimed_on; }).slice(-1)[0];
+      if (ready) {
+        var b = el('button', { type: 'button', class: 'slot ready', title: ready.detail }, glyph(GEAR[k], 32), el('b', null, ready.token), el('small', null, grp.ability + ' · earned'));
+        b.addEventListener('click', function () {
+          var card = $('grp-' + k);
+          if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); var btn = card.querySelector('.perk.earned .btn'); if (btn) btn.focus({ preventScroll: true }); }
+        });
+        return b;
+      }
+      if (worn) return el('div', { class: 'slot on', title: worn.detail }, glyph(GEAR[k], 32), el('b', null, worn.token), el('small', null, grp.ability + ' · claimed'));
+      return el('div', { class: 'slot empty' }, glyph(GEAR.empty, 32), el('b', null, 'Empty'), el('small', null, grp.ability));
+    }).filter(Boolean);
+    box.replaceChildren.apply(box, corners().concat([rune('Equipment'), el('div', { class: 'equip' }, slots),
+      el('p', { class: 'note' }, 'Each perk reward you earn fills its slot. Gold slots are waiting to be claimed: tap one to find its Claim button.')]));
+  }
+
+  // The class you'd become next, and how far off it is, using the rule in app/game.py character_class.
+  function nextClass(g) {
+    var lv = {};
+    g.groups.forEach(function (x) { lv[x.key] = x.level; });
+    var order = GROUP_ORDER.slice().sort(function (a, b) { return lv[b] - lv[a]; });
+    var first = order[0], second = order[1], third = order[2], ab = {};
+    g.groups.forEach(function (x) { ab[x.key] = x.ability; });
+    if (lv[first] < 2) return { name: '?', hint: 'Level any stat to 2 to find your class.' };
+    if (lv[first] >= 2 * lv[second]) {
+      var need = Math.floor(lv[first] / 2) + 1 - lv[second];
+      var dn = dualClass(first, second);
+      return { name: dn, short: ab[first] + '+' + ab[second], hint: ab[second] + ' needs ' + need + ' more level' + (need === 1 ? '' : 's') +
+        ' to join your class: then you become ' + article(dn) + ' (' + ab[first] + ' + ' + ab[second] + ').' };
+    }
+    var pass = lv[second] - lv[third], pure = 2 * lv[second] - lv[first];
+    if (pass <= pure) {
+      var n = dualClass(first, third);
+      return { name: n, short: ab[first] + '+' + ab[third], hint: ab[third] + (pass ? ' is ' + pass + ' level' + (pass === 1 ? '' : 's') + ' behind ' : ' is level with ') + ab[second] +
+        ': pass it and you become ' + article(n) + ' (' + ab[first] + ' + ' + ab[third] + ').' };
+    }
+    var p = PURE_CLASSES[first];
+    return { name: p, short: ab[first], hint: 'Get ' + ab[first] + ' to twice ' + ab[second] + '’s level (' + pure + ' more) and you become a pure ' + p + '.' };
+  }
+  function renderClassPath(g) {
+    var box = $('rpg-class'), cls = g['class'], nxt = nextClass(g);
+    var shortOf = function (c) { return c.groups.length === 1 ? groupsByKey(g)[c.groups[0]].ability : c.groups.length ? c.groups.map(function (k) { return groupsByKey(g)[k].ability.charAt(0); }).join('+') : 'ADV'; };
+    var nodes = [];
+    if (cls.name !== 'Adventurer') nodes.push(['done', 'ADV', 'Adventurer', 'Day 1']);
+    var was = state.gameWeek && state.gameWeek['class'];
+    if (was && was.name !== cls.name && was.name !== 'Adventurer') nodes.push(['done', shortOf(was), was.name, 'Last week']);
+    nodes.push(['now', shortOf(cls), cls.name, 'Now']);
+    nodes.push(['next', '?', nxt.name, nxt.name === '?' ? 'Hidden' : 'Possible']);
+    var path = [];
+    nodes.forEach(function (n, i) {
+      if (i) path.push(el('span', { class: 'carrow', 'aria-hidden': 'true' }, '›'));
+      path.push(el('div', { class: 'cnode ' + n[0] }, el('div', { class: 'g', 'aria-hidden': 'true' }, n[1]), el('b', null, n[2]), el('span', null, n[3])));
+    });
+    box.replaceChildren.apply(box, corners().concat([rune('Class path'), el('div', { class: 'cpath' }, path),
+      el('p', { class: 'hint' }, 'Your class comes from your two strongest groups. ', el('b', null, nxt.hint))]));
+  }
+
+  function renderPerkTree(g) {
+    var box = $('rpg-tree'), C = 190, R = [52, 86, 118, 148];
+    var s = svgEl('svg', { viewBox: '0 0 380 380', class: 'tree', role: 'img' });
+    function add(tag, a) { var e = svgEl(tag, a); s.append(e); return e; }
+    function diamond(x, y, r, style) { return add('path', { d: 'M' + x + ' ' + (y - r) + 'L' + (x + r) + ' ' + y + 'L' + x + ' ' + (y + r) + 'L' + (x - r) + ' ' + y + 'Z', style: style }); }
+    function label(x, y, text, style, size) { var t = add('text', { x: x, y: y, 'text-anchor': 'middle', 'dominant-baseline': 'central', style: 'font:700 ' + (size || 12) + 'px var(--font-head);' + style }); t.textContent = text; }
+    R.forEach(function (r, i) { add('circle', { cx: C, cy: C, r: r, fill: 'none', style: 'stroke:var(--line)', 'stroke-dasharray': i % 2 ? '2 4' : null }); });
+    var hex = GROUP_ORDER.map(function (k, i) { var a = (-90 + i * 60) * Math.PI / 180; return (C + R[3] * Math.cos(a)) + ',' + (C + R[3] * Math.sin(a)); }).join(' ');
+    add('polygon', { points: hex, fill: 'none', style: 'stroke:var(--line)' });
+    add('circle', { cx: C, cy: C, r: 40, style: 'fill:var(--accent);fill-opacity:.18' });
+    var claimable = 0, said = [];
+    GROUP_ORDER.forEach(function (k, i) {
+      var grp = groupsByKey(g)[k];
+      if (!grp) return;
+      var a = (-90 + i * 60) * Math.PI / 180, cs = Math.cos(a), sn = Math.sin(a);
+      var lit = grp.perks.filter(function (p) { return p.earned; }).length;
+      var ready = grp.perks.some(function (p) { return p.earned && !p.claimed_on; });
+      add('line', { x1: C + 24 * cs, y1: C + 24 * sn, x2: C + R[3] * cs, y2: C + R[3] * sn, style: 'stroke:var(--line)' });
+      if (lit) add('line', { x1: C + 24 * cs, y1: C + 24 * sn, x2: C + R[lit - 1] * cs, y2: C + R[lit - 1] * sn, 'stroke-width': 2, style: 'stroke:' + (ready ? 'var(--reward)' : 'var(--accent)') });
+      grp.perks.forEach(function (p, t) {
+        var x = C + R[t] * cs, y = C + R[t] * sn, roman = ['I', 'II', 'III', 'IV'][t];
+        if (p.earned && !p.claimed_on) {
+          claimable++;
+          add('circle', { cx: x, cy: y, r: 18, style: 'fill:var(--reward);fill-opacity:.2' });
+          diamond(x, y, 13, 'fill:var(--reward-soft);stroke:var(--reward);stroke-width:1.5');
+          label(x, y, roman, 'fill:var(--reward)', 11);
+        } else if (p.earned) {
+          diamond(x, y, 13, 'fill:var(--soft);stroke:var(--accent);stroke-width:1.5');
+          label(x, y, roman, 'fill:var(--soft-ink)', 11);
+        } else if (t === lit) {
+          diamond(x, y, 12, 'fill:var(--card);stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3');
+          label(x, y, '?', 'fill:var(--accent)');
+        } else diamond(x, y, 5, 'fill:var(--bg);stroke:var(--axis)');
+      });
+      label(C + (R[3] + 26) * cs, C + (R[3] + 20) * sn, grp.ability, 'letter-spacing:1.5px;fill:' + (lit ? 'var(--accent-deep)' : 'var(--muted)'));
+      said.push(grp.ability + ' ' + lit + ' of 4 earned');
+    });
+    diamond(C, C, 22, 'fill:var(--card);stroke:var(--accent-deep);stroke-width:1.5');
+    label(C, C, String(g.level), 'fill:var(--ink)', 17);
+    s.setAttribute('aria-label', 'Perk tree: ' + said.join(', '));
+    box.replaceChildren.apply(box, corners().concat([rune('Perk constellation'),
+      el('div', { class: 'tree-head' }, el('span', null, 'Rewards to claim'), el('span', { class: 'box' }, String(claimable))),
+      s,
+      el('div', { class: 'tree-legend' }, el('span', { class: 'l1' }, 'Claimed'), el('span', { class: 'l2' }, 'Ready to claim'), el('span', { class: 'l3' }, 'Next, hidden'))]));
+  }
+
+  // Level-up popup: compares with what this device saw at the last level-up, saved in localStorage.
+  function snapshot(g) {
+    var out = { level: g.level, groups: {}, earned: [] };
+    g.groups.forEach(function (x) {
+      out.groups[x.key] = { score: x.score, level: x.level };
+      x.perks.forEach(function (p, t) { if (p.earned) out.earned.push(x.key + t); });
+    });
+    return out;
+  }
+  function checkLevelUp(g) {
+    if (g.date !== iso(new Date()) || !$('levelup').hidden) return;
+    var seen = null;
+    try { seen = JSON.parse(store('rpgSeen') || 'null'); } catch (e) { seen = null; }
+    if (!seen || !seen.groups || g.level < seen.level) { store('rpgSeen', JSON.stringify(snapshot(g))); return; }
+    if (g.level > seen.level) showLevelUp(g, seen);
+  }
+  function showLevelUp(g, seen) {
+    var rows = [];
+    g.groups.forEach(function (x) {
+      var was = seen.groups[x.key];
+      if (!was) return;
+      if (x.score > was.score) rows.push([x.ability + ' score \u00B7 ' + x.name, was.score, x.score, 100]);
+      else if (x.level > was.level) rows.push([x.ability + ' level \u00B7 ' + x.name, was.level, x.level, x.level - was.level]);
+    });
+    rows.sort(function (a, b) { return b[3] - a[3]; });
+    rows = rows.slice(0, 4);
+    var fresh = [];
+    g.groups.forEach(function (x) { x.perks.forEach(function (p, t) { if (p.earned && seen.earned.indexOf(x.key + t) < 0) fresh.push(p.rank + ': ' + p.token); }); });
+    var crest = svgEl('svg', { class: 'lu-crest', width: 150, height: 104, viewBox: '0 0 150 104', 'aria-hidden': 'true' });
+    var wing = svgEl('g', { fill: 'none', stroke: 'currentColor', 'stroke-width': 1.6 });
+    ['M50 52C35 40 22 44 8 30C24 34 34 30 48 40', 'M48 62C32 64 20 74 6 70C20 64 30 56 46 56', 'M100 52C115 40 128 44 142 30C126 34 116 30 102 40',
+      'M102 62C118 64 130 74 144 70C130 64 120 56 104 56'].forEach(function (d) { wing.append(svgEl('path', { d: d })); });
+    wing.append(svgEl('path', { d: 'M75 6L96 52L75 98L54 52Z', 'stroke-width': 2, style: 'fill:var(--raised)' }));
+    wing.append(svgEl('path', { d: 'M75 20L88 52L75 84L62 52Z', style: 'stroke:var(--raised-fill)' }));
+    crest.append(wing);
+    var num = svgEl('text', { x: 75, y: 53, 'text-anchor': 'middle', 'dominant-baseline': 'central', style: 'font:700 16px var(--font-head);fill:var(--on-raised)' });
+    num.textContent = String(g.level);
+    crest.append(num);
+    var btn = el('button', { type: 'button', class: 'lu-btn' }, 'Continue');
+    var card = el('div', { class: 'lu-card' }, crest,
+      el('h2', { id: 'lu-h' }, 'Level up'), el('div', { class: 'lu-rule', 'aria-hidden': 'true' }),
+      el('div', { class: 'lu-big', 'aria-label': 'Level ' + seen.level + ' to ' + g.level },
+        el('span', { class: 'old' }, String(seen.level)), el('span', { class: 'ar', 'aria-hidden': 'true' }, '❯❯'), el('span', null, String(g.level))),
+      el('div', { class: 'lu-sub' }, g['class'].name + ' · Day ' + g.day_number),
+      rows.length ? el('table', null, el('tbody', null, rows.map(function (r) {
+        return el('tr', null, el('td', null, r[0]), el('td', { class: 'n' }, String(r[1])), el('td', { class: 'a', 'aria-label': 'up to' }, '▲'), el('td', { class: 'v' }, String(r[2])));
+      }), g.level_cost ? el('tr', null, el('td', null, 'XP to the next level'), el('td', { class: 'n' }), el('td', { class: 'a' }), el('td', { class: 'v' }, int(g.xp_to_next))) : null)) : null,
+      fresh.length ? el('div', { class: 'lu-new' }, el('b', null, fresh.length === 1 ? 'New perk unlocked' : fresh.length + ' new perks unlocked'), fresh.join(' · ')) : null,
+      btn);
+    btn.addEventListener('click', function () { store('rpgSeen', JSON.stringify(snapshot(g))); $('levelup').hidden = true; });
+    $('levelup').replaceChildren(card);
+    $('levelup').hidden = false;
+    btn.focus();
   }
 
   function renderGame() {
@@ -1309,34 +1714,13 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
         return el('span', null, v.name, el('i', { style: '--w:' + Math.min(100, now) + '%;--c:' + VITAL_COLOR[v.key] }), String(now));
       })) : null].filter(Boolean));
     if (!g) return;
-    var c = $('char');
-    c.replaceChildren();
-    var into = g.level_cost ? Math.round(g.level_xp / g.level_cost * 100) : 100;
-    [
-      el('p', { class: 'sub' }, g.tier + ' · day ' + g.day_number + ' of the year'),
-      el('p', { class: 'num lvl' }, 'Level ' + g.level),
-      el('p', { class: 'num cls' }, g['class'].name + (g.title ? ' · ' + g.title : '')),
-      el('p', { class: 'sub' }, g['class'].detail),
-      el('div', { class: 'track', role: 'img', 'aria-label': int(g.level_xp) + ' of ' + int(g.level_cost || 0) + ' XP to the next level' },
-        el('div', { class: 'fill', style: 'width:' + into + '%' })),
-      el('p', { class: 'sub' }, g.level_cost ? int(g.xp_to_next) + ' XP to level ' + (g.level + 1) : 'Max level reached'),
-      g.vitals ? vitalBars(g) : null,
-      el('div', { class: 'char-facts' },
-        el('div', null, el('span', { class: 'sub' }, 'Total XP'), el('span', { class: 'num' }, int(g.total_xp))),
-        el('div', null, el('span', { class: 'sub' }, 'Avg / day, 14 days'), el('span', { class: 'num' }, g.avg_daily_xp_14d === null ? '–' : int(g.avg_daily_xp_14d)))),
-      g.avg_daily_xp_14d && g.max_level_date ? el('p', { class: 'sub' }, 'At your 14-day pace of ' + int(g.avg_daily_xp_14d) +
-        ' XP a day, you reach level ' + g.max_level + ' around ' + monthYear(g.max_level_date) + '.') : null,
-      g.streaks && g.streaks.some(function (k) { return k.days > 0; }) ? el('div', { class: 'streaks', 'aria-label': 'Streaks' },
-        g.streaks.filter(function (k) { return k.days > 0; }).map(function (k) {
-          var icon = svgEl('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2,
-            'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' });
-          icon.append(svgEl('path', { d: 'M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.2 1-3.6 2.2-4.8.3 1.6 1.1 2.6 2.3 3C11 9 11 6 12 3z' }));
-          return el('span', { class: 'streak' }, icon, el('b', null, k.days + ' ' + k.unit + (k.days === 1 ? '' : 's')), ' ' + k.label);
-        })) : null,
-      g.today.buffs.length ? el('div', { class: 'buffs' }, g.today.buffs.map(function (b) {
-        return el('span', { class: 'buff', title: b.detail }, b.name + (b.xp ? ' +' + int(b.xp) + ' XP' : ''));
-      })) : null
-    ].forEach(function (kid) { if (kid) c.append(kid); });
+    renderHeroPanel(g);
+    renderRpgVitals(g);
+    renderAttributes(g);
+    renderEquipment(g);
+    renderClassPath(g);
+    renderPerkTree(g);
+    checkLevelUp(g);
 
     var questsDone = g.today.metrics.filter(function (l) { return l.xp >= l.max; }).length;
     $('xp-today').textContent = questsDone + ' of ' + g.today.metrics.length + ' done · ' + int(g.today.xp) + ' / ' + int(g.today.max) + ' XP';
@@ -1353,7 +1737,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     $('groups').replaceChildren.apply($('groups'), g.groups.map(function (grp) {
       var next = grp.next_tier_level;
       var toNext = next ? Math.min(100, Math.round(grp.level / next * 100)) : 100;
-      return el('div', { class: 'card' },
+      return el('div', { class: 'card frame', id: 'grp-' + grp.key }, corners(),
         el('div', { class: 'ability' },
           el('div', { class: 'abbr', title: grp.ability + ' ' + grp.score + ' (' + (grp.modifier >= 0 ? '+' : '') + grp.modifier + ')' },
             grp.ability, el('small', null, grp.score + ' (' + (grp.modifier >= 0 ? '+' : '\u2212') + Math.abs(grp.modifier) + ')')),
@@ -1439,7 +1823,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     $('wrap').classList.add('loading');
     state.today = new Date();
     var start = iso(addDays(state.today, -(HISTORY_DAYS - 1))), end = iso(state.today);
-    return Promise.allSettled([getJSON('/days?start=' + start + '&end=' + end), getJSON('/trading'), getJSON('/status'), getJSON('/meals?date=' + end), getJSON('/game?date=' + end)]).then(function (res) {
+    return Promise.allSettled([getJSON('/days?start=' + start + '&end=' + end), getJSON('/trading'), getJSON('/status'), getJSON('/meals?date=' + end), getJSON('/game?date=' + end), getJSON('/game?date=' + iso(addDays(state.today, -7)))]).then(function (res) {
       var problems = [];
       if (res[0].status === 'fulfilled') {
         state.byDate = {};
@@ -1449,6 +1833,8 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       if (res[2].status === 'fulfilled') state.status = res[2].value; else problems.push('sync status');
       if (res[3].status === 'fulfilled') state.meals = res[3].value.meals; else problems.push("today's meals");
       if (res[4].status === 'fulfilled') state.game = res[4].value; else problems.push('game');
+      // Last week's character, for the attribute arrows and the class path. Optional: nothing breaks without it.
+      state.gameWeek = res[5].status === 'fulfilled' ? res[5].value : null;
       if (!problems.length) state.fetchedAt = new Date();
       $('banner').hidden = !problems.length;
       $('banner').textContent = problems.length ? "Couldn't load " + problems.join(', ') + ' from the server. Showing what loaded; it retries every 5 minutes.' : '';
