@@ -4,15 +4,15 @@ A perk token is a one-time real-life reward. It's earned when the group's level 
 logging perk.<group>.<tier>.claimed (the dashboard will get a button). A few tokens also change that day's scoring.
 """
 
-# Group key -> (name, ability, stats in the group). A group's level is its highest stat level. Journal counts
-# toward both WIS (with social media) and PER (mindfulness).
+# Group key -> (name, ability, stats in the group). A group's level is its highest stat level. Workouts count
+# toward both STR and CON.
 GROUPS = {
     "str": ("Strength & Athletics", "STR", ["kettlebell", "workout", "catch"]),
-    "con": ("Vitality & Endurance", "CON", ["sleep", "heart", "steps"]),
-    "int": ("Intelligence & Crafting", "INT", ["github", "email"]),
-    "wis": ("Focus & Mental Discipline", "WIS", ["social", "youtube", "journal"]),
-    "cha": ("Wealth & Economy", "CHA", ["stocks"]),
-    "per": ("Mindfulness & Life Organization", "PER", ["journal"]),
+    "con": ("Vitality & Endurance", "CON", ["sleep", "heart", "steps", "workout"]),
+    "int": ("Intelligence & Learning", "INT", ["study", "github"]),
+    "wis": ("Wisdom & Reflection", "WIS", ["reading", "journal"]),
+    "cha": ("Charisma & Connection", "CHA", ["connect"]),
+    "per": ("Perception & Focus", "PER", ["social", "youtube"]),
 }
 
 # Tier -> (rank, group level that unlocks it).
@@ -44,13 +44,13 @@ PERKS = {
                  "A mechanical keyboard, precision mouse or desk mat."),
     ("int", 4): ("Grand Technomancer", "Ergonomics & Hardware Overhaul",
                  "A monitor arm, chair upgrade or second screen."),
-    ("wis", 1): ("Keeper of the Mind", "Unrestricted Media Pass",
+    ("per", 1): ("Keeper of the Mind", "Unrestricted Media Pass",
                  "3 hours of guilt-free media. The day you claim it, social media and YouTube can't cost XP."),
-    ("wis", 2): ("High Archon of Focus", "Cinema & Night Out",
+    ("per", 2): ("High Archon of Focus", "Cinema & Night Out",
                  "A guilt-free evening at the movies or an event, phone stats unchecked."),
-    ("wis", 3): ("Untouchable Mind", "Gaming Marathon Pass",
+    ("per", 3): ("Untouchable Mind", "Gaming Marathon Pass",
                  "A full weekend afternoon of guilt-free PC gaming."),
-    ("wis", 4): ("Zenith of Discipline", "Digital Detox Retreat",
+    ("per", 4): ("Zenith of Discipline", "Digital Detox Retreat",
                  "A weekend unplugged. The day you claim it and the next score at least your 14-day average."),
     ("cha", 1): ("Asset Collector", "Specialty Roast & Brew Pass",
                  "A top-shelf bag of coffee beans or premium local craft drinks."),
@@ -60,24 +60,25 @@ PERKS = {
                  "A high-end restaurant meal to celebrate."),
     ("cha", 4): ("Economic Paragon", "Major Asset Dividend Claim",
                  "A long-term luxury item you've held off buying for 6+ months."),
-    ("per", 1): ("Chronicler of Fate", "Stationery Upgrade",
+    ("wis", 1): ("Chronicler of Fate", "Stationery Upgrade",
                  "A premium hardcover journal or a high-quality pen."),
-    ("per", 2): ("Master of the Daily Block", "Chef Exemption Pass",
+    ("wis", 2): ("Master of the Daily Block", "Chef Exemption Pass",
                  "Skip cooking one night for a quality takeaway."),
-    ("per", 3): ("Grand Strategist", "Wildcard Schedule Day",
+    ("wis", 3): ("Grand Strategist", "Wildcard Schedule Day",
                  "Clear a full day's calendar and do whatever comes up."),
-    ("per", 4): ("Architect of Life", "Custom Leather Journal / Desk Artifact",
+    ("wis", 4): ("Architect of Life", "Custom Leather Journal / Desk Artifact",
                  "A bespoke item, like an engraved notebook or desk plaque, celebrating mastery."),
 }
 
 # Classes from the two strongest groups, or a pure class when one group's level is double the next.
-PURE_CLASSES = {"str": "Juggernaut", "con": "Warden", "int": "Artificer", "wis": "Sage", "cha": "Merchant",
-                "per": "Strategist"}
+PURE_CLASSES = {"str": "Juggernaut", "con": "Warden", "int": "Savant", "wis": "Mystic", "cha": "Envoy",
+                "per": "Watcher"}
 DUAL_CLASSES = {frozenset(k.split("+")): v for k, v in {
-    "str+con": "Ironclad", "str+int": "Forgeknight", "str+wis": "Battle Monk", "str+cha": "Mercenary",
-    "str+per": "Ranger", "con+int": "Alchemist", "con+wis": "Druid", "con+cha": "Steward",
-    "con+per": "Pathfinder", "int+wis": "Runesmith", "int+cha": "Guildmaster", "int+per": "Tactician",
-    "wis+cha": "Oracle", "wis+per": "Seer", "cha+per": "Diplomat",
+    # The eight pairings named in the rework brief, plus the rest.
+    "str+con": "Warrior", "int+wis": "Sage", "con+wis": "Druid", "int+per": "Scholar",
+    "cha+wis": "Bard", "str+per": "Ranger", "con+per": "Sentinel", "int+cha": "Artificer",
+    "str+int": "Forgeknight", "str+wis": "Battle Monk", "str+cha": "Champion", "con+int": "Alchemist",
+    "con+cha": "Steward", "wis+per": "Seer", "cha+per": "Diplomat",
 }.items()}
 
 

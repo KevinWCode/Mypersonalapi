@@ -150,7 +150,7 @@ def score_day(m: dict, ctx: dict) -> list[dict]:
         deep_rem = m.get("sleep.deep_minutes", 0) + m.get("sleep.rem_minutes", 0)
         xp = (75 if sleep >= 450 else 0) + (50 if deep_rem >= 0.35 * sleep else 0)
         detail = f"{sleep / 60:.1f} h, deep + REM {deep_rem / sleep:.0%}"
-    lines.append(_line("sleep", "Sleep", "Rest", xp, 125, detail))
+    lines.append(_line("sleep", "Sleep", "CON", xp, 125, detail))
 
     # Heart: resting HR no more than 2 bpm over its 30-day average, and HRV above its average.
     rhr, hrv = m.get("health.resting_heart_rate"), m.get("health.hrv_rmssd")
@@ -167,62 +167,61 @@ def score_day(m: dict, ctx: dict) -> list[dict]:
         parts.append(f"HRV {hrv:.0f} ms")
     else:
         parts.append("no HRV from Samsung")
-    lines.append(_line("heart", "Heart rate & HRV", "Pulse", xp, 75, ", ".join(parts)))
+    lines.append(_line("heart", "Heart rate & HRV", "CON", xp, 75, ", ".join(parts)))
 
     steps = m.get("health.steps", 0)
-    lines.append(_line("steps", "Steps", "Endurance", min(int(steps // 1000) * 10, 100), 100, f"{steps:,.0f} steps"))
+    lines.append(_line("steps", "Steps", "CON", min(int(steps // 1000) * 10, 100), 100, f"{steps:,.0f} steps"))
 
     # Workout: a session, plus 30+ minutes standing in for the heart rate / calorie target until workouts send those.
     # Sprint pace needs GPS workouts, which aren't sent yet.
     sessions, minutes = m.get("workout.sessions", 0), m.get("workout.minutes", 0)
     xp = (75 if sessions else 0) + (40 if sessions and minutes >= 30 else 0)
-    lines.append(_line("workout", "Workout", "Agility", xp, 150,
+    lines.append(_line("workout", "Workout", "STR", xp, 150,
                        f"{sessions:.0f} session(s), {minutes:.0f} min" if sessions else "No workout"))
 
     kb = any(v > 0 for k, v in m.items() if k.startswith("kb.") and (k.endswith(".sets") or k.endswith(".done")))
     lines.append(_line("kettlebell", "Kettlebell", "STR", 75 if kb else 0, 75, "Session logged" if kb else "No session"))
 
     catch = m.get("football.max_catch_yards")
-    lines.append(_line("catch", "Catch drill", "DEX", 50 if catch else 0, 50,
+    lines.append(_line("catch", "Catch drill", "STR", 50 if catch else 0, 50,
                        f"{catch:.0f} yd" if catch else "No drill"))
 
-    commits = m.get("github.commits", 0)
-    lines.append(_line("github", "GitHub commits", "Craft", 25 * min(int(commits), 4), 100, f"{commits:.0f} commit(s)"))
+    # INT: study and GitHub. Study is 25 XP per 30 minutes, up to 2 hours.
+    study = m.get("study.minutes", 0)
+    lines.append(_line("study", "Study", "INT", 25 * min(int(study // 30), 4), 100, f"{study:.0f} min"))
 
-    unread = m.get("email.unread")
-    lines.append(_line("email", "Inbox", "Guild", 50 if unread is not None and unread <= 10 else 0, 50,
-                       f"{unread:.0f} unread" if unread is not None else "Gmail not connected yet"))
+    commits = m.get("github.commits", 0)
+    lines.append(_line("github", "GitHub commits", "INT", 25 * min(int(commits), 4), 100, f"{commits:.0f} commit(s)"))
+
+    # WIS: reading and journal. Reading is 25 XP per 15 minutes, up to 45 minutes.
+    reading = m.get("reading.minutes", 0)
+    lines.append(_line("reading", "Reading", "WIS", 25 * min(int(reading // 15), 3), 75, f"{reading:.0f} min"))
 
     # Journal: tapped on the dashboard. The first entry is worth most; a second one adds a little.
     journal = m.get("journal.entries", 0)
     xp = (75 if journal >= 1 else 0) + (25 if journal >= 2 else 0)
-    lines.append(_line("journal", "Journal", "Logbook", xp, 100,
+    lines.append(_line("journal", "Journal", "WIS", xp, 100,
                        f"{journal:.0f} entr{'y' if journal == 1 else 'ies'}" if journal else "No entry yet"))
 
     # Screen time only counts once the phone has synced that day, so a missing day isn't read as 0 minutes.
     synced = "screen.total_minutes" in m
+
+    # CHA: time on calls and messaging apps, 25 XP per 10 minutes, up to 40 minutes.
+    talk = m.get("screen.communication_minutes", 0)
+    lines.append(_line("connect", "Calls & messages", "CHA", 25 * min(int(talk // 10), 4) if synced else 0, 100,
+                       f"{talk:.0f} min" if synced else "Phone not synced"))
+
+    # PER: less distraction. YouTube and social media.
     yt = ctx.get("youtube", 0)
-    lines.append(_line("youtube", "YouTube", "Lore", 50 if synced and yt <= 60 else 0, 50,
+    lines.append(_line("youtube", "YouTube", "PER", 50 if synced and yt <= 60 else 0, 50,
                        f"{yt:.0f} min (limit 60)" if synced else "Phone not synced"))
 
     social = m.get("screen.social_media_minutes", 0)
     xp = 0
     if synced:
         xp = 100 if social < 30 else (-50 if social > 60 else 0)
-    lines.append(_line("social", "Social media", "Sanity", xp, 100,
+    lines.append(_line("social", "Social media", "PER", xp, 100,
                        f"{social:.0f} min (under 30 earns XP, over 60 costs 50)" if synced else "Phone not synced"))
-
-    # Stocks: a day that ends flat or up, plus money added (equity rose by more than the day's P/L).
-    pl = m.get("trading.pl_day")
-    xp, detail = 0, "Market closed or no data"
-    if pl is not None:
-        xp = 50 if pl >= 0 else 0
-        detail = f"Day P/L ${pl:,.2f}"
-        prev, equity = ctx.get("prev_equity"), m.get("trading.equity")
-        if prev is not None and equity is not None and equity - prev - pl > 1:
-            xp += 25
-            detail += ", capital added"
-    lines.append(_line("stocks", "Stocks", "Treasury", xp, 75, detail))
     return lines
 
 
@@ -275,7 +274,6 @@ def build(conn, day: date) -> dict:
 
     history, stat_xp = [], defaultdict(float)
     rhr_seen, hrv_seen = [], []
-    prev_equity = None
     today_lines: list[dict] = []
     today_buffs: list[dict] = []
     vital_days: list[tuple[date, dict, float]] = []
@@ -292,12 +290,11 @@ def build(conn, day: date) -> dict:
             active = {gt for gt, on in claims.items() if on == key}
             buffs = []
 
-            ctx = {"rhr_base": _avg(rhr_seen[-30:]), "hrv_base": _avg(hrv_seen[-30:]),
-                   "prev_equity": prev_equity, "youtube": youtube.get(key, 0)}
+            ctx = {"rhr_base": _avg(rhr_seen[-30:]), "hrv_base": _avg(hrv_seen[-30:]), "youtube": youtube.get(key, 0)}
             lines = score_day(m, ctx)
             vital_days.append((d, m, youtube.get(key, 0)))
             by_key = {line["key"]: line for line in lines}
-            if ("wis", 1) in active:
+            if ("per", 1) in active:
                 by_key["social"]["xp"] = max(0, by_key["social"]["xp"])
                 by_key["youtube"]["xp"] = by_key["youtube"]["max"]
                 buffs.append({"name": "Unrestricted Media Pass", "detail": "Social media and YouTube can't cost XP today", "xp": 0})
@@ -311,7 +308,7 @@ def build(conn, day: date) -> dict:
                 buffs.append({"name": "Well-Rested", "xp": bonus,
                               "detail": f"{pass_used}: +10% XP today" if pass_used and not rested else "7.5 h+ sleep: +10% XP today"})
             xp = base + bonus
-            if ("wis", 4) in active or claims.get(("wis", 4)) == yesterday:
+            if ("per", 4) in active or claims.get(("per", 4)) == yesterday:
                 floor = round(_avg([h["xp"] for h in history[-14:]]) or 0)
                 if floor > xp:
                     buffs.append({"name": "Digital Detox Retreat", "detail": "Scored at your 14-day average", "xp": floor - xp})
@@ -329,8 +326,6 @@ def build(conn, day: date) -> dict:
             rhr_seen.append(m["health.resting_heart_rate"])
         if "health.hrv_rmssd" in m:
             hrv_seen.append(m["health.hrv_rmssd"])
-        if "trading.equity" in m:
-            prev_equity = m["trading.equity"]
         d += timedelta(days=1)
 
     total = sum(h["xp"] for h in history)

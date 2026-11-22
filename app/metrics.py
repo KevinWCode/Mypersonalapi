@@ -14,6 +14,13 @@ SOCIAL_MEDIA_APPS = {
 SEPARATE_APPS = {
     "com.google.android.youtube": "youtube",
 }
+# Calls and messaging, summed into screen.communication_minutes for Charisma.
+COMMUNICATION_APPS = {
+    "com.samsung.android.dialer", "com.google.android.dialer", "com.android.dialer",
+    "com.samsung.android.messaging", "com.google.android.apps.messaging",
+    "com.whatsapp", "com.whatsapp.w4b", "org.telegram.messenger", "org.thoughtcrime.securesms",
+    "com.facebook.orca", "com.snapchat.android", "com.discord",
+}
 
 APP_PREFIX = "screen.app."
 
@@ -27,6 +34,8 @@ def build_days(rows) -> list[dict]:
             # Every app counts toward total screen time, which also tells the dashboard the phone synced that day.
             day["screen.total_minutes"] = day.get("screen.total_minutes", 0) + value
             package = metric[len(APP_PREFIX):]
+            if package in COMMUNICATION_APPS:
+                day["screen.communication_minutes"] = day.get("screen.communication_minutes", 0) + value
             name = SOCIAL_MEDIA_APPS.get(package) or SEPARATE_APPS.get(package)
             if name is None:
                 continue

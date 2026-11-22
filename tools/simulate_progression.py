@@ -21,7 +21,7 @@ def chance(p):
 # Each profile returns one day's metrics. Keys match what the phone app records.
 def fitness(d):
     m = {"sleep.total_minutes": random.gauss(460, 30), "health.steps": random.gauss(11000, 2500),
-         "screen.total_minutes": 200, "screen.social_media_minutes": random.gauss(45, 15),
+         "screen.communication_minutes": random.gauss(15, 10), "screen.total_minutes": 200, "screen.social_media_minutes": random.gauss(45, 15),
          "screen.youtube_minutes": 40, "health.resting_heart_rate": 55}
     m["sleep.deep_minutes"] = m["sleep.rem_minutes"] = m["sleep.total_minutes"] * 0.18
     if chance(5 / 7): m.update({"workout.sessions": 1, "workout.minutes": 50})
@@ -33,7 +33,7 @@ def fitness(d):
 
 def study(d):
     m = {"sleep.total_minutes": random.gauss(420, 40), "health.steps": random.gauss(5000, 1500),
-         "screen.total_minutes": 240, "screen.social_media_minutes": random.gauss(35, 15),
+         "screen.communication_minutes": random.gauss(10, 10), "screen.total_minutes": 240, "screen.social_media_minutes": random.gauss(35, 15),
          "screen.youtube_minutes": 50, "study.minutes": random.gauss(120, 30), "reading.minutes": 30,
          "health.resting_heart_rate": 64}
     m["sleep.deep_minutes"] = m["sleep.rem_minutes"] = m["sleep.total_minutes"] * 0.16
@@ -44,7 +44,7 @@ def study(d):
 
 def average(d):
     m = {"sleep.total_minutes": random.gauss(400, 45), "health.steps": random.gauss(6500, 2000),
-         "screen.total_minutes": 300, "screen.social_media_minutes": random.gauss(80, 30),
+         "screen.communication_minutes": random.gauss(25, 10), "screen.total_minutes": 300, "screen.social_media_minutes": random.gauss(80, 30),
          "screen.youtube_minutes": 70, "health.resting_heart_rate": 66}
     m["sleep.deep_minutes"] = m["sleep.rem_minutes"] = m["sleep.total_minutes"] * 0.15
     if chance(2 / 7): m.update({"workout.sessions": 1, "workout.minutes": 35})
@@ -55,7 +55,7 @@ def average(d):
 
 def disciplined(d):
     m = {"sleep.total_minutes": random.gauss(480, 20), "health.steps": random.gauss(10500, 2000),
-         "screen.total_minutes": 120, "screen.social_media_minutes": random.gauss(15, 8),
+         "screen.communication_minutes": random.gauss(30, 10), "screen.total_minutes": 120, "screen.social_media_minutes": random.gauss(15, 8),
          "screen.youtube_minutes": 20, "study.minutes": 60, "reading.minutes": 30,
          "journal.entries": 1, "github.commits": random.choice([0, 1, 2, 4]),
          "health.resting_heart_rate": 54, "trading.pl_day": random.gauss(5, 20)}
@@ -68,7 +68,7 @@ def disciplined(d):
 
 def low(d):
     m = {"sleep.total_minutes": random.gauss(380, 60), "health.steps": random.gauss(3500, 1500),
-         "screen.total_minutes": 420, "screen.social_media_minutes": random.gauss(150, 40),
+         "screen.communication_minutes": random.gauss(35, 10), "screen.total_minutes": 420, "screen.social_media_minutes": random.gauss(150, 40),
          "screen.youtube_minutes": 120, "health.resting_heart_rate": 72}
     m["sleep.deep_minutes"] = m["sleep.rem_minutes"] = m["sleep.total_minutes"] * 0.14
     if chance(0.1): m["reading.minutes"] = 15

@@ -23,6 +23,14 @@ object DayMetrics {
         "com.google.android.youtube" to "youtube",
     )
 
+    // Calls and messaging, summed into screen.communication_minutes for Charisma.
+    val COMMUNICATION_APPS = setOf(
+        "com.samsung.android.dialer", "com.google.android.dialer", "com.android.dialer",
+        "com.samsung.android.messaging", "com.google.android.apps.messaging",
+        "com.whatsapp", "com.whatsapp.w4b", "org.telegram.messenger", "org.thoughtcrime.securesms",
+        "com.facebook.orca", "com.snapchat.android", "com.discord",
+    )
+
     const val APP_PREFIX = "screen.app."
 
     /** metric to value for one day. Rows from different sources for the same metric are added together. */
@@ -37,6 +45,7 @@ object DayMetrics {
             // Every app counts toward total screen time.
             add("screen.total_minutes", value)
             val pkg = metric.removePrefix(APP_PREFIX)
+            if (pkg in COMMUNICATION_APPS) add("screen.communication_minutes", value)
             val name = SOCIAL_MEDIA_APPS[pkg] ?: SEPARATE_APPS[pkg] ?: continue
             add("screen.${name}_minutes", value)
             if (pkg in SOCIAL_MEDIA_APPS) add("screen.social_media_minutes", value)

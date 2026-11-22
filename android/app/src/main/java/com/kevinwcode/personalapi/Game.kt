@@ -65,8 +65,7 @@ object Game {
     data class Line(val key: String, val label: String, val stat: String, var xp: Int, val max: Int, val detail: String)
 
     data class Ctx(
-        val rhrBase: Double? = null, val hrvBase: Double? = null, val prevEquity: Double? = null,
-        val youtube: Double = 0.0,
+        val rhrBase: Double? = null, val hrvBase: Double? = null, val youtube: Double = 0.0,
     )
 
     private fun truthy(v: Double?) = v != null && v != 0.0
@@ -82,9 +81,9 @@ object Game {
             val s = sleep!!
             val deepRem = (m["sleep.deep_minutes"] ?: 0.0) + (m["sleep.rem_minutes"] ?: 0.0)
             val xp = (if (s >= 450) 75 else 0) + (if (deepRem >= 0.35 * s) 50 else 0)
-            lines += Line("sleep", "Sleep", "Rest", xp, 125,
+            lines += Line("sleep", "Sleep", "CON", xp, 125,
                 String.format(Locale.UK, "%.1f h, deep + REM %.0f%%", s / 60, 100 * deepRem / s))
-        } else lines += Line("sleep", "Sleep", "Rest", 0, 125, "No sleep synced")
+        } else lines += Line("sleep", "Sleep", "CON", 0, 125, "No sleep synced")
 
         // Heart: resting HR no more than 2 bpm over its 30-day average, and HRV above its average.
         val rhr = m["health.resting_heart_rate"]
@@ -101,61 +100,58 @@ object Game {
             if (base == null || hrv!! > base) xp += 35
             parts += "HRV ${f0(hrv!!)} ms"
         } else parts += "no HRV from Samsung"
-        lines += Line("heart", "Heart rate & HRV", "Pulse", xp, 75, parts.joinToString(", "))
+        lines += Line("heart", "Heart rate & HRV", "CON", xp, 75, parts.joinToString(", "))
 
         val steps = m["health.steps"] ?: 0.0
-        lines += Line("steps", "Steps", "Endurance", minOf(Math.floor(steps / 1000).toInt() * 10, 100), 100,
+        lines += Line("steps", "Steps", "CON", minOf(Math.floor(steps / 1000).toInt() * 10, 100), 100,
             String.format(Locale.UK, "%,.0f steps", steps))
 
         val sessions = m["workout.sessions"] ?: 0.0
         val minutes = m["workout.minutes"] ?: 0.0
         xp = (if (sessions != 0.0) 75 else 0) + (if (sessions != 0.0 && minutes >= 30) 40 else 0)
-        lines += Line("workout", "Workout", "Agility", xp, 150,
+        lines += Line("workout", "Workout", "STR", xp, 150,
             if (sessions != 0.0) "${f0(sessions)} session(s), ${f0(minutes)} min" else "No workout")
 
         val kb = m.any { (k, v) -> v > 0 && k.startsWith("kb.") && (k.endsWith(".sets") || k.endsWith(".done")) }
         lines += Line("kettlebell", "Kettlebell", "STR", if (kb) 75 else 0, 75, if (kb) "Session logged" else "No session")
 
         val catch = m["football.max_catch_yards"]
-        lines += Line("catch", "Catch drill", "DEX", if (truthy(catch)) 50 else 0, 50,
+        lines += Line("catch", "Catch drill", "STR", if (truthy(catch)) 50 else 0, 50,
             if (truthy(catch)) "${f0(catch!!)} yd" else "No drill")
 
-        val commits = m["github.commits"] ?: 0.0
-        lines += Line("github", "GitHub commits", "Craft", 25 * minOf(commits.toInt(), 4), 100, "${f0(commits)} commit(s)")
+        // INT: study and GitHub. Study is 25 XP per 30 minutes, up to 2 hours.
+        val study = m["study.minutes"] ?: 0.0
+        lines += Line("study", "Study", "INT", 25 * minOf(Math.floor(study / 30).toInt(), 4), 100, "${f0(study)} min")
 
-        val unread = m["email.unread"]
-        lines += Line("email", "Inbox", "Guild", if (unread != null && unread <= 10) 50 else 0, 50,
-            if (unread != null) "${f0(unread)} unread" else "Gmail not connected yet")
+        val commits = m["github.commits"] ?: 0.0
+        lines += Line("github", "GitHub commits", "INT", 25 * minOf(commits.toInt(), 4), 100, "${f0(commits)} commit(s)")
+
+        // WIS: reading and journal. Reading is 25 XP per 15 minutes, up to 45 minutes.
+        val reading = m["reading.minutes"] ?: 0.0
+        lines += Line("reading", "Reading", "WIS", 25 * minOf(Math.floor(reading / 15).toInt(), 3), 75, "${f0(reading)} min")
 
         val journal = m["journal.entries"] ?: 0.0
         xp = (if (journal >= 1) 75 else 0) + (if (journal >= 2) 25 else 0)
-        lines += Line("journal", "Journal", "Logbook", xp, 100,
+        lines += Line("journal", "Journal", "WIS", xp, 100,
             if (journal != 0.0) "${f0(journal)} entr${if (journal == 1.0) "y" else "ies"}" else "No entry yet")
 
         // Screen time only counts once the phone has synced that day, so a missing day isn't read as 0 minutes.
         val synced = "screen.total_minutes" in m
+
+        // CHA: time on calls and messaging apps, 25 XP per 10 minutes, up to 40 minutes.
+        val talk = m["screen.communication_minutes"] ?: 0.0
+        lines += Line("connect", "Calls & messages", "CHA", if (synced) 25 * minOf(Math.floor(talk / 10).toInt(), 4) else 0, 100,
+            if (synced) "${f0(talk)} min" else "Phone not synced")
+
+        // PER: less distraction. YouTube and social media.
         val yt = ctx.youtube
-        lines += Line("youtube", "YouTube", "Lore", if (synced && yt <= 60) 50 else 0, 50,
+        lines += Line("youtube", "YouTube", "PER", if (synced && yt <= 60) 50 else 0, 50,
             if (synced) "${f0(yt)} min (limit 60)" else "Phone not synced")
 
         val social = m["screen.social_media_minutes"] ?: 0.0
         xp = if (!synced) 0 else if (social < 30) 100 else if (social > 60) -50 else 0
-        lines += Line("social", "Social media", "Sanity", xp, 100,
+        lines += Line("social", "Social media", "PER", xp, 100,
             if (synced) "${f0(social)} min (under 30 earns XP, over 60 costs 50)" else "Phone not synced")
-
-        // Stocks: a day that ends flat or up, plus money added (equity rose by more than the day's P/L).
-        val pl = m["trading.pl_day"]
-        if (pl != null) {
-            xp = if (pl >= 0) 50 else 0
-            var detail = String.format(Locale.UK, "Day P/L $%,.2f", pl)
-            val prev = ctx.prevEquity
-            val equity = m["trading.equity"]
-            if (prev != null && equity != null && equity - prev - pl > 1) {
-                xp += 25
-                detail += ", capital added"
-            }
-            lines += Line("stocks", "Stocks", "Treasury", xp, 75, detail)
-        } else lines += Line("stocks", "Stocks", "Treasury", 0, 75, "Market closed or no data")
         return lines
     }
 
@@ -292,7 +288,6 @@ object Game {
         val statXp = mutableMapOf<String, Double>()
         val rhrSeen = mutableListOf<Double>()
         val hrvSeen = mutableListOf<Double>()
-        var prevEquity: Double? = null
         var todayLines: List<Line> = emptyList()
         var todayBuffs: List<Buff> = emptyList()
         val vitalDays = mutableListOf<Vitals.DayInput>()
@@ -314,12 +309,12 @@ object Game {
 
                 val ctx = Ctx(
                     rhrBase = avg(rhrSeen.takeLast(30)), hrvBase = avg(hrvSeen.takeLast(30)),
-                    prevEquity = prevEquity, youtube = youtube,
+                    youtube = youtube,
                 )
                 val lines = scoreDay(m, ctx)
                 vitalDays += Vitals.DayInput(d, m, youtube)
                 val byKey = lines.associateBy { it.key }
-                if (("wis" to 1) in active) {
+                if (("per" to 1) in active) {
                     byKey.getValue("social").xp = maxOf(0, byKey.getValue("social").xp)
                     byKey.getValue("youtube").xp = byKey.getValue("youtube").max
                     buffs += Buff("Unrestricted Media Pass", "Social media and YouTube can't cost XP today", 0)
@@ -339,7 +334,7 @@ object Game {
                     buffs += it
                     xp += it.xp
                 }
-                if (("wis" to 4) in active || claims["wis" to 4] == yesterday) {
+                if (("per" to 4) in active || claims["per" to 4] == yesterday) {
                     val floor = pyRound(avg(history.takeLast(14).map { it.xp.toDouble() }) ?: 0.0)
                     if (floor > xp) {
                         buffs += Buff("Digital Detox Retreat", "Scored at your 14-day average", floor - xp)
@@ -360,7 +355,6 @@ object Game {
             }
             m["health.resting_heart_rate"]?.let { rhrSeen += it }
             m["health.hrv_rmssd"]?.let { hrvSeen += it }
-            m["trading.equity"]?.let { prevEquity = it }
             d = d.plusDays(1)
         }
 

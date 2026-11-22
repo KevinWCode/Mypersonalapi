@@ -49,13 +49,15 @@ while d <= end:
         if r() < 0.5: add(d, "screen.app.com.instagram.android", random.choice([3, 9, 18, 27]))
         if r() < 0.3: add(d, "screen.app.com.reddit.frontpage", random.randint(2, 30))
         if r() < 0.7: add(d, "screen.app.com.google.android.youtube", random.choice([10, 25, 45, 61, 90]))
+        if r() < 0.6: add(d, "screen.app.com.whatsapp", random.choice([5, 12, 25, 40]))
+        if r() < 0.3: add(d, "screen.app.com.snapchat.android", random.choice([4, 10, 20]))
     if d.weekday() < 5 and r() < 0.9:
         add(d, "trading.pl_day", round(random.uniform(-40, 40), 2))
         add(d, "trading.equity", round(1500 + random.uniform(-100, 300), 2))
     d += timedelta(days=1)
 # Perk claims (only count once earned).
-for day_off, metric in [(20, "perk.wis.1.claimed"), (25, "perk.con.1.claimed"), (30, "perk.per.2.claimed"),
-                        (33, "perk.wis.4.claimed"), (40, "perk.str.1.claimed")]:
+for day_off, metric in [(20, "perk.per.1.claimed"), (25, "perk.con.1.claimed"), (30, "perk.wis.2.claimed"),
+                        (33, "perk.per.4.claimed"), (40, "perk.str.1.claimed")]:
     add(START + timedelta(days=day_off), metric, 1)
 
 # Sugar from the food AI on a few days (its own random stream, so the rows above stay the same).
