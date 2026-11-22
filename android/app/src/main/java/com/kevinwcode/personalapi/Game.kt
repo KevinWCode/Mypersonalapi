@@ -69,7 +69,8 @@ object Game {
     )
 
     private fun truthy(v: Double?) = v != null && v != 0.0
-    private fun f0(v: Double) = String.format(Locale.UK, "%.0f", v)
+    // Halves round to even, like Python's f"{v:.0f}", so a 60.5 average reads 60 on both.
+    private fun f0(v: Double) = String.format(Locale.UK, "%.0f", Math.rint(v))
 
     /** One line per stat. m is the day's metrics from [DayMetrics.build]; ctx holds baselines from earlier days. */
     fun scoreDay(m: Map<String, Double>, ctx: Ctx): List<Line> {
