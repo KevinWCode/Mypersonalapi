@@ -11,7 +11,7 @@ import java.time.LocalDateTime
  *
  *  - the vitals ([VitalsB]): a 7.5 h sleep target with an 8 h overcharge to 110, a Mana morning reset, gentler
  *    waking drains, a 30 g sugar buffer, food, workout and study as spend-and-reward, and named debuffs;
- *  - "Prime Condition": on a day all four bars are 70+, kettlebell, commits and journal XP get +10%.
+ *  - "Prime Condition": on a day all four bars wake up at 70+, kettlebell, commits and journal XP get +10%.
  */
 object TestB {
     const val PRIME_MIN = 70.0
@@ -41,7 +41,7 @@ object TestB {
 
     fun primeBuff(lines: List<Game.Line>): Game.Buff {
         val manual = lines.filter { it.key in MANUAL_STATS }.sumOf { maxOf(0, it.xp) }
-        return Game.Buff("Prime Condition", "All four vitals 70+: +10% XP on kettlebell, commits and journal",
+        return Game.Buff("Prime Condition", "Woke up with all four vitals 70+: +10% XP on kettlebell, commits and journal",
             Game.pyRound(manual * PRIME_BONUS))
     }
 
@@ -62,15 +62,15 @@ object TestB {
  * The Test B vital bars. Same shapes as [Vitals] (bars, effects, start, end), different numbers. Rules, in order:
  *
  *  - Sleep sets HP, Stamina and Focus to 100 x minutes / 450 up to 7.5 h, then on up to 110 at 8 h ("Overcharge").
- *  - Sleep sets Mana to 45, +20 for 7.5 h or more, +25 when deep + REM is 35% or more of the night.
+ *  - Sleep sets Mana to 52, +20 for 7.5 h or more, +25 when deep + REM is 35% or more of the night.
  *  - Over the waking day (07:00 to 23:00) Stamina drains 45, Focus 50, Mana 30. HP regenerates 12 a day up to 100.
  *  - Sugar: -1 HP per 2 g above a 30 g buffer; a sugar rush of +1 Stamina per 2 g (up to +15, that day only).
  *  - Food: +10 HP for 135 g protein or more; +8 HP for 2,150 kcal or less over at least two meals.
  *  - Water +2 Stamina and +2 Focus per 250 ml. Coffee +3 Focus a cup (first 2); cups 3 and on cost 6 HP each.
  *  - Workout (same counting as live): -25 Stamina, +15 Focus, +5 HP today; +12 Stamina tomorrow, +20 if that day's
  *    protein reached 135 g.
- *  - Study, per 30 min up to 90 min: -10 Mana, +10 Focus ("Flow State"). If Mana is 25 or less after studying
- *    ("Brain Fog") each 30 min also costs 4 HP.
+ *  - Study, per 30 min up to 90 min: -5 Mana, +10 Focus ("Flow State"). Study never costs HP; low Mana is shown
+ *    as the "Brain Fog" debuff only.
  *  - Reading +15 Mana and +5 Focus per 30 min. A journal entry +20 Mana, +8 Focus.
  *  - Social media drains as live (-1 HP and Mana per 5 min, -1 Focus per 2 min) after 10 free minutes a day;
  *    YouTube as live. Under 30 min of social media yesterday gives +15 Focus.
@@ -83,7 +83,7 @@ object VitalsB {
     val BARS = listOf(
         Vitals.Bar("hp", "HP", "Sleep sets it (7.5 h = 100, 8 h = 110); regenerates 12 a day; sugar over 30 g, coffee after 2 cups and screens lower it; protein, sensible calories and workouts raise it", 12.0),
         Vitals.Bar("stamina", "Stamina", "Sleep sets it (7.5 h = 100, 8 h = 110); drains 45 over the waking day; workouts spend it today and pay it back tomorrow; water and a sugar rush top it up", -45.0),
-        Vitals.Bar("mana", "Mana", "Resets to 45 each morning (+20 for 7.5 h sleep, +25 for deep + REM 35%); drains 30 over the waking day; study spends it, reading and journal refill it", -30.0),
+        Vitals.Bar("mana", "Mana", "Resets to 52 each morning (+20 for 7.5 h sleep, +25 for deep + REM 35%); drains 30 over the waking day; study spends it, reading and journal refill it", -30.0),
         Vitals.Bar("focus", "Focus", "Sleep sets it (7.5 h = 100, 8 h = 110); drains 50 over the waking day; study, reading, water, workouts and a calm social day yesterday raise it", -50.0),
     )
 
@@ -92,7 +92,7 @@ object VitalsB {
     const val SLEEP_FULL_MINUTES = 450.0
     const val SLEEP_OVERCHARGE_MINUTES = 480.0
 
-    const val MANA_RESET = 45.0
+    const val MANA_RESET = 52.0
     const val MANA_RESTED = 20.0
     const val MANA_DEEP_REM = 25.0
 
@@ -112,9 +112,8 @@ object VitalsB {
     const val WORKOUT_NEXT_DAY_STAMINA_FED = 20.0
 
     const val STUDY_MAX_MINUTES = 90.0
-    const val STUDY_MANA = -10.0
+    const val STUDY_MANA = -5.0
     const val STUDY_FOCUS = 10.0
-    const val BRAIN_FOG_HP = -4.0
     const val READING_MANA = 15.0
     const val READING_FOCUS = 5.0
     const val JOURNAL_MANA = 20.0
@@ -124,8 +123,6 @@ object VitalsB {
     const val CALM_SOCIAL_MINUTES = 30.0
     const val CALM_NEXT_DAY_FOCUS = 15.0
 
-    /** When a day's Prime Condition is judged: 15:00, halfway through the waking day (or now, for today before then). */
-    const val PRIME_CHECK_SHARE = 15.0 / 24
 
     data class Debuff(val name: String, val why: String, val fix: String)
 
@@ -134,7 +131,7 @@ object VitalsB {
             "sleep 7.5 h, keep sugar under 30 g, hit 135 g protein (+10) or work out (+5)."),
         "stamina" to Debuff("Fatigued", "Needs hydration or a rest day",
             "drink water (+2 per 250 ml) and sleep 7.5 h; yesterday's workout pays back +12 (+20 with 135 g protein)."),
-        "mana" to Debuff("Brain Fog", "Studying now costs HP",
+        "mana" to Debuff("Brain Fog", "Mana is running dry",
             "read 30 min (+15), write a journal entry (+20) or sleep 7.5 h for a bigger morning reset."),
         "focus" to Debuff("Scattered", "Social media or YouTube overload",
             "study (+10 per 30 min), drink water, and keep social media under 30 min for +15 tomorrow."),
@@ -156,9 +153,9 @@ object VitalsB {
 
     fun mealsLogged(m: Map<String, Double>) = Food.MEALS.count { (m["food.$it.kcal"] ?: 0.0) > 0 }
 
-    /** The day's changes to each bar. manaStart is Mana after the morning reset, used for the Brain Fog check. */
+    /** The day's changes to each bar. */
     fun effects(
-        m: Map<String, Double>, youtubeMinutes: Double, manaStart: Double, yesterday: Map<String, Double>,
+        m: Map<String, Double>, youtubeMinutes: Double, yesterday: Map<String, Double>,
     ): Map<String, MutableList<Vitals.Effect>> {
         val out = BARS.associate { it.key to mutableListOf<Vitals.Effect>() }
         fun add(bar: String, label: String, points: Double, temporary: Boolean = false) {
@@ -222,8 +219,6 @@ object VitalsB {
         if (blocks > 0) {
             add("mana", "Study", STUDY_MANA * blocks)
             add("focus", "Flow State (study)", STUDY_FOCUS * blocks)
-            val manaAfter = manaStart + out.getValue("mana").sumOf { it.points }
-            if (manaAfter <= LOW) add("hp", "Brain Fog (studied on low Mana)", BRAIN_FOG_HP * blocks)
         }
 
         val calm = "screen.total_minutes" in yesterday && (yesterday["screen.social_media_minutes"] ?: 0.0) < CALM_SOCIAL_MINUTES
@@ -266,12 +261,12 @@ object VitalsB {
                     if (deepRemOk(m, sleep)) "deep + REM +25" else null,
                 ).joinToString("") { ", $it" }
             }
-            val fx = effects(m, d.youtubeMinutes, start.getValue("mana"), yesterday)
+            val fx = effects(m, d.youtubeMinutes, yesterday)
             for ((k, label) in resets) fx.getValue(k).add(0, Vitals.Effect(label, 0.0))
             yesterday = m
 
-            val checkShare = minOf(share, PRIME_CHECK_SHARE)
-            var allHigh = true
+            // Prime Condition is judged on how you woke up: every bar at 70+ after the morning reset. It then lasts the day.
+            prime[d.date] = BARS.all { start.getValue(it.key) >= TestB.PRIME_MIN }
             for (bar in BARS) {
                 val all = fx.getValue(bar.key)
                 val gained = all.sumOf { it.points }
@@ -279,10 +274,8 @@ object VitalsB {
                 val lasting = gained - all.filter { it.temporary }.sumOf { it.points }
                 val s = start.getValue(bar.key)
                 values[bar.key] = endValue(bar.key, s, if (isToday) gained else lasting, bar.tickPerDay * tickShare(bar, share))
-                if (endValue(bar.key, s, gained, bar.tickPerDay * tickShare(bar, checkShare)) < TestB.PRIME_MIN) allHigh = false
                 last[bar.key] = Triple(s, gained, all)
             }
-            prime[d.date] = allHigh
         }
         val bars = BARS.map { bar ->
             val (start, gained, fx) = last[bar.key] ?: Triple(Vitals.START_VALUE, 0.0, emptyList())

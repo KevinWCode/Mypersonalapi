@@ -36,27 +36,28 @@ class TestBTest {
     fun workedExampleAtHalfPastThree() {
         val b = bars(listOf(emptyMap(), example), elapsed = 15.5 / 24, youtube = 21.0)
         assertEquals(88.0, b.getValue("hp").startOfDay, 0.0)
-        assertEquals(45.0, b.getValue("mana").startOfDay, 0.0)
+        assertEquals(52.0, b.getValue("mana").startOfDay, 0.0)
         // HP 88: social (8 min past the free 10) -1, YouTube -1, sugar 4 g over the buffer -2, workout +5, then regen.
         assertEquals(1.0, b.getValue("hp").gainedToday, 0.0)
         assertEquals(97, b.getValue("hp").value)
         // Stamina 88: sugar rush +15 (capped), water +10, workout -25, then 8.5 of 16 waking hours of a 45 drain.
         assertEquals(64, b.getValue("stamina").value)
-        // Mana 45: social -1, YouTube -1, reading +15, study -20 = 38, then the 30 drain so far.
-        assertEquals(22, b.getValue("mana").value)
-        assertTrue(b.getValue("mana").today.any { it.label == "Study" && it.points == -20.0 })
+        // Mana 52: social -1, YouTube -1, reading +15, study -10 = 55, then the 30 drain so far.
+        assertEquals(39, b.getValue("mana").value)
+        assertTrue(b.getValue("mana").today.any { it.label == "Study" && it.points == -10.0 })
         assertFalse(b.getValue("hp").today.any { it.label.startsWith("Brain Fog") })
         assertEquals(83, b.getValue("focus").value)
         assertEquals(110.0, b.getValue("focus").top, 0.0)
     }
 
     @Test
-    fun studyOnLowManaCausesBrainFog() {
-        val m = mapOf("sleep.total_minutes" to 360.0, "study.minutes" to 90.0)
+    fun studyNeverCostsHp() {
+        val m = mapOf("sleep.total_minutes" to 360.0, "study.minutes" to 120.0)
         val b = bars(listOf(m))
-        // Mana 45 - 30 = 15 after studying, so each 30 min also costs 4 HP.
-        assertTrue(b.getValue("hp").today.any { it.label.startsWith("Brain Fog") && it.points == -12.0 })
+        // Capped at 90 min: -15 Mana, +30 Focus, and nothing taken from HP.
+        assertTrue(b.getValue("mana").today.any { it.label == "Study" && it.points == -15.0 })
         assertTrue(b.getValue("focus").today.any { it.points == 30.0 })
+        assertTrue(b.getValue("hp").today.none { it.points < 0 })
     }
 
     @Test
@@ -79,7 +80,7 @@ class TestBTest {
 
     @Test
     fun primeConditionAddsTenPercentToManualXp() {
-        // 8 h sleep with good deep + REM, then a workout, journal and commits: every bar stays 70+ at 15:00.
+        // 8 h sleep with good deep + REM: every bar wakes up 70+. Then a workout, journal and commits.
         val m = mapOf("sleep.total_minutes" to 480.0, "sleep.deep_minutes" to 100.0, "sleep.rem_minutes" to 80.0,
             "kb.swing.sets" to 3.0, "journal.entries" to 1.0, "github.commits" to 4.0, "water.ml" to 1500.0)
         val g = TestB.build(mapOf(day to m), day, gameStart = day, now = LocalDateTime.of(2026, 11, 22, 23, 59))
@@ -89,6 +90,9 @@ class TestBTest {
         val live = Game.build(mapOf(day to m), day, gameStart = day, now = LocalDateTime.of(2026, 11, 22, 23, 59))
         assertEquals(live.todayXp + 25, g.todayXp)
         assertFalse(live.buffs.any { it.name == "Prime Condition" })
+        // 6.6 h sleep with little deep + REM: Mana wakes at 52, so no Prime Condition however the day goes.
+        val short = TestB.build(mapOf(day to m + mapOf("sleep.total_minutes" to 396.0, "sleep.deep_minutes" to 40.0, "sleep.rem_minutes" to 40.0)), day, gameStart = day, now = LocalDateTime.of(2026, 11, 22, 23, 59))
+        assertFalse(short.buffs.any { it.name == "Prime Condition" })
     }
 
     @Test
