@@ -13,6 +13,14 @@ android {
         targetSdk = 35
         versionCode = 21
         versionName = "0.21"
+
+        // Rework branch: a separate app so it installs next to the 0.21 app instead of replacing it.
+        // Its own package means its own data, settings and Health Connect permissions.
+        // Remove these lines (and the suffix) if the rework is ever meant to replace the main app.
+        applicationIdSuffix = ".rework"
+        versionNameSuffix = "-rework"
+        manifestPlaceholders["appLabel"] = "Personal API Rework"
+        manifestPlaceholders["appIcon"] = "@android:drawable/ic_menu_edit"
     }
 
     // The dashboard page is the PC server's own file, bundled so the app can show it without the server.

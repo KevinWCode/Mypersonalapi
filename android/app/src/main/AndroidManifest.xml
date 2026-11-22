@@ -24,8 +24,8 @@
 
     <!-- Cleartext is fine here: the server is only reachable over Tailscale, which encrypts the traffic. -->
     <application
-        android:label="Personal API"
-        android:icon="@android:drawable/ic_menu_today"
+        android:label="${appLabel}"
+        android:icon="${appIcon}"
         android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
         android:fullBackupContent="@xml/backup_rules"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -77,7 +77,7 @@
         <receiver
             android:name=".HomeWidget"
             android:exported="true"
-            android:label="Personal API today">
+            android:label="${appLabel} today">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
