@@ -275,6 +275,9 @@ object Game {
     fun build(
         days: Map<LocalDate, Map<String, Double>>, day: LocalDate, gameStart: LocalDate = DEFAULT_GAME_START,
         now: LocalDateTime = LocalDateTime.now(),
+        // Test B hooks: an extra XP buff for a day, and a different vitals engine. The defaults are the live rules.
+        extraBuff: ((LocalDate, List<Line>) -> Buff?)? = null,
+        vitalsRun: (List<Vitals.DayInput>, Double) -> List<Vitals.BarState> = Vitals::run,
     ): State {
         val lookback = gameStart.minusDays(30)
         val sortedDates = days.keys.sorted()
@@ -332,6 +335,10 @@ object Game {
                         if (passUsed != null && !rested) "$passUsed: +10% XP today" else "7.5 h+ sleep: +10% XP today", bonus)
                 }
                 var xp = base + bonus
+                extraBuff?.invoke(d, lines)?.let {
+                    buffs += it
+                    xp += it.xp
+                }
                 if (("wis" to 4) in active || claims["wis" to 4] == yesterday) {
                     val floor = pyRound(avg(history.takeLast(14).map { it.xp.toDouble() }) ?: 0.0)
                     if (floor > xp) {
@@ -358,7 +365,7 @@ object Game {
         }
 
         val total = history.sumOf { it.xp }
-        val vitalBars = Vitals.run(vitalDays, todayElapsed(day, now))
+        val vitalBars = vitalsRun(vitalDays, todayElapsed(day, now))
         val stats = sheets(statXp)
         val groups = groupSheets(stats, claims.mapValues { it.value.toString() })
         val top = groups.maxWithOrNull(compareBy<GroupSheet>({ it.tier }, { it.level }))!!

@@ -20,7 +20,7 @@ object GameJson {
 
     fun line(l: Game.Line) = obj("key" to l.key, "label" to l.label, "stat" to l.stat, "xp" to l.xp, "max" to l.max, "detail" to l.detail)
 
-    fun toJson(g: Game.State): JSONObject = obj(
+    fun toJson(g: Game.State, bars: List<Vitals.Bar> = Vitals.BARS): JSONObject = obj(
         "date" to g.date.toString(),
         *level(g.level).toTypedArray(),
         "max_level" to Game.MAX_LEVEL,
@@ -38,7 +38,7 @@ object GameJson {
         "days_to_max_level" to g.daysToMaxLevel,
         "max_level_date" to g.daysToMaxLevel?.let { g.date.plusDays(it.toLong()).toString() },
         "streaks" to arr(g.streaks.map { obj("key" to it.key, "label" to it.label, "days" to it.days, "unit" to it.unit) }),
-        "vitals" to arr(g.vitals.map(::vital)),
+        "vitals" to arr(g.vitals.map { vital(it, bars) }),
         "stats" to arr(g.stats.map {
             obj("key" to it.key, "label" to it.label, "stat" to it.stat, "xp" to it.xp, "level" to it.level, "rank" to it.rank,
                 "score" to it.score, "modifier" to it.modifier, "level_xp" to it.levelXp, "level_cost" to it.levelCost,
@@ -66,8 +66,8 @@ object GameJson {
         )
     }
 
-    private fun vital(v: Vitals.BarState): JSONObject {
-        val tick = Vitals.BARS.first { it.key == v.key }.tickPerDay
+    private fun vital(v: Vitals.BarState, bars: List<Vitals.Bar>): JSONObject {
+        val tick = bars.first { it.key == v.key }.tickPerDay
         return obj(
             "key" to v.key, "name" to v.name, "about" to v.about, "value" to v.value, "max" to Vitals.TOP, "low" to v.low,
             "tick_per_day" to tick,

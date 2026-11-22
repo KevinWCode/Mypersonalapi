@@ -7,7 +7,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
- * Answers the dashboard page's requests (GET /days, /game, /meals, /trading, /status, /food/presets, POST /log, POST /meals and
+ * Answers the dashboard page's requests (GET /days, /game, /game-b, /meals, /trading, /status, /food/presets, POST /log, POST /meals and
  * DELETE /meals/<id>) from the phone's own data, in the same shapes as the PC server, so the page runs unchanged
  * inside the app. Kept apart from Android so it can be unit tested.
  */
@@ -52,6 +52,11 @@ class PhoneApi(private val data: Data, private val today: () -> LocalDate = Loca
             method == "GET" && path == "/game" -> {
                 val day = date("date") ?: today()
                 Answer(200, GameJson.toJson(Game.build(data.days(), day, gameStart = data.gameStart(), now = now())))
+            }
+            // Test B: the same character with the trial vitals rules (TestB.kt), for the Test B tab.
+            method == "GET" && path == "/game-b" -> {
+                val day = date("date") ?: today()
+                Answer(200, TestB.toJson(TestB.build(data.days(), day, gameStart = data.gameStart(), now = now())))
             }
             method == "GET" && path == "/summary" -> Answer(200, JSONObject().put("date", (date("date") ?: today()).toString()))
             method == "GET" && path == "/trading" -> Answer(200, tradingJson(data.days(), today(), data.trading()))
