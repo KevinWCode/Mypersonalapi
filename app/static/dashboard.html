@@ -1527,12 +1527,11 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   }
   function renderRpgVitals(g, ids) {
     ids = ids || LIVE_IDS;
-    var box = $(ids.vitals), nowAll = [];
+    var box = $(ids.vitals);
     box.hidden = !g.vitals;
     if (!g.vitals) return;
     var bars = g.vitals.map(function (v) {
       var now = vitalNow(g, v), low = now <= 25, deb = v.debuff;
-      nowAll.push(now);
       var why = v.today.length ? v.today.map(function (e) { return e.points ? e.label + ' ' + signed(Math.round(e.points)) : e.label; }).join(' · ')
         : 'Nothing has changed it today';
       var reason = null;
@@ -1551,13 +1550,13 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
           el('div', { class: 'fill', style: 'width:' + Math.min(100, now) + '%;background:' + VITAL_COLOR[v.key] })),
         reason || el('span', { class: 'why' }, why + ' · ' + tickText(v)));
     });
-    // Test B only: the Prime Condition badge when all four bars are at prime_min or more right now.
+    // Test B only: the Prime Condition badge, earned when all four bars woke up at prime_min or more.
     var prime = null;
     if (g.prime_min) {
-      var on = nowAll.every(function (x) { return x >= g.prime_min; });
+      var on = g.vitals.every(function (v) { return v.start_of_day >= g.prime_min; });
       prime = el('div', { class: 'prime' + (on ? '' : ' off') }, el('b', null, on ? '★ Prime Condition' : 'Prime Condition'),
-        el('span', null, on ? 'All four bars ' + g.prime_min + '+: kettlebell, commits and journal earn +10% XP.'
-          : 'Get all four bars to ' + g.prime_min + '+ for +10% XP on kettlebell, commits and journal.'));
+        el('span', null, on ? 'You woke up with all four bars at ' + g.prime_min + '+: kettlebell, commits and journal earn +10% XP all day.'
+          : 'Wake up with all four bars at ' + g.prime_min + '+ (about 7.5 h of good sleep) for +10% XP on kettlebell, commits and journal all day.'));
     }
     box.replaceChildren.apply(box, corners().concat([rune('Vitals'), prime, el('div', { class: 'vitals' }, bars)].filter(Boolean)));
   }
