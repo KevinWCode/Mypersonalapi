@@ -414,8 +414,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   <button type="button" data-view="today" aria-pressed="true">Today</button>
   <button type="button" data-view="food" aria-pressed="false" id="food-tab" hidden>Food</button>
   <button type="button" data-view="money" aria-pressed="false">Money</button>
-  <button type="button" data-view="char" aria-pressed="false">Character</button>
-  <button type="button" data-view="testb" aria-pressed="false">Test B</button>
+  <button type="button" data-view="testb" aria-pressed="false">Character</button>
 </nav>
 
 <p class="banner" id="banner" hidden></p>
@@ -443,8 +442,8 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 <div class="groups" id="groups"></div>
 </section>
 <section aria-labelledby="b-game-h" id="b-game" class="game" data-tab="testb">
-<div class="card-head"><h2 id="b-game-h">Test B</h2><span class="note" id="b-game-note"></span></div>
-<p class="banner" id="b-missing" hidden>Test B is worked out by the phone app. Open the dashboard from the app to see it.</p>
+<div class="card-head"><h2 id="b-game-h">Character</h2><span class="note" id="b-game-note"></span></div>
+<p class="banner" id="b-missing" hidden>The Character page is worked out by the phone app. Open the dashboard from the app to see it.</p>
 <div class="card frame" id="b-compare" hidden></div>
 <div class="rpg" id="b-rpg" hidden>
   <div class="char frame" id="b-char"></div>
@@ -869,7 +868,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     { id: 'board', name: 'Quest Board', sample: 'linear-gradient(135deg,#7A4F2A,#EEDDB5)', font: 'IM+Fell+English&family=Crimson+Pro:wght@400;600' }
   ];
   var BASE_COLOR = { accent: COLOR.accent, ink: COLOR.ink, muted: COLOR.muted, good: COLOR.good, warn: COLOR.warn };
-  var VIEW_TITLES = { food: 'Food', money: 'Money', char: 'Character', testb: 'Test B', info: 'Settings and info' };
+  var VIEW_TITLES = { food: 'Food', money: 'Money', char: 'Character', testb: 'Character', info: 'Settings and info' };
   function setView(view) {
     state.view = view;
     $('wrap').dataset.view = view;
@@ -1747,14 +1746,17 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     $('game').hidden = !g;
     $('quests').hidden = !g;
     $('char-mini').hidden = !g;
-    var pct = g.level_cost ? Math.round(g.level_xp / g.level_cost * 100) : 100;
+    if (!g) return;
+    // Rework app: the Character tab shows the Test B rules, so the Today card matches it when the phone has them.
+    var c = state.gameB || g;
+    var pct = c.level_cost ? Math.round(c.level_xp / c.level_cost * 100) : 100;
     $('char-mini').replaceChildren.apply($('char-mini'), [
-      el('b', null, 'Level ' + g.level),
-      el('span', null, g['class'].name + (g.title ? ' · ' + g.title : '')),
+      el('b', null, 'Level ' + c.level),
+      el('span', null, c['class'].name + (c.title ? ' · ' + c.title : '')),
       el('div', { class: 'track', 'aria-hidden': 'true' }, el('div', { class: 'fill', style: 'width:' + pct + '%' })),
-      el('span', { class: 'go' }, (g.level_cost ? int(g.xp_to_next) + ' XP to level ' + (g.level + 1) : 'Max level') + ' · Open character'),
-      g.vitals ? el('span', { class: 'minis', 'aria-label': 'Vital bars' }, g.vitals.map(function (v) {
-        var now = vitalNow(g, v);
+      el('span', { class: 'go' }, (c.level_cost ? int(c.xp_to_next) + ' XP to level ' + (c.level + 1) : 'Max level') + ' · Open character'),
+      c.vitals ? el('span', { class: 'minis', 'aria-label': 'Vital bars' }, c.vitals.map(function (v) {
+        var now = vitalNow(c, v);
         return el('span', null, v.name, el('i', { style: '--w:' + Math.min(100, now) + '%;--c:' + VITAL_COLOR[v.key] }), String(now));
       })) : null].filter(Boolean));
     if (!g) return;
@@ -1843,9 +1845,10 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   function renderTestB() {
     var b = state.gameB, live = state.game;
     $('b-missing').hidden = !!b;
-    ['b-compare', 'b-rpg', 'b-groups-h', 'b-groups'].forEach(function (id) { $(id).hidden = !b; });
+    ['b-rpg', 'b-groups-h', 'b-groups'].forEach(function (id) { $(id).hidden = !b; });
     if (!b) return;
-    if (live) renderCompare(live, b); else $('b-compare').hidden = true;
+    // Rework app: Test B is the Character page now, so the live-vs-Test B table stays hidden.
+    $('b-compare').hidden = true;
     renderHeroPanel(b, B_IDS);
     renderRpgVitals(b, B_IDS);
     renderAttributes(b, B_IDS);
@@ -1973,7 +1976,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   document.querySelectorAll('#tabs button').forEach(function (b) {
     b.addEventListener('click', function () { setView(b.dataset.view); });
   });
-  $('char-mini').addEventListener('click', function () { setView('char'); });
+  $('char-mini').addEventListener('click', function () { setView('testb'); });
   $('app-sync').addEventListener('click', function () {
     $('app-status').textContent = 'Syncing…';
     window.PhoneApp.syncNow();
@@ -1983,7 +1986,9 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   window.dashboardReload = function () { load(); };
   $('info-btn').addEventListener('click', function () { setView(state.view === 'info' ? (store('view') || 'today') : 'info'); });
   var savedView = store('view');
-  if (savedView === 'money' || savedView === 'char' || savedView === 'testb') setView(savedView);
+  // Rework app: the old Character tab is gone and Test B is shown as Character, so a saved 'char' opens it.
+  if (savedView === 'char') savedView = 'testb';
+  if (savedView === 'money' || savedView === 'testb') setView(savedView);
   var saved = +store('range');
   if (RANGES[saved]) state.range = saved;
   load();
