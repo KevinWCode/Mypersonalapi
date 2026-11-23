@@ -50,6 +50,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Restores a backup file (from this app or the 0.21 app). The game start is worked out again, so restored history counts.
+    private val restoreBackup = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val n = contentResolver.openInputStream(uri)!!.use { LocalStore.get(this@MainActivity).importJson(it) }
+                    settings.resetGameStart()
+                    n
+                }
+            }
+            toast(result.fold({ "Restored $it entries" }, { "Restore failed: ${it.message}" }))
+            if (result.isSuccess) refresh()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settings = Settings(this)
@@ -97,6 +113,7 @@ class MainActivity : AppCompatActivity() {
         heading("Sync and backup")
         button("Sync now") { syncNow() }
         button("Back up phone data to a file") { saveBackup.launch("personal-api-backup-${LocalDate.now()}.json") }
+        button("Restore from a backup file") { restoreBackup.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }
 
         heading("GitHub and Alpaca")
         root.addView(TextView(this).apply {

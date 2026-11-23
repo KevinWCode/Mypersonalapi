@@ -36,6 +36,9 @@ class Settings(context: Context) {
         return start
     }
 
+    /** Forgets the game start, so the next read works it out again from the data (used after a restore). */
+    fun resetGameStart() = prefs.edit().remove("game_start").apply()
+
     /** True until the first-run setup screen has been shown once. */
     var setupPending: Boolean
         get() = !prefs.getBoolean("setup_shown", false)
