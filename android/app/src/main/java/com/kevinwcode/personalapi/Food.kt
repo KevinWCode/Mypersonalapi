@@ -90,10 +90,10 @@ object Food {
         ) + MEALS.map { meal -> Observation(day, "food.$meal.kcal", m.filter { it.meal == meal }.sumOf { it.kcal }, "kcal") }
     }
 
-    /** One button of the meal matrix: a meal at a calorie tier, with its most likely macros. */
+    /** One choice of the two-tap meal tiles: a meal at a quality, with its most likely calories, macros and sugar. */
     data class Preset(
         val meal: String, val tier: String, val kcal: Double, val proteinG: Double, val carbsG: Double, val fatG: Double,
-        val sugarG: Double,
+        val sugarG: Double, val hint: String = "",
     ) {
         val label get() = "$tier ${kcal.toInt()}"
         fun toMeal(day: LocalDate) = Meal(
@@ -102,26 +102,40 @@ object Food {
         )
     }
 
+    /** The four qualities a meal tile opens into, in the order they show. */
+    val QUALITIES = listOf("Green", "Amber", "Red", "Protein-rich")
+
+    private val HINTS = mapOf(
+        "Green" to "Whole foods, veg, little sugar",
+        "Amber" to "A normal mixed meal",
+        "Red" to "Takeaway, fried or sweet",
+        "Protein-rich" to "Lean meat, fish, eggs, a shake",
+    )
+
     /**
-     * The 12-cell meal matrix from Kevin's doc "Most Likely Macronutrient Profiles Across the 12 Meal-Tier Calorie
-     * Matrix": UK-modelled protein, available carbs and fat for each meal at a Light, Standard and Heavy calorie tier.
-     * Sugar is total sugars (what food labels and the food AI's sugar_g count, and what the HP rule uses) from Kevin's
-     * matrix JSON v1.2.0; it also lists free sugars, which aren't used.
+     * Rough defaults for each meal at each quality, so a two-tap meal still moves the calorie, protein and sugar
+     * rules (sugar is total sugars, which is what the HP rule counts). Amber is the old Standard tier of Kevin's
+     * meal matrix; Green is lighter and low in sugar, Red is the heavy, sugary end, and Protein-rich is a
+     * moderate-calorie meal built around protein.
      */
     val PRESETS = listOf(
-        Preset("breakfast", "Light", 350.0, 15.0, 48.0, 10.0, 14.0),
-        Preset("breakfast", "Standard", 550.0, 21.0, 64.0, 22.0, 20.0),
-        Preset("breakfast", "Heavy", 850.0, 33.0, 74.0, 45.0, 22.0),
-        Preset("lunch", "Light", 450.0, 25.0, 49.0, 16.0, 13.0),
-        Preset("lunch", "Standard", 700.0, 28.0, 82.0, 27.0, 20.0),
-        Preset("lunch", "Heavy", 1050.0, 36.0, 108.0, 51.0, 28.0),
-        Preset("dinner", "Light", 500.0, 36.0, 46.0, 17.0, 9.0),
-        Preset("dinner", "Standard", 800.0, 40.0, 88.0, 30.0, 17.0),
-        Preset("dinner", "Heavy", 1200.0, 44.0, 122.0, 58.0, 30.0),
-        Preset("snack", "Light", 150.0, 6.0, 18.0, 6.0, 10.0),
-        Preset("snack", "Standard", 300.0, 7.0, 37.0, 13.0, 21.0),
-        Preset("snack", "Heavy", 500.0, 9.0, 60.0, 24.0, 34.0),
-    )
+        Preset("breakfast", "Green", 400.0, 20.0, 50.0, 12.0, 8.0),
+        Preset("breakfast", "Amber", 550.0, 21.0, 64.0, 22.0, 20.0),
+        Preset("breakfast", "Red", 850.0, 25.0, 95.0, 42.0, 38.0),
+        Preset("breakfast", "Protein-rich", 500.0, 38.0, 40.0, 20.0, 8.0),
+        Preset("lunch", "Green", 500.0, 30.0, 55.0, 16.0, 8.0),
+        Preset("lunch", "Amber", 700.0, 28.0, 82.0, 27.0, 20.0),
+        Preset("lunch", "Red", 1050.0, 34.0, 110.0, 52.0, 32.0),
+        Preset("lunch", "Protein-rich", 650.0, 48.0, 55.0, 26.0, 8.0),
+        Preset("dinner", "Green", 550.0, 36.0, 55.0, 18.0, 8.0),
+        Preset("dinner", "Amber", 800.0, 40.0, 88.0, 30.0, 17.0),
+        Preset("dinner", "Red", 1200.0, 42.0, 125.0, 58.0, 30.0),
+        Preset("dinner", "Protein-rich", 750.0, 55.0, 60.0, 30.0, 9.0),
+        Preset("snack", "Green", 150.0, 5.0, 20.0, 6.0, 8.0),
+        Preset("snack", "Amber", 300.0, 7.0, 37.0, 13.0, 21.0),
+        Preset("snack", "Red", 500.0, 6.0, 62.0, 25.0, 40.0),
+        Preset("snack", "Protein-rich", 220.0, 20.0, 15.0, 8.0, 5.0),
+    ).map { it.copy(hint = HINTS.getValue(it.tier)) }
 
     fun line(m: Meal): String =
         "${m.meal.replaceFirstChar { it.uppercase() }}: ${m.kcal.toInt()} kcal, ${m.proteinG.toInt()} g protein, " +

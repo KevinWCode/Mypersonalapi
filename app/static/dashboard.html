@@ -126,10 +126,22 @@ thead th { font-size: 13px; font-weight: 500; color: var(--muted); text-align: l
 .qbtn .s { font-size: 13px; color: var(--muted); }
 .qbtn[aria-pressed="true"] { background: var(--raised); border-color: var(--raised); color: var(--on-raised); }
 .qbtn[aria-pressed="true"] .s { color: var(--dark-sub); }
-.food-meal { margin: 14px 0 8px; font-size: 15px; font-weight: 600; text-transform: capitalize; }
-.food-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.food-grid .qbtn { min-height: 88px; }
+/* F1 two-tap meal tiles: four meals, each opening into four qualities */
+:root { --q-green: #1F9D55; --q-amber: #E0A100; --q-red: #E5484D; --q-protein: #4C8DFF; }
+.food-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; animation: food-in .18s ease-out; }
+@keyframes food-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .food-grid { animation: none; } }
+.food-grid .qbtn { min-height: 92px; position: relative; overflow: hidden; }
 .food-grid .k { font-size: 20px; font-weight: 700; }
+.qbtn .qdot { display: inline-block; width: 10px; height: 10px; border-radius: 5px; margin-right: 6px; vertical-align: 0; }
+.qbtn.q { padding-left: 18px; }
+.qbtn.q::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--qc); }
+.qbtn.q[aria-pressed="true"] { background: var(--card); color: var(--ink); border: 2px solid var(--qc); }
+.qbtn.q[aria-pressed="true"] .s { color: var(--muted); }
+.food-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.food-head b { font-size: 16px; text-transform: capitalize; }
+.food-back { min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: 600 14px Inter, sans-serif; cursor: pointer; }
+.food-busy { opacity: .6; pointer-events: none; }
 .auth { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--muted); }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1px solid var(--axis); border-radius: 12px; padding: 10px 12px; font: 14px Inter, system-ui, sans-serif; color: var(--ink); background: var(--card); resize: vertical; }
@@ -562,7 +574,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 </section>
 
 <section aria-labelledby="food-h" class="card" data-tab="quests" id="food-log" hidden>
-  <div class="card-head"><h2 id="food-h">Log a meal</h2><span class="note">One tap logs the most likely macros for that size</span></div>
+  <div class="card-head"><h2 id="food-h">Log a meal</h2><span class="note">Pick the meal, then how it was</span></div>
   <div id="food-tiles"></div>
 </section>
 
@@ -1350,25 +1362,84 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       renderFood();
     }, function () { $('food-log').hidden = $('food-today').hidden = true; });
   }
+  // F1: two taps. A meal tile opens into its four quality choices; a choice logs that meal's rough defaults.
+  // Breakfast, lunch and dinner hold one tile meal a day, so opening one again shows the logged choice:
+  // tap it again to undo, or another to change. Each snack tap adds another snack.
+  var QUALITY_COLOR = { green: 'var(--q-green)', amber: 'var(--q-amber)', red: 'var(--q-red)', 'protein-rich': 'var(--q-protein)' };
+  var TILE_MEAL = /^(green|amber|red|protein-rich|light|standard|heavy) (breakfast|lunch|dinner|snack) \(estimate\)$/;
+  function tileMeals(meal) {
+    return (state.meals || []).filter(function (ml) { var t = TILE_MEAL.exec(ml.description || ''); return t && t[2] === meal; });
+  }
+  function presetMeal(p) {
+    return { meal: p.meal, kcal: p.kcal, protein_g: p.protein_g, carbs_g: p.carbs_g, fat_g: p.fat_g, sugar_g: p.sugar_g,
+      description: p.tier.toLowerCase() + ' ' + p.meal + ' (estimate)' };
+  }
+  function copyMeal(ml) {
+    return { meal: ml.meal, kcal: ml.kcal, protein_g: ml.protein_g, carbs_g: ml.carbs_g, fat_g: ml.fat_g, sugar_g: ml.sugar_g, description: ml.description };
+  }
+  function pickQuality(p) {
+    var old = p.meal === 'snack' ? null : tileMeals(p.meal).slice(-1)[0];
+    state.foodOpen = null;
+    if (!old) { addMeals([presetMeal(p)]); renderFood(); return; }
+    if (!state.token) { showAuth(); return; }
+    var same = TILE_MEAL.exec(old.description)[1] === p.tier.toLowerCase();
+    var day = iso(state.today);
+    $('food-tiles').classList.add('food-busy');
+    api('DELETE', '/meals/' + encodeURIComponent(old.id))
+      .then(function () { return same ? { ids: [] } : api('POST', '/meals', { date: day, meals: [presetMeal(p)] }); })
+      .then(function (b) {
+        return refreshToday().then(function () {
+          toast((same ? 'Removed ' : 'Changed ' + p.meal + ' to ') + (same ? describe(old) : p.tier), function () {
+            Promise.all(b.ids.map(function (id) { return api('DELETE', '/meals/' + encodeURIComponent(id)); }))
+              .then(function () { return api('POST', '/meals', { date: day, meals: [copyMeal(old)] }); })
+              .then(refreshToday).then(function () { toast('Undone'); }, failed);
+          });
+        });
+      }, failed)
+      .then(function () { $('food-tiles').classList.remove('food-busy'); renderFood(); });
+  }
   function renderFood() {
     var presets = state.presets || [];
     var meals = [];
     presets.forEach(function (p) { if (meals.indexOf(p.meal) < 0) meals.push(p.meal); });
-    $('food-tiles').replaceChildren.apply($('food-tiles'), meals.reduce(function (out, meal) {
-      out.push(el('h3', { class: 'food-meal' }, meal));
-      out.push(el('div', { class: 'food-grid' }, presets.filter(function (p) { return p.meal === meal; }).map(function (p) {
-        var b = el('button', { type: 'button', class: 'qbtn', 'aria-label': 'Log ' + p.tier.toLowerCase() + ' ' + meal + ', ' + int(p.kcal) + ' kcal' },
-          el('span', { class: 'l' }, p.tier),
-          el('span', { class: 'k' }, int(p.kcal) + ' kcal'),
-          el('span', { class: 's' }, Math.round(p.protein_g) + 'P · ' + Math.round(p.carbs_g) + 'C · ' + Math.round(p.fat_g) + 'F · ' + Math.round(p.sugar_g) + ' g sugar'));
-        b.addEventListener('click', function () {
-          addMeals([{ meal: p.meal, kcal: p.kcal, protein_g: p.protein_g, carbs_g: p.carbs_g, fat_g: p.fat_g, sugar_g: p.sugar_g,
-            description: p.tier.toLowerCase() + ' ' + p.meal + ' (estimate)' }]);
-        });
+    var open = meals.indexOf(state.foodOpen) >= 0 ? state.foodOpen : null;
+    var kids;
+    if (!open) {
+      kids = [el('div', { class: 'food-grid' }, meals.map(function (meal) {
+        var logged = tileMeals(meal);
+        var last = logged.slice(-1)[0];
+        var q = last && TILE_MEAL.exec(last.description)[1];
+        var all = (state.meals || []).filter(function (ml) { return ml.meal === meal; });
+        var kcal = all.reduce(function (t, ml) { return t + (ml.kcal || 0); }, 0);
+        var what = !all.length ? 'Tap to log'
+          : meal === 'snack' ? all.length + ' logged'
+          : q ? q.charAt(0).toUpperCase() + q.slice(1) : 'Logged';
+        var b = el('button', { type: 'button', class: 'qbtn', 'aria-label': meal + ', ' + what + (all.length ? ', ' + int(kcal) + ' kcal' : '') },
+          el('span', { class: 'k' }, meal.charAt(0).toUpperCase() + meal.slice(1)),
+          el('span', { class: 's' }, el('span', { style: 'display:block' }, q && QUALITY_COLOR[q] ? el('span', { class: 'qdot', style: 'background:' + QUALITY_COLOR[q] }) : null, what),
+            all.length ? el('span', { style: 'display:block' }, int(kcal) + ' kcal') : null));
+        b.addEventListener('click', function () { state.foodOpen = meal; renderFood(); });
         return b;
-      })));
-      return out;
-    }, []));
+      }))];
+    } else {
+      var cur = open === 'snack' ? null : tileMeals(open).slice(-1)[0];
+      var curQ = cur && TILE_MEAL.exec(cur.description)[1];
+      var back = el('button', { type: 'button', class: 'food-back', 'aria-label': 'Back to meals' }, '← Meals');
+      back.addEventListener('click', function () { state.foodOpen = null; renderFood(); });
+      kids = [el('div', { class: 'food-head' }, el('b', null, open), back),
+        el('div', { class: 'food-grid' }, presets.filter(function (p) { return p.meal === open; }).map(function (p) {
+          var key = p.tier.toLowerCase();
+          var on = curQ === key;
+          var b = el('button', { type: 'button', class: 'qbtn q', style: '--qc:' + (QUALITY_COLOR[key] || 'var(--accent)'), 'aria-pressed': on ? 'true' : 'false',
+            'aria-label': (on ? 'Undo ' : cur ? 'Change to ' : 'Log ') + key + ' ' + open + ', ' + int(p.kcal) + ' kcal, ' + Math.round(p.protein_g) + ' g protein, ' + Math.round(p.sugar_g) + ' g sugar' },
+            el('span', { class: 'l' }, p.tier),
+            el('span', { class: 'k' }, int(p.kcal) + ' kcal'),
+            el('span', { class: 's' }, on ? 'Logged · tap to undo' : p.hint || Math.round(p.protein_g) + ' g protein · ' + Math.round(p.sugar_g) + ' g sugar'));
+          b.addEventListener('click', function () { pickQuality(p); });
+          return b;
+        }))];
+    }
+    $('food-tiles').replaceChildren.apply($('food-tiles'), kids);
     var list = state.meals || [];
     var kcal = list.reduce(function (t, ml) { return t + (ml.kcal || 0); }, 0);
     $('food-total').textContent = list.length ? int(kcal) + ' / ' + int(GOALS.kcal) + ' kcal' : '';
@@ -1376,7 +1447,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       var x = el('button', { type: 'button', class: 'x', 'aria-label': 'Remove ' + describe(ml) }, '×');
       x.addEventListener('click', function () { removeMeal(ml); });
       return el('li', null, el('div', { class: 'what' }, describe(ml), ml.description ? el('span', null, ml.description) : null), x);
-    }) : [el('li', null, el('div', { class: 'what' }, el('span', null, 'Nothing logged yet today. Tap a size above.')))]);
+    }) : [el('li', null, el('div', { class: 'what' }, el('span', null, 'Nothing logged yet today. Tap a meal above.')))]);
   }
 
   // ---- Phone app card in Settings: only inside the app, which adds window.PhoneApp ----

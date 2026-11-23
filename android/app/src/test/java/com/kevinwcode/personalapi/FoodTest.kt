@@ -56,12 +56,29 @@ class FoodTest {
     }
 
     @Test
-    fun matrixButtonsLogTheirMacrosAndSugar() {
-        assertEquals(12, Food.PRESETS.size)
-        val heavySnack = Food.PRESETS.single { it.meal == "snack" && it.tier == "Heavy" }.toMeal(today)
-        assertEquals(Food.Meal(today, "snack", 500.0, 9.0, 60.0, 24.0, 34.0, "heavy snack (estimate)"), heavySnack)
-        val t = Food.totals(today, Food.PRESETS.filter { it.tier == "Standard" }.map { it.toMeal(today) }).associate { it.metric to it.value }
+    fun mealTilesLogTheirQualityDefaults() {
+        assertEquals(16, Food.PRESETS.size)
+        for (meal in Food.MEALS) assertEquals(Food.QUALITIES, Food.PRESETS.filter { it.meal == meal }.map { it.tier })
+        val redSnack = Food.PRESETS.single { it.meal == "snack" && it.tier == "Red" }.toMeal(today)
+        assertEquals(Food.Meal(today, "snack", 500.0, 6.0, 62.0, 25.0, 40.0, "red snack (estimate)"), redSnack)
+        val t = Food.totals(today, Food.PRESETS.filter { it.tier == "Amber" }.map { it.toMeal(today) }).associate { it.metric to it.value }
         assertEquals(2350.0, t.getValue("food.kcal"), 0.0)
         assertEquals(78.0, t.getValue("food.sugar_g"), 0.0)
+    }
+
+    @Test
+    fun qualitiesRankAsTheyRead() {
+        for (meal in Food.MEALS) {
+            val q = Food.PRESETS.filter { it.meal == meal }.associateBy { it.tier }
+            // Green is the lightest and least sugary, Red the heaviest and most sugary, Protein-rich the most protein.
+            assert(q.getValue("Green").kcal < q.getValue("Amber").kcal && q.getValue("Amber").kcal < q.getValue("Red").kcal)
+            assert(q.getValue("Green").sugarG < q.getValue("Red").sugarG)
+            assert(q.values.maxByOrNull { it.proteinG }!!.tier == "Protein-rich")
+            // The macros roughly add up to the calories (4/4/9 kcal per g), within 15%.
+            for (p in q.values) {
+                val fromMacros = 4 * p.proteinG + 4 * p.carbsG + 9 * p.fatG
+                assert(Math.abs(fromMacros - p.kcal) / p.kcal < 0.15) { "${p.meal} ${p.tier}: $fromMacros vs ${p.kcal}" }
+            }
+        }
     }
 }

@@ -118,10 +118,10 @@ class PhoneApi(private val data: Data, private val today: () -> LocalDate = Loca
                 JSONObject().put("date", d.toString()).put("metrics", JSONObject(m.toSortedMap()))
             })
 
-        /** The Food tab's buttons: the meal matrix in [Food.PRESETS]. */
+        /** The meal tiles' choices: [Food.PRESETS], four qualities for each meal. */
         fun presetsJson(): JSONArray = JSONArray(Food.PRESETS.map { p ->
             JSONObject().put("meal", p.meal).put("tier", p.tier).put("kcal", p.kcal).put("protein_g", p.proteinG)
-                .put("carbs_g", p.carbsG).put("fat_g", p.fatG).put("sugar_g", p.sugarG)
+                .put("carbs_g", p.carbsG).put("fat_g", p.fatG).put("sugar_g", p.sugarG).put("hint", p.hint)
         })
 
         fun mealJson(id: String, m: Food.Meal): JSONObject = JSONObject()
