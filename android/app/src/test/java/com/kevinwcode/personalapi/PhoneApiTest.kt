@@ -94,8 +94,8 @@ class PhoneApiTest {
         assertEquals(16, presets.length())
         val redSnack = (0 until presets.length()).map { presets.getJSONObject(it) }
             .single { it.getString("meal") == "snack" && it.getString("tier") == "Red" }
-        assertEquals(500.0, redSnack.getDouble("kcal"), 0.0)
-        assertEquals(40.0, redSnack.getDouble("sugar_g"), 0.0)
-        assertEquals("Takeaway, fried or sweet", redSnack.getString("hint"))
+        assertEquals(245.0, redSnack.getDouble("kcal"), 0.0)
+        assertEquals(17.0, redSnack.getDouble("sugar_g"), 0.0)
+        assertEquals("Chocolate bar, crisps, biscuits, pastry", redSnack.getString("hint"))
     }
 }

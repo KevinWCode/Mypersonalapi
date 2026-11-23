@@ -59,11 +59,13 @@ class FoodTest {
     fun mealTilesLogTheirQualityDefaults() {
         assertEquals(16, Food.PRESETS.size)
         for (meal in Food.MEALS) assertEquals(Food.QUALITIES, Food.PRESETS.filter { it.meal == meal }.map { it.tier })
-        val redSnack = Food.PRESETS.single { it.meal == "snack" && it.tier == "Red" }.toMeal(today)
-        assertEquals(Food.Meal(today, "snack", 500.0, 6.0, 62.0, 25.0, 40.0, "red snack (estimate)"), redSnack)
+        val redSnack = Food.PRESETS.single { it.meal == "snack" && it.tier == "Red" }
+        assertEquals(Food.Meal(today, "snack", 245.0, 3.0, 26.0, 14.0, 17.0, "red snack (estimate)"), redSnack.toMeal(today))
+        assertEquals("Chocolate bar, crisps, biscuits, pastry", redSnack.hint)
+        assertEquals("A normal mixed meal", Food.PRESETS.single { it.meal == "lunch" && it.tier == "Amber" }.hint)
         val t = Food.totals(today, Food.PRESETS.filter { it.tier == "Amber" }.map { it.toMeal(today) }).associate { it.metric to it.value }
-        assertEquals(2350.0, t.getValue("food.kcal"), 0.0)
-        assertEquals(78.0, t.getValue("food.sugar_g"), 0.0)
+        assertEquals(2215.0, t.getValue("food.kcal"), 0.0)
+        assertEquals(63.0, t.getValue("food.sugar_g"), 0.0)
     }
 
     @Test

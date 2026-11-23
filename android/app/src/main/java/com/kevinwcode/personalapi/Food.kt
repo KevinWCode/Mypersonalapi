@@ -116,7 +116,8 @@ object Food {
      * Rough defaults for each meal at each quality, so a two-tap meal still moves the calorie, protein and sugar
      * rules (sugar is total sugars, which is what the HP rule counts). Amber is the old Standard tier of Kevin's
      * meal matrix; Green is lighter and low in sugar, Red is the heavy, sugary end, and Protein-rich is a
-     * moderate-calorie meal built around protein.
+     * moderate-calorie meal built around protein. Snacks come from Kevin's snack buckets JSON v1.0; its sugar is
+     * total sugars like everywhere else (its free sugars figure isn't used).
      */
     val PRESETS = listOf(
         Preset("breakfast", "Green", 400.0, 20.0, 50.0, 12.0, 8.0),
@@ -131,11 +132,12 @@ object Food {
         Preset("dinner", "Amber", 800.0, 40.0, 88.0, 30.0, 17.0),
         Preset("dinner", "Red", 1200.0, 42.0, 125.0, 58.0, 30.0),
         Preset("dinner", "Protein-rich", 750.0, 55.0, 60.0, 30.0, 9.0),
-        Preset("snack", "Green", 150.0, 5.0, 20.0, 6.0, 8.0),
-        Preset("snack", "Amber", 300.0, 7.0, 37.0, 13.0, 21.0),
-        Preset("snack", "Red", 500.0, 6.0, 62.0, 25.0, 40.0),
-        Preset("snack", "Protein-rich", 220.0, 20.0, 15.0, 8.0, 5.0),
-    ).map { it.copy(hint = HINTS.getValue(it.tier)) }
+        // Snacks: Kevin's snack buckets v1.0 (one standard UK snack portion), with its examples as hints.
+        Preset("snack", "Green", 85.0, 2.0, 16.0, 1.0, 9.0, "Apple, banana, rice cakes, veg sticks"),
+        Preset("snack", "Amber", 165.0, 5.0, 18.0, 8.0, 6.0, "Almonds, oatcakes, baked crisps, cereal bar"),
+        Preset("snack", "Red", 245.0, 3.0, 26.0, 14.0, 17.0, "Chocolate bar, crisps, biscuits, pastry"),
+        Preset("snack", "Protein-rich", 160.0, 16.0, 12.0, 4.0, 3.0, "Skyr, protein bar, 2 eggs, jerky"),
+    ).map { if (it.hint.isEmpty()) it.copy(hint = HINTS.getValue(it.tier)) else it }
 
     fun line(m: Meal): String =
         "${m.meal.replaceFirstChar { it.uppercase() }}: ${m.kcal.toInt()} kcal, ${m.proteinG.toInt()} g protein, " +
