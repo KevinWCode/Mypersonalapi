@@ -4,8 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-import org.json.JSONArray
-import org.json.JSONObject
+import java.io.InputStream
 import java.io.OutputStream
 import java.time.Instant
 import java.time.LocalDate
@@ -241,29 +240,66 @@ class LocalStore private constructor(context: Context) :
         readableDatabase.rawQuery("SELECT COUNT(DISTINCT date), MIN(date) FROM observations", null)
             .use { c -> c.moveToFirst(); c.getInt(0) to c.getString(1) }
 
-    /** Writes every row as JSON, for a backup the user keeps wherever they like. */
+    /** Writes every row and meal as JSON ([Backup]), for a backup the user keeps wherever they like. */
     fun exportJson(out: OutputStream): Int {
-        val rows = JSONArray()
-        readableDatabase.rawQuery(
+        val rows = readableDatabase.rawQuery(
             "SELECT date, metric, source, value, unit, updated_at FROM observations ORDER BY date, metric", null
         ).use { c ->
-            while (c.moveToNext()) rows.put(
-                JSONObject()
-                    .put("date", c.getString(0))
-                    .put("metric", c.getString(1))
-                    .put("source", c.getString(2))
-                    .put("value", c.getDouble(3))
-                    .put("unit", c.getString(4))
-                    .put("updated_at", c.getString(5))
-            )
+            buildList {
+                while (c.moveToNext()) add(Backup.Row(c.getString(0), c.getString(1), c.getString(2), c.getDouble(3),
+                    c.getString(4), c.getString(5)))
+            }
         }
-        val doc = JSONObject()
-            .put("format", "personal-api-backup")
-            .put("version", 1)
-            .put("exported_at", Instant.now().toString())
-            .put("observations", rows)
-        out.write(doc.toString(1).toByteArray())
-        return rows.length()
+        val meals = readableDatabase.rawQuery(
+            "SELECT id, date, meal, kcal, protein_g, carbs_g, fat_g, sugar_g, description, added_at FROM meals ORDER BY date, added_at",
+            null,
+        ).use { c ->
+            buildList {
+                while (c.moveToNext()) add(Backup.MealRow(c.getString(0),
+                    Food.Meal(LocalDate.parse(c.getString(1)), c.getString(2), c.getDouble(3), c.getDouble(4), c.getDouble(5),
+                        c.getDouble(6), c.getDouble(7), c.getString(8)),
+                    c.getString(9)))
+            }
+        }
+        out.write(Backup.write(rows, meals, Instant.now().toString()).toByteArray())
+        return rows.size
+    }
+
+    /**
+     * Restores a backup file. Rows in the backup replace the same day, metric and source here; anything else on this
+     * phone is kept. Returns how many entries were restored. Nothing is written if the file can't be read.
+     */
+    fun importJson(input: InputStream): Int {
+        val backup = Backup.read(input.bufferedReader().readText())
+        val now = Instant.now().toString()
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            for (r in backup.rows) db.insertWithOnConflict("observations", null, ContentValues().apply {
+                put("date", r.date)
+                put("metric", r.metric)
+                put("source", r.source)
+                put("value", r.value)
+                put("unit", r.unit)
+                put("updated_at", r.updatedAt.ifEmpty { now })
+            }, SQLiteDatabase.CONFLICT_REPLACE)
+            for (m in backup.meals) db.insertWithOnConflict("meals", null, ContentValues().apply {
+                put("id", m.id)
+                put("date", m.meal.date.toString())
+                put("meal", m.meal.meal)
+                put("kcal", m.meal.kcal)
+                put("protein_g", m.meal.proteinG)
+                put("carbs_g", m.meal.carbsG)
+                put("fat_g", m.meal.fatG)
+                put("sugar_g", m.meal.sugarG)
+                put("description", m.meal.description)
+                put("added_at", m.addedAt.ifEmpty { now })
+            }, SQLiteDatabase.CONFLICT_REPLACE)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        return backup.rows.size
     }
 
     companion object {

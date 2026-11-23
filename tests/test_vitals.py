@@ -111,8 +111,9 @@ def test_journal_button_scores_xp_and_bars():
     assert [b["key"] for b in g["vitals"]] == ["hp", "stamina", "mana", "focus"]
 
 
-def test_journal_counts_for_wis_and_per():
-    assert "journal" in perks.GROUPS["wis"][2] and "journal" in perks.GROUPS["per"][2]
+def test_attributes_follow_the_rework_brief():
+    assert perks.GROUPS["wis"][2] == ["reading", "journal"] and perks.GROUPS["per"][2] == ["social", "youtube"]
+    assert "workout" in perks.GROUPS["str"][2] and "workout" in perks.GROUPS["con"][2]
 
 
 def test_full_night_and_low_social_top_up_focus():

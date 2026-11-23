@@ -1419,10 +1419,8 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   // ---- Character tab: framed RPG panels (hero, vitals, attributes, equipment, class path, perk tree, level-up) ----
   var GROUP_ORDER = ['str', 'con', 'int', 'wis', 'cha', 'per'];
   // Same tables as app/perks.py; the page only uses them to name the class you could become next.
-  var PURE_CLASSES = { str: 'Juggernaut', con: 'Warden', 'int': 'Artificer', wis: 'Sage', cha: 'Merchant', per: 'Strategist' };
-  var DUAL_CLASSES = { 'con+str': 'Ironclad', 'int+str': 'Forgeknight', 'str+wis': 'Battle Monk', 'cha+str': 'Mercenary', 'per+str': 'Ranger',
-    'con+int': 'Alchemist', 'con+wis': 'Druid', 'cha+con': 'Steward', 'con+per': 'Pathfinder', 'int+wis': 'Runesmith', 'cha+int': 'Guildmaster',
-    'int+per': 'Tactician', 'cha+wis': 'Oracle', 'per+wis': 'Seer', 'cha+per': 'Diplomat' };
+  var PURE_CLASSES = { str: 'Juggernaut', con: 'Warden', 'int': 'Savant', wis: 'Mystic', cha: 'Envoy', per: 'Watcher' };
+  var DUAL_CLASSES = { 'con+str': 'Warrior', 'int+wis': 'Sage', 'con+wis': 'Druid', 'int+per': 'Scholar', 'cha+wis': 'Bard', 'per+str': 'Ranger', 'con+per': 'Sentinel', 'cha+int': 'Artificer', 'int+str': 'Forgeknight', 'str+wis': 'Battle Monk', 'cha+str': 'Champion', 'con+int': 'Alchemist', 'cha+con': 'Steward', 'per+wis': 'Seer', 'cha+per': 'Diplomat' };
   // Element ids for the Character page and its Test B copy, so the same panel code draws both.
   var LIVE_IDS = { hero: 'char', vitals: 'rpg-vitals', attrs: 'rpg-attrs', equip: 'rpg-equip', cls: 'rpg-class', tree: 'rpg-tree', groups: 'groups', grp: 'grp-', note: 'game-note' };
   var B_IDS = { hero: 'b-char', vitals: 'b-rpg-vitals', attrs: 'b-rpg-attrs', equip: 'b-rpg-equip', cls: 'b-rpg-class', tree: 'b-rpg-tree', groups: 'b-groups', grp: 'b-grp-', note: 'b-game-note' };
@@ -1432,9 +1430,9 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     str: 'M-12 0h24M-12-6v12M-8-8v16M12-6v12M8-8v16',
     con: 'M0 10C-12 2-12-8-5-9-2-10 0-7 0-5 0-7 2-10 5-9 12-8 12 2 0 10z',
     'int': 'M-6-9l-7 9 7 9M6-9l7 9-7 9M3-11l-6 22',
-    wis: 'M-13 0C-7-9 7-9 13 0 7 9-7 9-13 0zM0-3a3 3 0 1 1 0 6a3 3 0 1 1 0-6',
-    cha: 'M0-10a10 10 0 1 1 0 20a10 10 0 1 1 0-20M4-5h-6a2.5 2.5 0 0 0 0 5h4a2.5 2.5 0 0 1 0 5h-6',
-    per: 'M0-12l3 9 9 3-9 3-3 9-3-9-9-3 9-3z',
+    wis: 'M0-12l3 9 9 3-9 3-3 9-3-9-9-3 9-3z',
+    cha: 'M-11-9h22v13h-11l-6 6v-6h-5z',
+    per: 'M-13 0C-7-9 7-9 13 0 7 9-7 9-13 0zM0-3a3 3 0 1 1 0 6a3 3 0 1 1 0-6',
     none: 'M0-10l8 10-8 10-8-10z'
   };
   // Equipment slot icons, 24 x 24.

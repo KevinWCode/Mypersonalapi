@@ -8,14 +8,14 @@ object Perks {
     data class Group(val name: String, val ability: String, val stats: List<String>)
     data class Perk(val title: String, val token: String, val detail: String)
 
-    // A group's level is its highest stat level. Journal counts toward both WIS and PER.
+    // A group's level is its highest stat level. Workouts count toward both STR and CON.
     val GROUPS: Map<String, Group> = linkedMapOf(
         "str" to Group("Strength & Athletics", "STR", listOf("kettlebell", "workout", "catch")),
-        "con" to Group("Vitality & Endurance", "CON", listOf("sleep", "heart", "steps")),
-        "int" to Group("Intelligence & Crafting", "INT", listOf("github", "email")),
-        "wis" to Group("Focus & Mental Discipline", "WIS", listOf("social", "youtube", "journal")),
-        "cha" to Group("Wealth & Economy", "CHA", listOf("stocks")),
-        "per" to Group("Mindfulness & Life Organization", "PER", listOf("journal")),
+        "con" to Group("Vitality & Endurance", "CON", listOf("sleep", "heart", "steps", "workout")),
+        "int" to Group("Intelligence & Learning", "INT", listOf("study", "github")),
+        "wis" to Group("Wisdom & Reflection", "WIS", listOf("reading", "journal")),
+        "cha" to Group("Charisma & Connection", "CHA", listOf("connect")),
+        "per" to Group("Perception & Focus", "PER", listOf("social", "youtube")),
     )
 
     /** Tier to (rank, group level that unlocks it). */
@@ -39,43 +39,43 @@ object Perks {
         ("int" to 2) to Perk("Archon of Intellect", "Wishlist Book / Course Unlock", "Any technical book, D&D sourcebook or online course on your list."),
         ("int" to 3) to Perk("Master of the Arcane Script", "Desk Setup Upgrade", "A mechanical keyboard, precision mouse or desk mat."),
         ("int" to 4) to Perk("Grand Technomancer", "Ergonomics & Hardware Overhaul", "A monitor arm, chair upgrade or second screen."),
-        ("wis" to 1) to Perk("Keeper of the Mind", "Unrestricted Media Pass", "3 hours of guilt-free media. The day you claim it, social media and YouTube can't cost XP."),
-        ("wis" to 2) to Perk("High Archon of Focus", "Cinema & Night Out", "A guilt-free evening at the movies or an event, phone stats unchecked."),
-        ("wis" to 3) to Perk("Untouchable Mind", "Gaming Marathon Pass", "A full weekend afternoon of guilt-free PC gaming."),
-        ("wis" to 4) to Perk("Zenith of Discipline", "Digital Detox Retreat", "A weekend unplugged. The day you claim it and the next score at least your 14-day average."),
-        ("cha" to 1) to Perk("Asset Collector", "Specialty Roast & Brew Pass", "A top-shelf bag of coffee beans or premium local craft drinks."),
-        ("cha" to 2) to Perk("Baron of the Vault", "Fun Money Splurge", "10% of the month's portfolio gains as spending money."),
-        ("cha" to 3) to Perk("Master of Assets", "Fine Dining Voucher", "A high-end restaurant meal to celebrate."),
-        ("cha" to 4) to Perk("Economic Paragon", "Major Asset Dividend Claim", "A long-term luxury item you've held off buying for 6+ months."),
-        ("per" to 1) to Perk("Chronicler of Fate", "Stationery Upgrade", "A premium hardcover journal or a high-quality pen."),
-        ("per" to 2) to Perk("Master of the Daily Block", "Chef Exemption Pass", "Skip cooking one night for a quality takeaway."),
-        ("per" to 3) to Perk("Grand Strategist", "Wildcard Schedule Day", "Clear a full day's calendar and do whatever comes up."),
-        ("per" to 4) to Perk("Architect of Life", "Custom Leather Journal / Desk Artifact", "A bespoke item, like an engraved notebook or desk plaque, celebrating mastery."),
+        ("per" to 1) to Perk("Keeper of the Mind", "Unrestricted Media Pass", "3 hours of guilt-free media. The day you claim it, social media and YouTube can't cost XP."),
+        ("per" to 2) to Perk("High Archon of Focus", "Cinema & Night Out", "A guilt-free evening at the movies or an event, phone stats unchecked."),
+        ("per" to 3) to Perk("Untouchable Mind", "Gaming Marathon Pass", "A full weekend afternoon of guilt-free PC gaming."),
+        ("per" to 4) to Perk("Zenith of Discipline", "Digital Detox Retreat", "A weekend unplugged. The day you claim it and the next score at least your 14-day average."),
+        ("cha" to 1) to Perk("Social Award 1", "Social award 1", "Placeholder until a social reward is chosen."),
+        ("cha" to 2) to Perk("Social Award 2", "Social award 2", "Placeholder until a social reward is chosen."),
+        ("cha" to 3) to Perk("Social Award 3", "Social award 3", "Placeholder until a social reward is chosen."),
+        ("cha" to 4) to Perk("Social Award 4", "Social award 4", "Placeholder until a social reward is chosen."),
+        ("wis" to 1) to Perk("Chronicler of Fate", "Stationery Upgrade", "A premium hardcover journal or a high-quality pen."),
+        ("wis" to 2) to Perk("Master of the Daily Block", "Chef Exemption Pass", "Skip cooking one night for a quality takeaway."),
+        ("wis" to 3) to Perk("Grand Strategist", "Wildcard Schedule Day", "Clear a full day's calendar and do whatever comes up."),
+        ("wis" to 4) to Perk("Architect of Life", "Custom Leather Journal / Desk Artifact", "A bespoke item, like an engraved notebook or desk plaque, celebrating mastery."),
     )
 
     val PURE_CLASSES: Map<String, String> = mapOf(
         "str" to "Juggernaut",
         "con" to "Warden",
-        "int" to "Artificer",
-        "wis" to "Sage",
-        "cha" to "Merchant",
-        "per" to "Strategist",
+        "int" to "Savant",
+        "wis" to "Mystic",
+        "cha" to "Envoy",
+        "per" to "Watcher",
     )
 
     val DUAL_CLASSES: Map<Set<String>, String> = mapOf(
-        setOf("con", "str") to "Ironclad",
+        setOf("con", "str") to "Warrior",
+        setOf("int", "wis") to "Sage",
+        setOf("con", "wis") to "Druid",
+        setOf("int", "per") to "Scholar",
+        setOf("cha", "wis") to "Bard",
+        setOf("per", "str") to "Ranger",
+        setOf("con", "per") to "Sentinel",
+        setOf("cha", "int") to "Artificer",
         setOf("int", "str") to "Forgeknight",
         setOf("str", "wis") to "Battle Monk",
-        setOf("cha", "str") to "Mercenary",
-        setOf("per", "str") to "Ranger",
+        setOf("cha", "str") to "Champion",
         setOf("con", "int") to "Alchemist",
-        setOf("con", "wis") to "Druid",
         setOf("cha", "con") to "Steward",
-        setOf("con", "per") to "Pathfinder",
-        setOf("int", "wis") to "Runesmith",
-        setOf("cha", "int") to "Guildmaster",
-        setOf("int", "per") to "Tactician",
-        setOf("cha", "wis") to "Oracle",
         setOf("per", "wis") to "Seer",
         setOf("cha", "per") to "Diplomat",
     )

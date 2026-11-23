@@ -32,7 +32,7 @@ def test_level_curve_matches_the_spec():
 
 
 def test_daily_max():
-    assert game.DAILY_MAX == 1050
+    assert game.DAILY_MAX == 1200
 
 
 def test_full_day_scores_every_line():
@@ -44,17 +44,19 @@ def test_full_day_scores_every_line():
         obs(d, "kb.swing.sets", 3), obs(d, "football.max_catch_yards", 15, "yards"),
         obs(d, "screen.app.com.instagram.android", 20, "minutes"),
         obs(d, "screen.app.com.google.android.youtube", 30, "minutes"),
+        obs(d, "screen.app.com.whatsapp", 15, "minutes"), obs(d, "screen.app.com.snapchat.android", 10, "minutes"),
+        obs(d, "study.minutes", 75, "minutes"), obs(d, "reading.minutes", 20, "minutes"),
     ])
     post([obs(d, "github.commits", 6)], source="github")
     g = client.get("/game", params={"date": d}).json()
     xp = {line["key"]: line["xp"] for line in g["today"]["metrics"]}
     assert xp == {"sleep": 125, "heart": 40, "steps": 100, "workout": 115, "kettlebell": 75, "catch": 50,
-                  "github": 100, "email": 0, "journal": 0, "youtube": 50, "social": 100, "stocks": 0}
-    # 755 from the stats, plus 10% for waking Well-Rested after 8 h.
-    assert g["today"]["buffs"] == [{"name": "Well-Rested", "detail": "7.5 h+ sleep: +10% XP today", "xp": 76}]
-    assert g["today"]["xp"] == 831
+                  "study": 50, "github": 100, "reading": 25, "journal": 0, "connect": 50, "youtube": 50, "social": 100}
+    # 880 from the stats, plus 10% for waking Well-Rested after 8 h.
+    assert g["today"]["buffs"] == [{"name": "Well-Rested", "detail": "7.5 h+ sleep: +10% XP today", "xp": 88}]
+    assert g["today"]["xp"] == 968
     # Day 1 (Oct 23) had no data, so the total is just this day.
-    assert g["total_xp"] == 831 and g["level"] == 2 and g["day_number"] == 2
+    assert g["total_xp"] == 968 and g["level"] == 2 and g["day_number"] == 2
 
 
 def test_social_media_penalty_never_takes_xp_below_zero():
@@ -90,13 +92,16 @@ def test_resting_hr_compares_with_earlier_days():
     assert next(line for line in g["today"]["metrics"] if line["key"] == "heart")["xp"] == 0
 
 
-def test_stocks_flat_or_up_and_new_capital():
-    post([obs("2026-10-27", "trading.equity", 1500, "usd")], source="alpaca1")
-    post([obs("2026-10-28", "trading.equity", 2010, "usd"), obs("2026-10-28", "trading.pl_day", 10, "usd")],
-         source="alpaca1")
-    g = client.get("/game", params={"date": "2026-10-28"}).json()
-    stocks = next(line for line in g["today"]["metrics"] if line["key"] == "stocks")
-    assert stocks["xp"] == 75 and "capital added" in stocks["detail"]
+def test_calls_and_messaging_need_a_synced_phone():
+    lines = {l["key"]: l for l in game.score_day({"screen.communication_minutes": 45}, {})}
+    assert lines["connect"]["xp"] == 0 and lines["connect"]["detail"] == "Phone not synced"
+    lines = {l["key"]: l for l in game.score_day({"screen.total_minutes": 60, "screen.communication_minutes": 45}, {})}
+    assert lines["connect"]["xp"] == 100
+
+
+def test_study_and_reading_are_capped():
+    lines = {l["key"]: l["xp"] for l in game.score_day({"study.minutes": 300, "reading.minutes": 200}, {})}
+    assert lines["study"] == 100 and lines["reading"] == 75
 
 
 def test_before_game_start_is_level_one():
@@ -105,11 +110,11 @@ def test_before_game_start_is_level_one():
 
 
 def test_each_stat_has_its_own_level():
-    # Max sleep every day levels Sleep at the character's pace: 125/1050 of the character's curve.
+    # Max sleep every day levels Sleep at the character's pace: 125/1200 of the character's curve.
     sheet = game.stat_sheet("sleep", "Sleep", "Rest", 0, 125)
     assert sheet["level"] == 1 and sheet["rank"] == "Novice" and sheet["score"] == 8 and sheet["modifier"] == -1
-    assert sheet["level_cost"] == round(500 * 125 / 1050)
-    top = game.stat_sheet("sleep", "Sleep", "Rest", game.XP_TO_MAX * 125 / 1050, 125)
+    assert sheet["level_cost"] == round(500 * 125 / 1200)
+    top = game.stat_sheet("sleep", "Sleep", "Rest", game.XP_TO_MAX * 125 / 1200, 125)
     assert top["level"] == 110 and top["rank"] == "Master" and top["score"] == 20 and top["modifier"] == 5
 
 
@@ -117,7 +122,7 @@ def test_stats_in_game_response():
     d = "2026-10-24"
     post([obs(d, "sleep.total_minutes", 480, "minutes"), obs(d, "screen.app.com.zhiliaoapp.musically", 90, "minutes")])
     stats = {s["key"]: s for s in client.get("/game", params={"date": d}).json()["stats"]}
-    assert len(stats) == 12
+    assert len(stats) == 13
     assert stats["sleep"]["xp"] == 75 and stats["sleep"]["level"] == 2  # Sleep's level 1 costs 52 XP
     assert stats["social"]["xp"] == 0  # a penalty can't take a stat below 0
 
@@ -140,8 +145,10 @@ def all_stats(**levels):
 
 def test_class_from_two_strongest_groups():
     assert game.character_class(all_stats())["name"] == "Adventurer"
-    assert game.character_class(all_stats(kettlebell=6, sleep=5))["name"] == "Ironclad"
-    assert game.character_class(all_stats(github=9, social=8))["name"] == "Runesmith"
+    assert game.character_class(all_stats(kettlebell=6, sleep=5))["name"] == "Warrior"
+    assert game.character_class(all_stats(github=9, reading=8))["name"] == "Sage"
+    assert game.character_class(all_stats(study=9, social=8))["name"] == "Scholar"
+    assert game.character_class(all_stats(connect=9, journal=8))["name"] == "Bard"
     # One group at double the next is a pure class.
     c = game.character_class(all_stats(kettlebell=10, steps=5))
     assert c == {"name": "Juggernaut", "groups": ["str"], "detail": "Pure STR"}
@@ -164,10 +171,10 @@ def log(day, metric):
 
 
 def test_unearned_claim_is_ignored():
-    log("2026-10-24", "perk.wis.1.claimed")
+    log("2026-10-24", "perk.per.1.claimed")
     g = client.get("/game", params={"date": "2026-10-24"}).json()
-    wis = next(x for x in g["groups"] if x["key"] == "wis")
-    assert wis["perks"][0]["claimed_on"] is None and g["today"]["buffs"] == []
+    per = next(x for x in g["groups"] if x["key"] == "per")
+    assert per["perks"][0]["claimed_on"] is None and g["today"]["buffs"] == []
 
 
 def test_media_pass_waives_screen_penalties(monkeypatch):
@@ -176,7 +183,7 @@ def test_media_pass_waives_screen_penalties(monkeypatch):
     d = "2026-10-24"
     post([obs(d, "screen.app.com.zhiliaoapp.musically", 120, "minutes"),
           obs(d, "screen.app.com.google.android.youtube", 200, "minutes")])
-    log(d, "perk.wis.1.claimed")
+    log(d, "perk.per.1.claimed")
     g = client.get("/game", params={"date": d}).json()
     xp = {line["key"]: line["xp"] for line in g["today"]["metrics"]}
     assert xp["social"] == 0 and xp["youtube"] == 50

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, rework]
   pull_request:
 
 permissions:
@@ -44,3 +44,11 @@ jobs:
         run: |
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest personal-api.apk --title "Phone app (latest)" --notes "Built from ${GITHUB_SHA::7}" --prerelease
+      # On rework, publish its own "rework-latest" release so it never replaces the main app's download.
+      - if: github.event_name == 'push' && github.ref == 'refs/heads/rework'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv personal-api.apk personal-api-rework.apk
+          gh release delete rework-latest --yes --cleanup-tag || true
+          gh release create rework-latest personal-api-rework.apk --title "Phone app (rework)" --notes "Built from ${GITHUB_SHA::7} on the rework branch" --prerelease --target "$GITHUB_SHA"
