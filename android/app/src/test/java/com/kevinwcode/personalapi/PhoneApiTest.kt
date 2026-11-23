@@ -87,14 +87,15 @@ class PhoneApiTest {
     }
 
     @Test
-    fun foodPresetsAreTheMealMatrix() {
+    fun foodPresetsAreFourQualitiesPerMeal() {
         val a = api.handle("GET", "/food/presets", null)
         assertEquals(200, a.status)
         val presets = a.body.getJSONArray("presets")
-        assertEquals(12, presets.length())
-        val heavySnack = (0 until presets.length()).map { presets.getJSONObject(it) }
-            .single { it.getString("meal") == "snack" && it.getString("tier") == "Heavy" }
-        assertEquals(500.0, heavySnack.getDouble("kcal"), 0.0)
-        assertEquals(34.0, heavySnack.getDouble("sugar_g"), 0.0)
+        assertEquals(16, presets.length())
+        val redSnack = (0 until presets.length()).map { presets.getJSONObject(it) }
+            .single { it.getString("meal") == "snack" && it.getString("tier") == "Red" }
+        assertEquals(500.0, redSnack.getDouble("kcal"), 0.0)
+        assertEquals(40.0, redSnack.getDouble("sugar_g"), 0.0)
+        assertEquals("Takeaway, fried or sweet", redSnack.getString("hint"))
     }
 }
