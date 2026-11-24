@@ -55,6 +55,11 @@ class Settings(context: Context) {
     /** True once the person has saved their activities on the setup screen. */
     val profileChosen: Boolean get() = prefs.contains("profile")
 
+    /** The main health app (its package name) when several write to Health Connect. Empty = pick per night. */
+    var healthSource: String
+        get() = prefs.getString("health_source", "")!!
+        set(v) = prefs.edit().putString("health_source", v).apply()
+
     var lastSync: String
         get() = prefs.getString("last_sync", "never")!!
         set(v) = prefs.edit().putString("last_sync", v).apply()

@@ -12,7 +12,7 @@ import java.time.LocalDateTime
  *  - the vitals ([VitalsB]): a 7.5 h sleep target with an 8 h overcharge to 110, a Mana morning reset, gentler
  *    waking drains, a 30 g sugar buffer, food, workout and study as spend-and-reward, and named debuffs;
  *  - "Prime Condition": on a day all four bars wake up at 70+ (and HP, Stamina and Focus at 80+, so 6 h of sleep or
- *    more), kettlebell, commits and journal XP get +10%. The other end of the scale is a "Rest Day": HP, Stamina or Focus
+ *    more), training, commits and journal XP get +10%. The other end of the scale is a "Rest Day": HP, Stamina or Focus
  *    woke under 80 (under 6 h of sleep). It costs no XP. The drain is the same every day, so a low start runs out sooner.
  */
 object TestB {
@@ -52,7 +52,7 @@ object TestB {
 
     fun primeBuff(lines: List<Game.Line>): Game.Buff {
         val manual = lines.filter { it.key in MANUAL_STATS }.sumOf { maxOf(0, it.xp) }
-        return Game.Buff("Prime Condition", "Woke up with all four vitals 70+: +10% XP on kettlebell, commits and journal",
+        return Game.Buff("Prime Condition", "Woke up with all four vitals 70+: +10% XP on training, commits and journal",
             Game.pyRound(manual * PRIME_BONUS))
     }
 
@@ -271,8 +271,8 @@ object VitalsB {
     /** The day's overall state, judged on how you woke up, shown as the badge above the bars. */
     data class Condition(val state: String, val title: String, val detail: String) {
         companion object {
-            val PRIME = Condition("prime", "Prime Condition", "You woke up with all four bars at 70+: kettlebell, commits and journal earn +10% XP all day.")
-            val STEADY = Condition("steady", "Steady", "A fair start. Wake up with all four bars at 70+ (about 7.5 h of good sleep) for Prime Condition: +10% XP on kettlebell, commits and journal.")
+            val PRIME = Condition("prime", "Prime Condition", "You woke up with all four bars at 70+: training, commits and journal earn +10% XP all day.")
+            val STEADY = Condition("steady", "Steady", "A fair start. Wake up with all four bars at 70+ (about 7.5 h of good sleep) for Prime Condition: +10% XP on training, commits and journal.")
             val REST = Condition("rest", "Rest Day", "A short night (under 6 h), so your bars started low. No XP is lost, but they drain at the usual pace, so they run low sooner today. Top up with water, go easy, and an early night brings Prime back.")
             val NO_SLEEP = Condition("unknown", "Steady", "No sleep logged yet, so the bars start at 70. Sync your watch to see today's real condition.")
         }

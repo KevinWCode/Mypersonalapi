@@ -106,7 +106,7 @@ object Game {
             val base = ctx.hrvBase
             if (base == null || hrv!! > base) xp += 35
             parts += "HRV ${f0(hrv!!)} ms"
-        } else parts += "no HRV from Samsung"
+        } else parts += "no HRV from your health app"
         lines += Line("heart", "Heart rate & HRV", "CON", xp, 75, parts.joinToString(", "))
 
         val steps = m["health.steps"] ?: 0.0
@@ -228,7 +228,7 @@ object Game {
         val earnedPerks: List<Pair<Int, Perks.Perk>>, val claimed: Map<Int, String>,
     )
 
-    fun groupSheets(stats: List<StatSheet>, claims: Map<Pair<String, Int>, String>): List<GroupSheet> {
+    fun groupSheets(stats: List<StatSheet>, claims: Map<Pair<String, Int>, String>, profile: Profile = Profile.KEVIN): List<GroupSheet> {
         val power = groupPower(stats)
         return Perks.GROUPS.map { (g, group) ->
             val level = power.getValue(g).first
@@ -238,9 +238,9 @@ object Game {
             GroupSheet(
                 key = g, name = group.name, ability = group.ability, level = level, tier = tier,
                 score = score, modifier = mod,
-                title = if (tier > 0) Perks.PERKS.getValue(g to tier).title else null,
+                title = if (tier > 0) profile.perk(g, tier).title else null,
                 nextTierLevel = nextTier?.let { Perks.TIERS.getValue(it).second },
-                earnedPerks = Perks.TIERS.filter { (_, v) -> level >= v.second }.keys.map { it to Perks.PERKS.getValue(g to it) },
+                earnedPerks = Perks.TIERS.filter { (_, v) -> level >= v.second }.keys.map { it to profile.perk(g, it) },
                 claimed = claims.filterKeys { it.first == g }.mapKeys { it.key.second },
             )
         }
@@ -344,7 +344,7 @@ object Game {
 
                 val base = maxOf(0, lines.sumOf { it.xp })
                 val rested = (m["sleep.total_minutes"] ?: 0.0) >= WELL_RESTED_MINUTES
-                val passUsed = listOf("con" to 1, "con" to 2).firstOrNull { it in active }?.let { Perks.PERKS.getValue(it).token }
+                val passUsed = listOf("con" to 1, "con" to 2).firstOrNull { it in active }?.let { profile.perk(it.first, it.second).token }
                 // The buff adds to the character's XP only; each stat keeps the XP it earned itself.
                 val bonus = if (rested || passUsed != null) pyRound(base * WELL_RESTED_BONUS) else 0
                 if (bonus != 0) {
@@ -391,7 +391,7 @@ object Game {
         val total = history.sumOf { it.xp }
         val vitalBars = vitalsRun(vitalDays, todayElapsed(day, now))
         val stats = sheets(statXp, profile)
-        val groups = groupSheets(stats, claims.mapValues { it.value.toString() })
+        val groups = groupSheets(stats, claims.mapValues { it.value.toString() }, profile)
         val top = groups.maxWithOrNull(compareBy<GroupSheet>({ it.tier }, { it.level }))!!
         val recent = avg(history.takeLast(14).map { it.xp.toDouble() })
         val remaining = maxOf(0, XP_TO_MAX - total)

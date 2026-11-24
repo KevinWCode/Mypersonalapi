@@ -20,6 +20,11 @@
 
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
+        <!-- Lets the app see which app is the home screen, so time on it isn't counted as phone use. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
+        </intent>
     </queries>
 
     <!-- Cleartext is fine here: the server is only reachable over Tailscale, which encrypts the traffic. -->

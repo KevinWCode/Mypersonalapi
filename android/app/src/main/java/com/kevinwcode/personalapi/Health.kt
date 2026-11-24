@@ -19,7 +19,10 @@ import java.time.LocalDate
 import java.time.Period
 import java.time.ZoneId
 
-/** Reads what the Galaxy Watch writes into Health Connect (via Samsung Health). */
+/**
+ * Reads what your watch or phone's health app writes into Health Connect: Samsung Health, Fitbit, Pixel Watch,
+ * Garmin, Oura and so on. With more than one app, sleep and workouts come from one source (see [HealthSources]).
+ */
 object Health {
     val PERMISSIONS = setOf(
         HealthPermission.getReadPermission(SleepSessionRecord::class),
@@ -36,7 +39,17 @@ object Health {
     fun available(context: Context) =
         HealthConnectClient.getSdkStatus(context) == HealthConnectClient.SDK_AVAILABLE
 
-    suspend fun collect(context: Context, days: List<LocalDate>): List<Observation> {
+    /** Apps that wrote sleep, workouts or steps in the last 14 days, for the "Main health app" choice. */
+    suspend fun recentSources(context: Context): Set<String> {
+        val client = HealthConnectClient.getOrCreate(context)
+        val range = TimeRangeFilter.between(Instant.now().minus(Duration.ofDays(14)), Instant.now())
+        return (client.readRecords(ReadRecordsRequest(SleepSessionRecord::class, range)).records.map { it.metadata.dataOrigin.packageName } +
+            client.readRecords(ReadRecordsRequest(ExerciseSessionRecord::class, range)).records.map { it.metadata.dataOrigin.packageName } +
+            client.readRecords(ReadRecordsRequest(StepsRecord::class, range, pageSize = 200)).records.map { it.metadata.dataOrigin.packageName })
+            .toSet()
+    }
+
+    suspend fun collect(context: Context, days: List<LocalDate>, preferred: String = ""): List<Observation> {
         val client = HealthConnectClient.getOrCreate(context)
         val zone = ZoneId.systemDefault()
         val first = days.min()
@@ -75,9 +88,13 @@ object Health {
 
         // Sleep counts toward the day you woke up.
         val sleep = client.readRecords(ReadRecordsRequest(SleepSessionRecord::class, TimeRangeFilter.between(start, end))).records
-        sleep.groupBy { it.endTime.atZone(zone).toLocalDate() }.forEach { (day, sessions) ->
+        sleep.groupBy { it.endTime.atZone(zone).toLocalDate() }.forEach { (day, all) ->
+            // One app's sleep only, so a watch and a phone don't add up to two nights.
+            val sessions = HealthSources.pickSleep(
+                all.map { HealthSources.Session(it.metadata.dataOrigin.packageName, it.startTime, it.endTime, it) }, preferred,
+            ).map { it.record }
             out += sleepObservations(day, sessions)
-            // Samsung doesn't share resting heart rate, so use the calmest 5 minutes of the night instead.
+            // Some apps (Samsung Health among them) don't share resting heart rate: use the calmest 5 minutes of the night.
             if (day !in restingFromRecords) {
                 val samples = sessions.flatMap { s ->
                     client.readRecords(ReadRecordsRequest(HeartRateRecord::class, TimeRangeFilter.between(s.startTime, s.endTime)))
@@ -99,7 +116,11 @@ object Health {
             out += Observation(day, "health.hrv_rmssd", rs.map { it.heartRateVariabilityMillis }.average(), "ms")
         }
 
-        val sessions = client.readRecords(ReadRecordsRequest(ExerciseSessionRecord::class, TimeRangeFilter.between(start, end))).records
+        val sessions = HealthSources.dedupeWorkouts(
+            client.readRecords(ReadRecordsRequest(ExerciseSessionRecord::class, TimeRangeFilter.between(start, end))).records
+                .map { HealthSources.Session(it.metadata.dataOrigin.packageName, it.startTime, it.endTime, it) },
+            preferred,
+        ).map { it.record }
         sessions.groupBy { it.startTime.atZone(zone).toLocalDate() }.forEach { (day, rs) ->
             out += Observation(day, "workout.sessions", rs.size.toDouble(), "count")
             // Sessions that count as a real workout for the vital bars: 30+ minutes and not a walk.

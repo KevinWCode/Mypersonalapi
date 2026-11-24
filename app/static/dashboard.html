@@ -657,7 +657,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     <span class="chip auto"><span class="dot"></span>Alpaca (optional) · P/L, positions, trades</span>
     <span class="chip manual"><span class="dot"></span>Food tab or a pasted food AI line · calories, protein, carbs, sugar, fat (manual)</span>
     <span class="chip manual"><span class="dot"></span>Quick log buttons · water, reading, study, coffee, workout done, journal entry (manual)</span>
-    <span class="chip manual"><span class="dot"></span>App settings · kettlebell sets, catch distance (manual)</span>
+    <span class="chip manual"><span class="dot"></span>App settings · training sets, your best on the thing you're improving (manual)</span>
   </div>
 </section>
 
@@ -1701,8 +1701,8 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     } else if (g.prime_min) {
       var on = g.vitals.every(function (v) { return v.start_of_day >= g.prime_min; });
       prime = el('div', { class: 'prime' + (on ? '' : ' off') }, el('b', null, on ? '★ Prime Condition' : 'Prime Condition'),
-        el('span', null, on ? 'You woke up with all four bars at ' + g.prime_min + '+: kettlebell, commits and journal earn +10% XP all day.'
-          : 'Wake up with all four bars at ' + g.prime_min + '+ (about 7.5 h of good sleep) for +10% XP on kettlebell, commits and journal all day.'));
+        el('span', null, on ? 'You woke up with all four bars at ' + g.prime_min + '+: training, commits and journal earn +10% XP all day.'
+          : 'Wake up with all four bars at ' + g.prime_min + '+ (about 7.5 h of good sleep) for +10% XP on training, commits and journal all day.'));
     }
     box.replaceChildren.apply(box, corners().concat([rune('Vitals'), prime, el('div', { class: 'vitals' }, bars)].filter(Boolean)));
   }

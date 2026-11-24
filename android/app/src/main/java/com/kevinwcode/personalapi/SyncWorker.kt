@@ -66,7 +66,7 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
             if (Health.available(context)) {
                 try {
-                    val obs = Health.collect(context, days)
+                    val obs = Health.collect(context, days, settings.healthSource)
                     store.save("phone", obs)
                     batches += "phone" to obs
                     parts += "health ${obs.size}"

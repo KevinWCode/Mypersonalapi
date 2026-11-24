@@ -59,7 +59,7 @@ object GameJson {
             "tier" to s.tier, "score" to s.score, "modifier" to s.modifier, "title" to s.title, "next_tier_level" to s.nextTierLevel,
             "perks" to arr(Perks.TIERS.map { (t, rankUnlock) ->
                 val (rank, unlock) = rankUnlock
-                val p = Perks.PERKS.getValue(s.key to t)
+                val p = profile.perk(s.key, t)
                 obj("tier" to t, "rank" to rank, "unlock_level" to unlock, "title" to p.title, "token" to p.token,
                     "detail" to p.detail, "earned" to (s.level >= unlock), "claimed_on" to s.claimed[t],
                     "claim_metric" to Perks.claimMetric(s.key, t))
