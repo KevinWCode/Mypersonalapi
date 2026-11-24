@@ -145,6 +145,8 @@ object Vitals {
     data class BarState(
         val key: String, val name: String, val about: String, val value: Int, val low: Boolean,
         val top: Double, val startOfDay: Double, val gainedToday: Double, val endOfDay: Int, val today: List<Effect>,
+        /** The day's own tick when it depends on the morning (rework drain); null = the bar's fixed [Bar.tickPerDay]. */
+        val tickPerDay: Double? = null,
     )
 
     /** Past days apply in full; the last day only ticks by the share of it that has passed (0 to 1). */

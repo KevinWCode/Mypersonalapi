@@ -56,7 +56,7 @@ class PhoneApi(private val data: Data, private val today: () -> LocalDate = Loca
             // Test B: the same character with the trial vitals rules (TestB.kt), for the Test B tab.
             method == "GET" && path == "/game-b" -> {
                 val day = date("date") ?: today()
-                Answer(200, TestB.toJson(TestB.build(data.days(), day, gameStart = data.gameStart(), now = now())))
+                TestB.buildWithCondition(data.days(), day, gameStart = data.gameStart(), now = now()).let { (g, c) -> Answer(200, TestB.toJson(g, c)) }
             }
             method == "GET" && path == "/summary" -> Answer(200, JSONObject().put("date", (date("date") ?: today()).toString()))
             method == "GET" && path == "/trading" -> Answer(200, tradingJson(data.days(), today(), data.trading()))
