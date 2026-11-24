@@ -40,7 +40,8 @@ object TestB {
             inputs += Vitals.DayInput(d, m, m["screen.youtube_minutes"] ?: 0.0)
             d = d.plusDays(1)
         }
-        val result = VitalsB.run(inputs, Game.todayElapsed(day, now), profile.kcalTarget + VitalsB.KCAL_MARGIN)
+        val result = VitalsB.run(inputs, Game.todayElapsed(day, now), profile.kcalTarget + VitalsB.KCAL_MARGIN,
+            profile.proteinTarget * VitalsB.PROTEIN_SHARE)
         val g = Game.build(
             days, day, gameStart, now, profile,
             extraBuff = { date, lines -> if (result.prime[date] == true) primeBuff(lines) else null },
@@ -128,6 +129,8 @@ object VitalsB {
     const val SUGAR_BUFFER_G = 30.0
     const val SUGAR_RUSH_CAP = 15.0
     const val PROTEIN_TARGET_G = 135.0
+    /** The HP protein rule counts from this share of the person's protein target (Kevin: 150 g x 0.9 = 135 g). */
+    const val PROTEIN_SHARE = 0.9
     const val PROTEIN_HP = 10.0
     const val KCAL_LIMIT = 2150.0
     /** The HP calorie rule allows this much over the person's own calorie target (Kevin: 2,000 + 150 = 2,150). */
@@ -180,14 +183,14 @@ object VitalsB {
     fun manaReset(m: Map<String, Double>, sleep: Double): Double =
         MANA_RESET + (if (sleep >= SLEEP_FULL_MINUTES) MANA_RESTED else 0.0) + (if (deepRemOk(m, sleep)) MANA_DEEP_REM else 0.0)
 
-    fun proteinHit(m: Map<String, Double>) = (m["food.protein_g"] ?: 0.0) >= PROTEIN_TARGET_G
+    fun proteinHit(m: Map<String, Double>, min: Double = PROTEIN_TARGET_G) = (m["food.protein_g"] ?: 0.0) >= min - 1e-9
 
     fun mealsLogged(m: Map<String, Double>) = Food.MEALS.count { (m["food.$it.kcal"] ?: 0.0) > 0 }
 
     /** The day's changes to each bar. */
     fun effects(
         m: Map<String, Double>, youtubeMinutes: Double, yesterday: Map<String, Double>,
-        kcalLimit: Double = KCAL_LIMIT,
+        kcalLimit: Double = KCAL_LIMIT, proteinMin: Double = PROTEIN_TARGET_G,
     ): Map<String, MutableList<Vitals.Effect>> {
         val out = BARS.associate { it.key to mutableListOf<Vitals.Effect>() }
         fun add(bar: String, label: String, points: Double, temporary: Boolean = false) {
@@ -215,7 +218,7 @@ object VitalsB {
         val sugarLabel = Math.rint(sugar).toInt()
         add("hp", "Sugar ($sugarLabel g, ${SUGAR_BUFFER_G.toInt()} g free)", -Math.floor(maxOf(0.0, sugar - SUGAR_BUFFER_G) / 2))
         add("stamina", "Sugar rush ($sugarLabel g, today only)", minOf(SUGAR_RUSH_CAP, Math.floor(sugar / 2)), temporary = true)
-        if (proteinHit(m)) add("hp", "Protein ${PROTEIN_TARGET_G.toInt()} g+", PROTEIN_HP)
+        if (proteinHit(m, proteinMin)) add("hp", "Protein ${Math.rint(proteinMin).toInt()} g+", PROTEIN_HP)
         val kcal = m["food.kcal"] ?: 0.0
         if (kcal > 0 && kcal <= kcalLimit && mealsLogged(m) >= 2) add("hp", "Calories on target (${kcal.toInt()} kcal)", KCAL_HP)
 
@@ -229,7 +232,7 @@ object VitalsB {
 
         // Workouts: spend today, recover tomorrow.
         if (Vitals.workedOut(yesterday)) {
-            if (proteinHit(yesterday)) add("stamina", "Recovery: yesterday's workout + protein", WORKOUT_NEXT_DAY_STAMINA_FED)
+            if (proteinHit(yesterday, proteinMin)) add("stamina", "Recovery: yesterday's workout + protein", WORKOUT_NEXT_DAY_STAMINA_FED)
             else add("stamina", "Recovery: yesterday's workout", WORKOUT_NEXT_DAY_STAMINA)
         }
         if (Vitals.workedOut(m)) {
@@ -292,7 +295,10 @@ object VitalsB {
     class Result(val bars: List<Vitals.BarState>, val prime: Map<LocalDate, Boolean>, val condition: Map<LocalDate, Condition> = emptyMap())
 
     /** Past days apply in full; the last day only ticks by the share of it that has passed (0 to 1). */
-    fun run(days: List<Vitals.DayInput>, todayElapsed: Double = 1.0, kcalLimit: Double = KCAL_LIMIT): Result {
+    fun run(
+        days: List<Vitals.DayInput>, todayElapsed: Double = 1.0, kcalLimit: Double = KCAL_LIMIT,
+        proteinMin: Double = PROTEIN_TARGET_G,
+    ): Result {
         val values = BARS.associate { it.key to Vitals.START_VALUE }.toMutableMap()
         val last = mutableMapOf<String, Triple<Double, Double, List<Vitals.Effect>>>()
         val prime = linkedMapOf<LocalDate, Boolean>()
@@ -328,7 +334,7 @@ object VitalsB {
                 start["mana"] = MANA_RESET
                 resets["mana"] = "No sleep logged: morning reset to ${MANA_RESET.toInt()}"
             }
-            val fx = effects(m, d.youtubeMinutes, yesterday, kcalLimit)
+            val fx = effects(m, d.youtubeMinutes, yesterday, kcalLimit, proteinMin)
             for ((k, label) in resets) fx.getValue(k).add(0, Vitals.Effect(label, 0.0))
             yesterday = m
 

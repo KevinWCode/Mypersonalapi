@@ -115,4 +115,20 @@ class ProfileTest {
         assertEquals(2500.0, Profile.decode(Profile.KEVIN.copy(kcalTarget = 2500.0).encode())!!.kcalTarget, 0.0)
         assertEquals(2000.0, Profile.decode("{}")!!.kcalTarget, 0.0)
     }
+
+    @Test
+    fun proteinAndWaterTargets() {
+        val m = mapOf("food.protein_g" to 120.0)
+        fun hp(p: Profile) = TestB.build(mapOf(day to m), day, day, evening, p).vitals.first { it.key == "hp" }.today
+        assertFalse(hp(Profile.KEVIN).any { it.label.startsWith("Protein") })
+        val lower = Profile.KEVIN.copy(proteinTarget = 130.0)
+        assertTrue(hp(lower).any { it.label == "Protein 117 g+" })
+        assertTrue(hp(Profile.KEVIN.copy(proteinTarget = 150.0)).none { it.label.startsWith("Protein") })
+        val kevin135 = TestB.build(mapOf(day to mapOf("food.protein_g" to 135.0)), day, day, evening, Profile.KEVIN).vitals.first { it.key == "hp" }.today
+        assertTrue(kevin135.any { it.label == "Protein 135 g+" })
+        val back = Profile.decode(Profile.KEVIN.copy(proteinTarget = 120.0, waterTarget = 2.5).encode())!!
+        assertEquals(120.0, back.proteinTarget, 0.0)
+        assertEquals(2.5, back.waterTarget, 0.0)
+        assertEquals(150.0, Profile.decode("{}")!!.proteinTarget, 0.0)
+    }
 }

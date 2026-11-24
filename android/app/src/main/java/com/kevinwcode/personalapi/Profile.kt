@@ -25,6 +25,10 @@ data class Profile(
     val off: Set<String> = emptySet(),
     /** Daily calorie target: the Fuel card's goal, and (+150) the most the HP calorie rule allows. */
     val kcalTarget: Double = DEFAULT_KCAL,
+    /** Daily protein target in grams: the Fuel card goal, and (x 0.9) what the HP protein rule needs. */
+    val proteinTarget: Double = DEFAULT_PROTEIN,
+    /** Daily water target in litres, for the Fuel card. */
+    val waterTarget: Double = DEFAULT_WATER,
 ) {
     /** One exercise of the training. [key] names its metrics (kb.<key>.done, kb.<key>.sets), so it never changes. */
     data class Exercise(val key: String, val name: String)
@@ -69,6 +73,8 @@ data class Profile(
         } ?: JSONObject.NULL)
         .put("off", JSONArray(off.sorted()))
         .put("kcal_target", kcalTarget)
+        .put("protein_target", proteinTarget)
+        .put("water_target", waterTarget)
 
     fun encode(): String = toJson().toString()
 
@@ -92,6 +98,8 @@ data class Profile(
 
     companion object {
         const val DEFAULT_KCAL = 2000.0
+        const val DEFAULT_PROTEIN = 150.0
+        const val DEFAULT_WATER = 3.0
         val DEFAULT_SESSIONS = listOf("Session 1", "Session 2", "Session 3")
         const val GOAL_METRIC = "improve.best"
         const val CATCH_METRIC = "football.max_catch_yards"
@@ -137,7 +145,8 @@ data class Profile(
                 }
                 val known = ITEMS.map { it.key }.toSet()
                 Profile(o.optString("training", ""), strings("sessions").ifEmpty { DEFAULT_SESSIONS }, ex, g,
-                    strings("off").filter { it in known }.toSet(), o.optDouble("kcal_target", DEFAULT_KCAL))
+                    strings("off").filter { it in known }.toSet(), o.optDouble("kcal_target", DEFAULT_KCAL),
+                    o.optDouble("protein_target", DEFAULT_PROTEIN), o.optDouble("water_target", DEFAULT_WATER))
             } catch (e: Exception) {
                 null
             }
