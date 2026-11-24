@@ -12,8 +12,6 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.RadioButton
-import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
@@ -102,7 +100,7 @@ class MainActivity : AppCompatActivity() {
         })
         if (intent.getBooleanExtra(EXTRA_WELCOME, false)) root.addView(TextView(this).apply {
             text = "Welcome! To get started:\n" +
-                "1. Pick your activities below: your strength training, and switch off anything you don't track.\n" +
+                "1. Set up your activities below: your training, its sessions and exercises, and something you would like to improve.\n" +
                 "2. Allow Health Connect access (sleep, steps, heart rate and workouts from your watch or phone).\n" +
                 "3. Allow usage access, so screen time and social media minutes can be counted.\n" +
                 "4. Keep syncing in the background.\n" +
@@ -202,102 +200,102 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        val kbFrom = root.childCount
-        heading("Kettlebell set")
-        val move = Spinner(this).apply {
-            adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, MOVES.keys.toList())
-        }.also { root.addView(it) }
-        val reps = field("Reps", "", number = true)
-        val weight = field("Weight (lb)", "", number = true)
-        button("Add set") {
-            val r = reps.text.toString().toIntOrNull()
-            val w = weight.text.toString().toDoubleOrNull()
-            if (r == null || w == null) return@button toast("Enter reps and weight")
-            manual.addKettlebellSet(MOVES.getValue(move.selectedItem as String), r, w)
-            reps.text.clear()
-            afterLog("Set added")
+        // Logging a set and a best: only for the exercises and goal picked under Your activities.
+        val profile = settings.profile
+        if (profile.trackedExercises.isNotEmpty()) {
+            heading("Log a ${profile.training.ifBlank { "training" }} set")
+            val names = profile.trackedExercises
+            val exercise = Spinner(this).apply {
+                adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, names.map { it.name })
+            }.also { root.addView(it) }
+            val reps = field("Reps", "", number = true)
+            val weight = field("Weight (lb)", "", number = true)
+            button("Add set") {
+                val r = reps.text.toString().toIntOrNull()
+                val w = weight.text.toString().toDoubleOrNull()
+                if (r == null || w == null) return@button toast("Enter reps and weight")
+                manual.addKettlebellSet(names[exercise.selectedItemPosition].key, r, w)
+                reps.text.clear()
+                afterLog("Set added")
+            }
         }
-
-        kettlebellViews = (kbFrom until root.childCount).map(root::getChildAt)
-        val catchFrom = root.childCount
-        heading("Flag football")
-        val catch = field("Longest reliable catch today (yards)", "", number = true)
-        button("Save catch distance") {
-            val y = catch.text.toString().toDoubleOrNull() ?: return@button toast("Enter yards")
-            manual.setCatchDistance(y)
-            catch.text.clear()
-            afterLog("Catch distance saved")
+        profile.goal?.let { goal ->
+            heading(goal.name)
+            val best = field("Today's best" + if (goal.unit.isNotBlank()) " (${goal.unit})" else "", "", number = true)
+            button("Save today's best") {
+                val v = best.text.toString().toDoubleOrNull() ?: return@button toast("Enter a number")
+                manual.setBest(goal.metric, v, goal.unit.ifBlank { "count" })
+                best.text.clear()
+                afterLog("${goal.name} saved")
+            }
         }
-        catchViews = (catchFrom until root.childCount).map(root::getChildAt)
-        showChosen()
 
         SyncWorker.schedule(this)
     }
 
-    private var kettlebellViews: List<View> = emptyList()
-    private var catchViews: List<View> = emptyList()
-
     /**
-     * "Your activities": the strength training this person does and what they track. Saved on every change; the
-     * dashboard and the game read it the next time they load.
+     * "Your activities": the person's own training, its sessions and exercises, something they'd like to improve,
+     * and the optional parts. Saved with the button; the screen then rebuilds to match, and the dashboard and the
+     * game read it the next time they load.
      */
     private fun activities() {
+        val p = settings.profile
         heading("Your activities")
         root.addView(TextView(this).apply {
-            text = "Only what you pick here earns XP and shows in Daily quests. Anything switched off is ignored, " +
-                "so not doing it never counts against you. You can change this any time."
+            text = "Set these up to match what you actually do. They name your Daily quests and your weekly tracker on " +
+                "the Today tab. Leave a box empty to leave that part out, so it never counts against you."
         })
+        subheading("Your training")
+        val training = field("What you train, e.g. Kettlebells, Gym, Spin class, Running", p.training, plain = true)
+        val sessions = field("Sessions each week, e.g. Monday, Tuesday, Friday or Session 1, Session 2", p.sessions.joinToString(", "), plain = true)
+        val exercises = field("Exercises, e.g. Swing, Clean, Clean & press (optional)", p.exercises.joinToString(", ") { it.name }, plain = true)
         root.addView(TextView(this).apply {
-            text = "Strength training"
-            textSize = 16f
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setPadding(0, 24, 0, 0)
+            text = "Workouts from your watch count either way. Workout done on Daily quests ticks all your exercises for today."
         })
-        val types = Profile.STRENGTH_TYPES.entries.toList()
-        val group = RadioGroup(this).apply {
-            types.forEach { (key, names) ->
-                addView(RadioButton(this@MainActivity).apply {
-                    id = View.generateViewId()
-                    tag = key
-                    text = names.first
-                    isChecked = settings.profile.strength == key
-                })
-            }
-        }.also { root.addView(it) }
-        group.setOnCheckedChangeListener { g, checkedId ->
-            val key = g.findViewById<RadioButton>(checkedId)?.tag as? String ?: return@setOnCheckedChangeListener
-            settings.profile = settings.profile.copy(strength = key)
-            showChosen()
-        }
-        root.addView(TextView(this).apply {
-            text = "Workouts from your watch count either way. The Workout done tile on Daily quests logs a session by hand."
-            setPadding(0, 0, 0, 16)
-        })
-        root.addView(TextView(this).apply {
-            text = "What you track"
-            textSize = 16f
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setPadding(0, 16, 0, 0)
-        })
-        for (item in Profile.ITEMS) {
-            root.addView(CheckBox(this).apply {
+
+        subheading("Calorie target")
+        val kcal = field("Calories a day, e.g. 2000", p.kcalTarget.toInt().toString(), number = true)
+
+        subheading("Something you'd like to improve")
+        root.addView(TextView(this).apply { text = "For example: ${Profile.GOAL_EXAMPLES}. Log your best each time, higher is better." })
+        val goalName = field("What you're improving", p.goal?.name ?: "", plain = true)
+        val goalUnit = field("Unit, e.g. yd, kg, reps, seconds", p.goal?.unit ?: "", plain = true)
+        val goalTarget = field("Target (optional)", p.goal?.target?.let { if (it % 1 == 0.0) it.toInt().toString() else it.toString() } ?: "", number = true)
+
+        subheading("Optional")
+        val boxes = Profile.ITEMS.map { item ->
+            item.key to CheckBox(this).apply {
                 text = "${item.label}\n${item.about}"
-                isChecked = settings.profile.isOn(item.key)
-                setOnCheckedChangeListener { _, on ->
-                    val p = settings.profile
-                    settings.profile = p.copy(off = if (on) p.off - item.key else p.off + item.key)
-                    showChosen()
-                }
-            })
+                isChecked = p.isOn(item.key)
+            }.also { root.addView(it) }
+        }
+        button("Save my activities") {
+            val kcalTarget = kcal.text.toString().toDoubleOrNull()
+            if (kcalTarget == null || kcalTarget < 800 || kcalTarget > 6000) return@button toast("Enter a calorie target from 800 to 6000")
+            val name = goalName.text.toString().trim()
+            val goal = if (name.isEmpty()) null else Profile.Goal(
+                name, goalUnit.text.toString().trim(), goalTarget.text.toString().toDoubleOrNull(),
+                // Keep logging to the same metric, so a renamed goal keeps its history.
+                p.goal?.metric ?: Profile.GOAL_METRIC,
+            )
+            settings.profile = p.copy(
+                training = training.text.toString().trim(),
+                sessions = Profile.splitList(sessions.text.toString()).ifEmpty { Profile.DEFAULT_SESSIONS },
+                goal = goal,
+                off = boxes.filter { !it.second.isChecked }.map { it.first }.toSet(),
+                kcalTarget = kcalTarget,
+            ).withExerciseNames(Profile.splitList(exercises.text.toString()))
+            toast("Saved your activities")
+            recreate()
         }
     }
 
-    /** Shows the kettlebell and catch drill entries only to people who do them. */
-    private fun showChosen() {
-        val p = settings.profile
-        kettlebellViews.forEach { it.visibility = if (p.kettlebell) View.VISIBLE else View.GONE }
-        catchViews.forEach { it.visibility = if (p.isOn("catch")) View.VISIBLE else View.GONE }
-    }
+    private fun subheading(text: String) = root.addView(TextView(this).apply {
+        this.text = text
+        textSize = 16f
+        setTypeface(typeface, android.graphics.Typeface.BOLD)
+        setPadding(0, 24, 0, 0)
+    })
 
     override fun onResume() {
         super.onResume()
@@ -369,13 +367,14 @@ class MainActivity : AppCompatActivity() {
         setPadding(0, 48, 0, 8)
     })
 
-    private fun field(hint: String, value: String, secret: Boolean = false, number: Boolean = false) =
+    private fun field(hint: String, value: String, secret: Boolean = false, number: Boolean = false, plain: Boolean = false) =
         EditText(this).apply {
             this.hint = hint
             setText(value)
             inputType = when {
                 secret -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
                 number -> InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+                plain -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
                 else -> InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
             }
         }.also { root.addView(it) }
@@ -388,11 +387,5 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_WELCOME = "welcome"
 
-        val MOVES = linkedMapOf(
-            "Swing" to "swing",
-            "Clean" to "clean",
-            "Clean & press" to "clean_press",
-            "Ballistic row" to "ballistic_row",
-        )
     }
 }

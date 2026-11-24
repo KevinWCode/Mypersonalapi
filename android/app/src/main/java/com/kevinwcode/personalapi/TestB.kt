@@ -24,13 +24,13 @@ object TestB {
     /** The day's character with the Test B vitals and Prime Condition. Same arguments as [Game.build]. */
     fun build(
         days: Map<LocalDate, Map<String, Double>>, day: LocalDate, gameStart: LocalDate = Game.DEFAULT_GAME_START,
-        now: LocalDateTime = LocalDateTime.now(), profile: Profile = Profile.ALL,
+        now: LocalDateTime = LocalDateTime.now(), profile: Profile = Profile.KEVIN,
     ): Game.State = buildWithCondition(days, day, gameStart, now, profile).first
 
     /** [build], plus the day's condition (Prime Condition, Steady or Rest Day) for the badge. */
     fun buildWithCondition(
         allDays: Map<LocalDate, Map<String, Double>>, day: LocalDate, gameStart: LocalDate = Game.DEFAULT_GAME_START,
-        now: LocalDateTime = LocalDateTime.now(), profile: Profile = Profile.ALL,
+        now: LocalDateTime = LocalDateTime.now(), profile: Profile = Profile.KEVIN,
     ): Pair<Game.State, VitalsB.Condition> {
         val days = profile.stripDays(allDays)
         val inputs = mutableListOf<Vitals.DayInput>()
@@ -40,7 +40,7 @@ object TestB {
             inputs += Vitals.DayInput(d, m, m["screen.youtube_minutes"] ?: 0.0)
             d = d.plusDays(1)
         }
-        val result = VitalsB.run(inputs, Game.todayElapsed(day, now))
+        val result = VitalsB.run(inputs, Game.todayElapsed(day, now), profile.kcalTarget + VitalsB.KCAL_MARGIN)
         val g = Game.build(
             days, day, gameStart, now, profile,
             extraBuff = { date, lines -> if (result.prime[date] == true) primeBuff(lines) else null },
@@ -83,7 +83,7 @@ object TestB {
  *    night's start (100, Mana 72) ends close to empty at 10, and a short night runs out sooner. What you gain (water,
  *    study...) and lose (screens...) on the way moves that end up or down. HP regenerates 12 a day up to 100.
  *  - Sugar: -1 HP per 2 g above a 30 g buffer; a sugar rush of +1 Stamina per 2 g (up to +15, that day only).
- *  - Food: +10 HP for 135 g protein or more; +8 HP for 2,150 kcal or less over at least two meals.
+ *  - Food: +10 HP for 135 g protein or more; +8 HP for no more than the calorie target + 150 kcal (2,150 for Kevin) over at least two meals.
  *  - Water +2 Stamina and +2 Focus per 250 ml. Coffee +3 Focus a cup (first 2); cups 3 and on cost 6 HP each.
  *  - Workout (same counting as live): -25 Stamina, +15 Focus, +5 HP today; +12 Stamina tomorrow, +20 if that day's
  *    protein reached 135 g.
@@ -130,6 +130,8 @@ object VitalsB {
     const val PROTEIN_TARGET_G = 135.0
     const val PROTEIN_HP = 10.0
     const val KCAL_LIMIT = 2150.0
+    /** The HP calorie rule allows this much over the person's own calorie target (Kevin: 2,000 + 150 = 2,150). */
+    const val KCAL_MARGIN = 150.0
     const val KCAL_HP = 8.0
     const val COFFEE_FREE_CUPS = 2.0
     const val COFFEE_HP = -6.0
@@ -185,6 +187,7 @@ object VitalsB {
     /** The day's changes to each bar. */
     fun effects(
         m: Map<String, Double>, youtubeMinutes: Double, yesterday: Map<String, Double>,
+        kcalLimit: Double = KCAL_LIMIT,
     ): Map<String, MutableList<Vitals.Effect>> {
         val out = BARS.associate { it.key to mutableListOf<Vitals.Effect>() }
         fun add(bar: String, label: String, points: Double, temporary: Boolean = false) {
@@ -214,7 +217,7 @@ object VitalsB {
         add("stamina", "Sugar rush ($sugarLabel g, today only)", minOf(SUGAR_RUSH_CAP, Math.floor(sugar / 2)), temporary = true)
         if (proteinHit(m)) add("hp", "Protein ${PROTEIN_TARGET_G.toInt()} g+", PROTEIN_HP)
         val kcal = m["food.kcal"] ?: 0.0
-        if (kcal > 0 && kcal <= KCAL_LIMIT && mealsLogged(m) >= 2) add("hp", "Calories on target (${kcal.toInt()} kcal)", KCAL_HP)
+        if (kcal > 0 && kcal <= kcalLimit && mealsLogged(m) >= 2) add("hp", "Calories on target (${kcal.toInt()} kcal)", KCAL_HP)
 
         // Drinks.
         val water = Vitals.WATER_PER_250_ML * Math.floor((m["water.ml"] ?: 0.0) / 250)
@@ -250,7 +253,7 @@ object VitalsB {
             add("focus", "Flow State (study)", STUDY_FOCUS * blocks)
         }
 
-        val calm = "screen.total_minutes" in yesterday && Profile.SOCIAL_OFF !in yesterday && (yesterday["screen.social_media_minutes"] ?: 0.0) < CALM_SOCIAL_MINUTES
+        val calm = "screen.total_minutes" in yesterday && (yesterday["screen.social_media_minutes"] ?: 0.0) < CALM_SOCIAL_MINUTES
         if (calm) add("focus", "Social media under ${CALM_SOCIAL_MINUTES.toInt()} min yesterday", CALM_NEXT_DAY_FOCUS)
         return out
     }
@@ -289,7 +292,7 @@ object VitalsB {
     class Result(val bars: List<Vitals.BarState>, val prime: Map<LocalDate, Boolean>, val condition: Map<LocalDate, Condition> = emptyMap())
 
     /** Past days apply in full; the last day only ticks by the share of it that has passed (0 to 1). */
-    fun run(days: List<Vitals.DayInput>, todayElapsed: Double = 1.0): Result {
+    fun run(days: List<Vitals.DayInput>, todayElapsed: Double = 1.0, kcalLimit: Double = KCAL_LIMIT): Result {
         val values = BARS.associate { it.key to Vitals.START_VALUE }.toMutableMap()
         val last = mutableMapOf<String, Triple<Double, Double, List<Vitals.Effect>>>()
         val prime = linkedMapOf<LocalDate, Boolean>()
@@ -325,7 +328,7 @@ object VitalsB {
                 start["mana"] = MANA_RESET
                 resets["mana"] = "No sleep logged: morning reset to ${MANA_RESET.toInt()}"
             }
-            val fx = effects(m, d.youtubeMinutes, yesterday)
+            val fx = effects(m, d.youtubeMinutes, yesterday, kcalLimit)
             for ((k, label) in resets) fx.getValue(k).add(0, Vitals.Effect(label, 0.0))
             yesterday = m
 

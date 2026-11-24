@@ -26,6 +26,10 @@ class ManualLog(context: Context) {
     fun setCatchDistance(yards: Double, day: LocalDate = LocalDate.now()) =
         log(day, Entry("football.max_catch_yards", yards, "yards", Mode.MAX))
 
+    /** The day's best for the thing being improved: keeps the highest logged that day. */
+    fun setBest(metric: String, value: Double, unit: String, day: LocalDate = LocalDate.now()) =
+        log(day, Entry(metric, value, unit, Mode.MAX))
+
     /** Applies the entries and remembers what they replaced, so [undoLast] can put it back. */
     fun log(day: LocalDate, vararg entries: Entry) {
         val undoEdit = undo.edit().clear()

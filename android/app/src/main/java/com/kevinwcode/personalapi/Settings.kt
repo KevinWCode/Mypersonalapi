@@ -46,10 +46,10 @@ class Settings(context: Context) {
 
     /**
      * What this person does and tracks. An install from before the setup screen existed has no saved choice and
-     * keeps the old behaviour ([Profile.ALL]: kettlebell, everything on).
+     * keeps the old behaviour ([Profile.KEVIN]: Kevin's kettlebell sessions and catch drill).
      */
     var profile: Profile
-        get() = Profile.decode(prefs.getString("profile", null)) ?: Profile.ALL
+        get() = Profile.decode(prefs.getString("profile", null)) ?: Profile.KEVIN
         set(v) = prefs.edit().putString("profile", v.encode()).apply()
 
     /** True once the person has saved their activities on the setup screen. */

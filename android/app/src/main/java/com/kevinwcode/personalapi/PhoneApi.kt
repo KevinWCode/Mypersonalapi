@@ -29,7 +29,7 @@ class PhoneApi(private val data: Data, private val today: () -> LocalDate = Loca
         /** Saved Alpaca fills and positions. */
         fun trading(): Trading = Trading.EMPTY
         /** What this person does and tracks (setup screen). */
-        fun profile(): Profile = Profile.ALL
+        fun profile(): Profile = Profile.KEVIN
     }
 
     class Answer(val status: Int, val body: JSONObject)
@@ -113,7 +113,7 @@ class PhoneApi(private val data: Data, private val today: () -> LocalDate = Loca
         /** What the dashboard may log: the same list as the server's LOG_METRICS. */
         val LOG_METRICS = Regex(
             "^(water\\.ml|reading\\.minutes|study\\.minutes|coffee\\.cups|food\\.protein_g|journal\\.entries" +
-                "|kb\\.[a-z_]{1,30}\\.done|strength\\.done|perk\\.(str|con|int|wis|cha|per)\\.[1-4]\\.claimed)$"
+                "|kb\\.[a-z_]{1,30}\\.done|perk\\.(str|con|int|wis|cha|per)\\.[1-4]\\.claimed)$"
         )
 
         fun daysJson(days: Map<LocalDate, Map<String, Double>>, start: LocalDate, end: LocalDate): JSONArray =

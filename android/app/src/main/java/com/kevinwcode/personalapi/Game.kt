@@ -73,11 +73,11 @@ object Game {
     private fun f0(v: Double) = String.format(Locale.UK, "%.0f", Math.rint(v))
 
     /** One line per stat. m is the day's metrics from [DayMetrics.build]; ctx holds baselines from earlier days. */
-    fun scoreDay(m: Map<String, Double>, ctx: Ctx, profile: Profile = Profile.ALL): List<Line> =
-        allLines(m, ctx, profile.strengthLabel).filter { profile.lineOn(it.key) }
+    fun scoreDay(m: Map<String, Double>, ctx: Ctx, profile: Profile = Profile.KEVIN): List<Line> =
+        allLines(m, ctx, profile).filter { profile.lineOn(it.key) }
 
     /** Every line, switched on or not. The kettlebell line is the strength line, named after the person's training. */
-    private fun allLines(m: Map<String, Double>, ctx: Ctx, strengthLabel: String = "Kettlebell"): List<Line> {
+    private fun allLines(m: Map<String, Double>, ctx: Ctx, profile: Profile = Profile.KEVIN): List<Line> {
         val lines = mutableListOf<Line>()
 
         // Sleep: 7.5 h asleep, plus deep and REM together making up 35% or more of it.
@@ -117,13 +117,19 @@ object Game {
         lines += Line("workout", "Workout", "STR", xp, 150,
             if (sessions != 0.0) "${f0(sessions)} session(s), ${f0(minutes)} min" else "No workout")
 
-        val kb = (m[Profile.STRENGTH_DONE] ?: 0.0) > 0 ||
-            m.any { (k, v) -> v > 0 && k.startsWith("kb.") && (k.endsWith(".sets") || k.endsWith(".done")) }
-        lines += Line("kettlebell", strengthLabel, "STR", if (kb) 75 else 0, 75, if (kb) "Session logged" else "No session")
+        val kb = m.any { (k, v) -> v > 0 && k.startsWith("kb.") && (k.endsWith(".sets") || k.endsWith(".done")) }
+        lines += Line("kettlebell", profile.training.ifBlank { "Training" }, "STR", if (kb) 75 else 0, 75, if (kb) "Session logged" else "No session")
 
-        val catch = m["football.max_catch_yards"]
-        lines += Line("catch", "Catch drill", "STR", if (truthy(catch)) 50 else 0, 50,
-            if (truthy(catch)) "${f0(catch!!)} yd" else "No drill")
+        // Something to improve (Kevin's catch drill): 50 XP on a day a best is logged.
+        val goal = profile.goal
+        val isCatch = goal == null || goal.metric == Profile.CATCH_METRIC
+        val best = m[goal?.metric ?: Profile.CATCH_METRIC]
+        lines += Line("catch", if (isCatch) "Catch drill" else goal!!.name, "STR", if (truthy(best)) 50 else 0, 50,
+            when {
+                truthy(best) -> "${f0(best!!)} ${goal?.unit ?: "yd"}".trimEnd()
+                isCatch -> "No drill"
+                else -> "Nothing logged yet"
+            })
 
         // INT: study and GitHub. Study is 25 XP per 30 minutes, up to 2 hours.
         val study = m["study.minutes"] ?: 0.0
@@ -182,8 +188,8 @@ object Game {
             score, mod, lv.levelXp, lv.levelCost, lv.xpToNext)
     }
 
-    private fun sheets(statXp: Map<String, Double>, profile: Profile = Profile.ALL): List<StatSheet> =
-        allLines(emptyMap(), Ctx(), profile.strengthLabel).map { statSheet(it.key, it.label, it.stat, statXp[it.key] ?: 0.0, it.max) }
+    private fun sheets(statXp: Map<String, Double>, profile: Profile = Profile.KEVIN): List<StatSheet> =
+        allLines(emptyMap(), Ctx(), profile).map { statSheet(it.key, it.label, it.stat, statXp[it.key] ?: 0.0, it.max) }
 
     private val POWER_ORDER = compareBy<Pair<Int, Int>>({ it.first }, { it.second })
 
@@ -270,7 +276,7 @@ object Game {
         val characterClass: CharacterClass, val title: String?, val todayXp: Int, val dailyMax: Int,
         val buffs: List<Buff>, val lines: List<Line>, val avgDailyXp14d: Int?, val daysToMaxLevel: Int?,
         val streaks: List<Streak>, val vitals: List<Vitals.BarState>, val stats: List<StatSheet>,
-        val groups: List<GroupSheet>, val history: List<HistoryDay>, val profile: Profile = Profile.ALL,
+        val groups: List<GroupSheet>, val history: List<HistoryDay>, val profile: Profile = Profile.KEVIN,
     )
 
     private fun avg(values: List<Double>): Double? = if (values.isEmpty()) null else values.sum() / values.size
@@ -282,7 +288,7 @@ object Game {
         allDays: Map<LocalDate, Map<String, Double>>, day: LocalDate, gameStart: LocalDate = DEFAULT_GAME_START,
         now: LocalDateTime = LocalDateTime.now(),
         // What this person tracks: switched-off activities are left out of the XP and the vitals.
-        profile: Profile = Profile.ALL,
+        profile: Profile = Profile.KEVIN,
         // Test B hooks: an extra XP buff for a day, and a different vitals engine. The defaults are the live rules.
         extraBuff: ((LocalDate, List<Line>) -> Buff?)? = null,
         vitalsRun: (List<Vitals.DayInput>, Double) -> List<Vitals.BarState> = Vitals::run,
@@ -354,7 +360,7 @@ object Game {
                         xp = floor
                     }
                 }
-                val synced = "screen.total_minutes" in m && Profile.SOCIAL_OFF !in m
+                val synced = "screen.total_minutes" in m
                 history += HistoryDay(d, xp, bonus != 0,
                     synced && (m["screen.social_media_minutes"] ?: 0.0) < 30, (m["github.commits"] ?: 0.0) > 0)
                 for (line in lines) {
