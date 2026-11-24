@@ -34,8 +34,6 @@ data class Profile(
      * average; 5, 10 or 15 = that % under it, for the same % XP bonus on days you stay under it.
      */
     val socialCut: Int? = null,
-    /** The person's own real-life rewards, "str.1" to "A new pair of trainers". Unset ones use the default. */
-    val rewards: Map<String, String> = emptyMap(),
 ) {
     /** One exercise of the training. [key] names its metrics (kb.<key>.done, kb.<key>.sets), so it never changes. */
     data class Exercise(val key: String, val name: String)
@@ -84,21 +82,7 @@ data class Profile(
         .put("water_target", waterTarget)
         .put("social_cut", socialCut ?: JSONObject.NULL)
 
-    fun encode(): String = toJson().put("rewards", JSONObject(rewards)).toString()
-
-    /**
-     * The perk for a group and tier, with the person's own reward if they wrote one. A perk with a game effect keeps
-     * it (and says so), whatever the reward is called.
-     */
-    fun perk(group: String, tier: Int): Perks.Perk {
-        val base = Perks.PERKS.getValue(group to tier)
-        // "Lord of the Kettlebells" only fits kettlebell training.
-        val title = if (group == "str" && tier == 2 && !training.contains("kettlebell", ignoreCase = true) && this != KEVIN)
-            "Lord of the Training Grounds" else base.title
-        val own = rewards["$group.$tier"]?.trim()?.takeIf { it.isNotEmpty() }
-            ?: return base.copy(title = title)
-        return Perks.Perk(title, own, PERK_EFFECTS["$group.$tier"] ?: "Your own reward. Claim it when you treat yourself.")
-    }
+    fun encode(): String = toJson().toString()
 
     /**
      * The social media minutes to stay under on [day]. Worked out from the 90 days before that week's Monday, so it
@@ -133,14 +117,6 @@ data class Profile(
     }
 
     companion object {
-        /** Perks that change the game the day they're claimed. */
-        val PERK_EFFECTS = mapOf(
-            "con.1" to "The day you claim it counts as Well-Rested.",
-            "con.2" to "The day you claim it counts as Well-Rested.",
-            "per.1" to "The day you claim it, social media and YouTube can't cost XP.",
-            "per.4" to "The day you claim it and the next score at least your 14-day average.",
-        )
-
         const val SOCIAL_DEFAULT_TARGET = 30.0
         const val SOCIAL_MIN_TARGET = 15.0
         const val SOCIAL_LOOKBACK_DAYS = 90
@@ -198,8 +174,7 @@ data class Profile(
                 Profile(o.optString("training", ""), strings("sessions").ifEmpty { DEFAULT_SESSIONS }, ex, g,
                     strings("off").filter { it in known }.toSet(), o.optDouble("kcal_target", DEFAULT_KCAL),
                     o.optDouble("protein_target", DEFAULT_PROTEIN), o.optDouble("water_target", DEFAULT_WATER),
-                    if (o.isNull("social_cut")) null else o.optInt("social_cut").takeIf { it in SOCIAL_CUTS },
-                    o.optJSONObject("rewards")?.let { r -> r.keys().asSequence().associateWith { r.getString(it) } } ?: emptyMap())
+                    if (o.isNull("social_cut")) null else o.optInt("social_cut").takeIf { it in SOCIAL_CUTS })
             } catch (e: Exception) {
                 null
             }

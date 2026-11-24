@@ -170,19 +170,4 @@ class ProfileTest {
         assertEquals(10, Profile.decode(p.encode())!!.socialCut)
         assertNull(Profile.decode(Profile.KEVIN.encode())!!.socialCut)
     }
-
-    @Test
-    fun ownRewardsReplaceTheSuggestions() {
-        val p = Profile.NEW_TESTER.copy(training = "Spin class", rewards = mapOf("cha.1" to "Cinema with friends", "con.1" to "Lie-in Sunday"))
-        assertEquals("Cinema with friends", p.perk("cha", 1).token)
-        assertEquals("Lie-in Sunday", p.perk("con", 1).token)
-        assertEquals("The day you claim it counts as Well-Rested.", p.perk("con", 1).detail)
-        assertEquals(Perks.PERKS.getValue("int" to 1), p.perk("int", 1))
-        assertEquals("Lord of the Training Grounds", p.perk("str", 2).title)
-        assertEquals("Lord of the Kettlebells", Profile.KEVIN.perk("str", 2).title)
-        assertEquals(p.rewards, Profile.decode(p.encode())!!.rewards)
-        val json = GameJson.toJson(Game.build(mapOf(day to busyDay), day, day, evening, p))
-        val cha = (0 until json.getJSONArray("groups").length()).map { json.getJSONArray("groups").getJSONObject(it) }.first { it.getString("key") == "cha" }
-        assertEquals("Cinema with friends", cha.getJSONArray("perks").getJSONObject(0).getString("token"))
-    }
 }

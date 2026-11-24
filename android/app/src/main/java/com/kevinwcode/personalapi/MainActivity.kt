@@ -335,33 +335,6 @@ class MainActivity : AppCompatActivity() {
                 isChecked = p.isOn(item.key)
             }.also { root.addView(it) }
         }
-        // Your rewards: one real-life treat per stat group and tier, folded away until opened.
-        subheading("Your rewards")
-        root.addView(TextView(this).apply {
-            text = "Each stat group unlocks four rewards as it levels up. Write your own, or leave a box empty to keep the suggestion."
-        })
-        val rewardsButton = Button(this).also { root.addView(it) }
-        val rewardsFrom = root.childCount
-        val rewardFields = mutableMapOf<String, EditText>()
-        for ((g, group) in Perks.GROUPS) {
-            root.addView(TextView(this).apply {
-                text = "${group.ability} · ${group.name}"
-                setTypeface(typeface, android.graphics.Typeface.BOLD)
-                setPadding(0, 16, 0, 0)
-            })
-            for ((t, rank) in Perks.TIERS) {
-                val suggestion = Perks.PERKS.getValue(g to t).token
-                rewardFields["$g.$t"] = field("${rank.first}: e.g. $suggestion", p.rewards["$g.$t"] ?: "", plain = true)
-            }
-        }
-        val rewardViews = (rewardsFrom until root.childCount).map(root::getChildAt)
-        fun showRewards(on: Boolean) {
-            rewardViews.forEach { it.visibility = if (on) View.VISIBLE else View.GONE }
-            rewardsButton.text = if (on) "Hide rewards" else "Edit your rewards"
-        }
-        showRewards(false)
-        rewardsButton.setOnClickListener { showRewards(rewardViews.first().visibility != View.VISIBLE) }
-
         button("Save my activities") {
             val kcalTarget = kcal.text.toString().toDoubleOrNull()
             if (kcalTarget == null || kcalTarget < 800 || kcalTarget > 6000) return@button toast("Enter a calorie target from 800 to 6000")
@@ -383,7 +356,6 @@ class MainActivity : AppCompatActivity() {
                 kcalTarget = kcalTarget,
                 proteinTarget = proteinTarget,
                 waterTarget = waterTarget,
-                rewards = rewardFields.mapValues { it.value.text.toString().trim() }.filterValues { it.isNotEmpty() },
                 socialCut = (cutGroup.findViewById<RadioButton>(cutGroup.checkedRadioButtonId)?.tag as? Int)
                     ?.takeIf { it >= 0 } ?: p.socialCut.takeIf { cutGroup.checkedRadioButtonId == -1 },
             ).withExerciseNames(Profile.splitList(exercises.text.toString()))

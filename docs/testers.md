@@ -34,7 +34,7 @@ The app opens on its Settings screen the first time. Work down it:
      Monday, Wednesday, Friday) and optionally your exercises.
    - **Daily targets:** calories, protein and water.
    - **Social media target:** Contain, or a 5, 10 or 15% cut for bonus XP.
-   - **Something you'd like to improve**, and optionally your own rewards.
+   - **Something you'd like to improve.**
 
    Tap **Save my activities**.
 2. **Allow Health Connect access**: sleep, steps, heart rate and workouts.
