@@ -303,6 +303,16 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 .prime { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--reward); background: var(--reward-soft); color: var(--reward); font-size: 13px; }
 .prime b { font: 700 15px var(--font-head); letter-spacing: .04em; }
 .prime.off { border-color: var(--line); background: transparent; color: var(--muted); }
+.prime.rest { border-color: color-mix(in srgb, #4C8DFF 55%, var(--line)); background: color-mix(in srgb, #4C8DFF 10%, transparent); color: var(--ink); }
+.prime.rest b { color: #6FA3FF; }
+/* Each bar's own state: Prime (glows), Steady, or its debuff name when it is well behind a good day's line. */
+.vstate { display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 999px; font: 600 11px/16px var(--font-body, inherit); letter-spacing: .04em; text-transform: uppercase; font-style: normal; vertical-align: 1px; border: 1px solid var(--line); color: var(--muted); }
+.vstate.prime { border-color: var(--c); color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); box-shadow: 0 0 8px color-mix(in srgb, var(--c) 45%, transparent); }
+.vstate.low { border-color: var(--warn); color: var(--warn); }
+.vital.vprime .track { box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 50%, transparent), 0 0 12px color-mix(in srgb, var(--c) 55%, transparent); animation: vglow 2.6s ease-in-out infinite; }
+.vital.vprime .fill { box-shadow: 0 0 10px var(--c); }
+@keyframes vglow { 50% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 70%, transparent), 0 0 20px color-mix(in srgb, var(--c) 75%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .vital.vprime .track { animation: none; } }
 /* Level-up popup */
 .levelup { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 70px 16px 24px; background: rgba(0,0,0,.6) radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--accent) 30%, transparent), rgba(0,0,0,.85) 70%); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); overflow-y: auto; }
 .lu-card { position: relative; width: min(380px, 100%); padding: 64px 20px 22px; text-align: center; background: var(--raised); color: var(--on-raised); border: 1px solid var(--raised-fill); border-radius: var(--radius); box-shadow: 0 0 40px color-mix(in srgb, var(--raised-fill) 45%, transparent); display: flex; flex-direction: column; gap: 10px; }
@@ -1596,13 +1606,33 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     var from = v.tick_from_hour || 0, span = v.tick_hours || 24;
     return v.tick_per_day * Math.max(0, Math.min(1, (hours - from) / span));
   }
+  // Rework rules only (g.pace): where a good day's bar would be now. 100 on waking, down to pace.end_level at 23:00;
+  // HP (which regenerates) stays at 100. Each bar's state compares it with that line. Mirrors VitalsB.paceLine.
+  function paceLine(g, v) {
+    if (v.tick_per_day >= 0) return 100;
+    var share = 1;
+    if (g.date === iso(new Date())) {
+      var t = new Date(), hours = t.getHours() + t.getMinutes() / 60;
+      share = Math.max(0, Math.min(1, (hours - (v.tick_from_hour || 0)) / (v.tick_hours || 24)));
+    }
+    return 100 - (100 - g.pace.end_level) * share;
+  }
+  function vitalState(g, v, now) {
+    if (!g.pace) return null;
+    var line = paceLine(g, v);
+    if (now > 100) return 'over';
+    // Prime: woke up strong (pace.prime_wake+), still on a good day's line, and not yet down to the evening's last
+    // pace.prime_floor points, so a bar fades to Steady as the day winds down instead of glowing near empty.
+    if (v.start_of_day >= g.pace.prime_wake && now >= g.pace.prime * line && now >= g.pace.prime_floor) return 'prime';
+    return now < g.pace.low * line ? 'low' : 'steady';
+  }
   function renderRpgVitals(g, ids) {
     ids = ids || LIVE_IDS;
     var box = $(ids.vitals);
     box.hidden = !g.vitals;
     if (!g.vitals) return;
     var bars = g.vitals.map(function (v) {
-      var now = vitalNow(g, v), low = now <= 25, deb = v.debuff;
+      var now = vitalNow(g, v), st = vitalState(g, v, now), low = st ? st === 'low' : now <= 25, deb = v.debuff;
       var why = v.today.length ? v.today.map(function (e) { return e.points ? e.label + ' ' + signed(Math.round(e.points)) : e.label; }).join(' · ')
         : 'Nothing has changed it today';
       var reason = null;
@@ -1615,6 +1645,16 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
           el('span', null, el('b', null, 'Why it’s low: '), costs.length ? costs.join(' · ') : 'a short night’s sleep'),
           el('span', null, el('b', null, 'Raise it: '), deb ? deb.fix : VITAL_FIX[v.key]));
       }
+      if (st) {
+        var tag = { over: '★ Overcharge', prime: '★ Prime', steady: 'Steady', low: deb ? deb.name : 'Low' }[st];
+        var drainTxt = v.tick_per_day >= 0 ? tickText(v) : 'drains to about ' + g.pace.end_level + ' by 23:00 (' + signed(Math.round(v.tick_per_day)) + ' today)';
+        return el('div', { class: 'vital' + (low ? ' low' : '') + (st === 'prime' || st === 'over' ? ' vprime' : ''), title: v.about, style: '--c:' + VITAL_COLOR[v.key] },
+          el('div', { class: 'top' }, el('b', { style: '--c:' + VITAL_COLOR[v.key] }, v.name, el('i', { class: 'vstate ' + (st === 'over' ? 'prime' : st) }, tag)),
+            el('span', null, now + ' / ' + v.max)),
+          el('div', { class: 'track', role: 'img', 'aria-label': v.name + ' ' + now + ' of ' + v.max + ', ' + tag },
+            el('div', { class: 'fill', style: 'width:' + Math.min(100, now) + '%;background:' + VITAL_COLOR[v.key] })),
+          reason || el('span', { class: 'why' }, why + ' · ' + drainTxt));
+      }
       return el('div', { class: 'vital' + (low ? ' low' : ''), title: v.about },
         el('div', { class: 'top' }, el('b', { style: '--c:' + VITAL_COLOR[v.key] }, v.name), el('span', null, (low ? (deb ? deb.name : 'Low') + ' · ' : now > v.max ? (deb ? 'Overcharge · ' : 'Bonus · ') : '') + now + ' / ' + v.max)),
         el('div', { class: 'track', role: 'img', 'aria-label': v.name + ' ' + now + ' of ' + v.max },
@@ -1623,7 +1663,11 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     });
     // Test B only: the Prime Condition badge, earned when all four bars woke up at prime_min or more.
     var prime = null;
-    if (g.prime_min) {
+    if (g.condition) {
+      var c = g.condition, icon = { prime: '★ ', rest: '☾ ', steady: '◆ ', unknown: '◆ ' }[c.state] || '';
+      prime = el('div', { class: 'prime' + (c.state === 'prime' ? '' : c.state === 'rest' ? ' rest' : ' off') },
+        el('b', null, icon + c.name), el('span', null, c.detail));
+    } else if (g.prime_min) {
       var on = g.vitals.every(function (v) { return v.start_of_day >= g.prime_min; });
       prime = el('div', { class: 'prime' + (on ? '' : ' off') }, el('b', null, on ? '★ Prime Condition' : 'Prime Condition'),
         el('span', null, on ? 'You woke up with all four bars at ' + g.prime_min + '+: kettlebell, commits and journal earn +10% XP all day.'

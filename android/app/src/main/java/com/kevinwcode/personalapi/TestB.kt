@@ -11,7 +11,9 @@ import java.time.LocalDateTime
  *
  *  - the vitals ([VitalsB]): a 7.5 h sleep target with an 8 h overcharge to 110, a Mana morning reset, gentler
  *    waking drains, a 30 g sugar buffer, food, workout and study as spend-and-reward, and named debuffs;
- *  - "Prime Condition": on a day all four bars wake up at 70+, kettlebell, commits and journal XP get +10%.
+ *  - "Prime Condition": on a day all four bars wake up at 70+ (and HP, Stamina and Focus at 80+, so 6 h of sleep or
+ *    more), kettlebell, commits and journal XP get +10%. The other end of the scale is a "Rest Day": HP, Stamina or Focus
+ *    woke under 80 (under 6 h of sleep). It costs no XP; the bars simply have less to drain, so they fall more gently.
  */
 object TestB {
     const val PRIME_MIN = 70.0
@@ -23,7 +25,13 @@ object TestB {
     fun build(
         days: Map<LocalDate, Map<String, Double>>, day: LocalDate, gameStart: LocalDate = Game.DEFAULT_GAME_START,
         now: LocalDateTime = LocalDateTime.now(),
-    ): Game.State {
+    ): Game.State = buildWithCondition(days, day, gameStart, now).first
+
+    /** [build], plus the day's condition (Prime Condition, Steady or Rest Day) for the badge. */
+    fun buildWithCondition(
+        days: Map<LocalDate, Map<String, Double>>, day: LocalDate, gameStart: LocalDate = Game.DEFAULT_GAME_START,
+        now: LocalDateTime = LocalDateTime.now(),
+    ): Pair<Game.State, VitalsB.Condition> {
         val inputs = mutableListOf<Vitals.DayInput>()
         var d = gameStart
         while (d <= day) {
@@ -32,11 +40,12 @@ object TestB {
             d = d.plusDays(1)
         }
         val result = VitalsB.run(inputs, Game.todayElapsed(day, now))
-        return Game.build(
+        val g = Game.build(
             days, day, gameStart, now,
             extraBuff = { date, lines -> if (result.prime[date] == true) primeBuff(lines) else null },
             vitalsRun = { _, _ -> result.bars },
         )
+        return g to (result.condition[day] ?: VitalsB.Condition.NO_SLEEP)
     }
 
     fun primeBuff(lines: List<Game.Line>): Game.Buff {
@@ -46,8 +55,13 @@ object TestB {
     }
 
     /** The same JSON as GET /game, plus what the Test B page needs: the rule set, debuff names, and the Prime line. */
-    fun toJson(g: Game.State): JSONObject {
+    fun toJson(g: Game.State, condition: VitalsB.Condition? = null): JSONObject {
         val out = GameJson.toJson(g, VitalsB.BARS).put("rules", "test_b").put("prime_min", PRIME_MIN)
+            .put("pace", JSONObject().put("end_level", VitalsB.END_LEVEL).put("prime", VitalsB.PRIME_PACE).put("low", VitalsB.LOW_PACE)
+                .put("prime_wake", VitalsB.PRIME_WAKE).put("prime_floor", VitalsB.PRIME_FLOOR))
+        if (condition != null) {
+            out.put("condition", JSONObject().put("state", condition.state).put("name", condition.title).put("detail", condition.detail))
+        }
         val vitals = out.getJSONArray("vitals")
         for (i in 0 until vitals.length()) {
             val v = vitals.getJSONObject(i)
@@ -63,7 +77,10 @@ object TestB {
  *
  *  - Sleep sets HP, Stamina and Focus to 100 x minutes / 450 up to 7.5 h, then on up to 110 at 8 h ("Overcharge").
  *  - Sleep sets Mana to 52, +20 for 7.5 h or more, +25 when deep + REM is 35% or more of the night.
- *  - Over the waking day (07:00 to 23:00) Stamina drains 45, Focus 50, Mana 30. HP regenerates 12 a day up to 100.
+ *  - No sleep logged: HP, Stamina and Focus start the day at 70 and Mana at 52 (missing data is not a bad night).
+ *  - Over the waking day (07:00 to 23:00) Stamina, Mana and Focus drain from where they woke down to 10 by 23:00, so
+ *    a day ends close to empty however it started; what you gain (water, study...) and lose (screens...) on the way
+ *    moves that end up or down. HP regenerates 12 a day up to 100.
  *  - Sugar: -1 HP per 2 g above a 30 g buffer; a sugar rush of +1 Stamina per 2 g (up to +15, that day only).
  *  - Food: +10 HP for 135 g protein or more; +8 HP for 2,150 kcal or less over at least two meals.
  *  - Water +2 Stamina and +2 Focus per 250 ml. Coffee +3 Focus a cup (first 2); cups 3 and on cost 6 HP each.
@@ -79,12 +96,23 @@ object VitalsB {
     const val TOP = 100.0
     const val OVERCHARGE_TOP = 110.0
     const val LOW = 25.0
+    /** Where Stamina, Mana and Focus are drained down to by 23:00 before the day's gains and costs. */
+    const val END_LEVEL = 10.0
+    /** Each bar's own state compares it with a good day's line (100 on waking, END_LEVEL at 23:00; HP stays at 100). */
+    const val PRIME_PACE = 0.85
+    const val LOW_PACE = 0.5
+    /** A bar shows Prime (and glows) only if it also woke up at this or more and is still above [PRIME_FLOOR]. */
+    const val PRIME_WAKE = 85.0
+    const val PRIME_FLOOR = 25.0
+    /** HP, Stamina or Focus waking under this (under 6 h of sleep) makes the day a Rest Day. */
+    const val REST_DAY_BELOW = 80.0
+    const val NO_SLEEP_START = 70.0
 
     val BARS = listOf(
         Vitals.Bar("hp", "HP", "Sleep sets it (7.5 h = 100, 8 h = 110); regenerates 12 a day; sugar over 30 g, coffee after 2 cups and screens lower it; protein, sensible calories and workouts raise it", 12.0),
-        Vitals.Bar("stamina", "Stamina", "Sleep sets it (7.5 h = 100, 8 h = 110); drains 45 over the waking day; workouts spend it today and pay it back tomorrow; water and a sugar rush top it up", -45.0),
-        Vitals.Bar("mana", "Mana", "Resets to 52 each morning (+20 for 7.5 h sleep, +25 for deep + REM 35%); drains 30 over the waking day; study spends it, reading and journal refill it", -30.0),
-        Vitals.Bar("focus", "Focus", "Sleep sets it (7.5 h = 100, 8 h = 110); drains 50 over the waking day; study, reading, water, workouts and a calm social day yesterday raise it", -50.0),
+        Vitals.Bar("stamina", "Stamina", "Sleep sets it (7.5 h = 100, 8 h = 110); drains to about 10 by 23:00; workouts spend it today and pay it back tomorrow; water and a sugar rush top it up", -90.0),
+        Vitals.Bar("mana", "Mana", "Resets to 52 each morning (+20 for 7.5 h sleep, +25 for deep + REM 35%); drains to about 10 by 23:00; study spends it, reading and journal refill it", -90.0),
+        Vitals.Bar("focus", "Focus", "Sleep sets it (7.5 h = 100, 8 h = 110); drains to about 10 by 23:00; study, reading, water, workouts and a calm social day yesterday raise it", -90.0),
     )
 
     fun topOf(key: String) = if (key == "mana") TOP else OVERCHARGE_TOP
@@ -233,13 +261,41 @@ object VitalsB {
         return Vitals.applyTick((start + gained).coerceIn(0.0, top), tick).coerceIn(0.0, top)
     }
 
-    class Result(val bars: List<Vitals.BarState>, val prime: Map<LocalDate, Boolean>)
+    /** The day's overall state, judged on how you woke up, shown as the badge above the bars. */
+    data class Condition(val state: String, val title: String, val detail: String) {
+        companion object {
+            val PRIME = Condition("prime", "Prime Condition", "You woke up with all four bars at 70+: kettlebell, commits and journal earn +10% XP all day.")
+            val STEADY = Condition("steady", "Steady", "A fair start. Wake up with all four bars at 70+ (about 7.5 h of good sleep) for Prime Condition: +10% XP on kettlebell, commits and journal.")
+            val REST = Condition("rest", "Rest Day", "A short night (under 6 h), so your bars started low. No XP is lost and they drain more gently today. Go easy, drink water, and an early night brings Prime back.")
+            val NO_SLEEP = Condition("unknown", "Steady", "No sleep logged yet, so the bars start at 70. Sync your watch to see today's real condition.")
+        }
+    }
+
+    fun condition(start: Map<String, Double>, sleepLogged: Boolean): Condition = when {
+        !sleepLogged -> Condition.NO_SLEEP
+        listOf("hp", "stamina", "focus").any { start.getValue(it) < REST_DAY_BELOW } -> Condition.REST
+        BARS.all { start.getValue(it.key) >= TestB.PRIME_MIN } -> Condition.PRIME
+        else -> Condition.STEADY
+    }
+
+    /** The day's tick: HP regenerates as before; the others drain from their waking value down to [END_LEVEL]. */
+    fun dayTick(bar: Vitals.Bar, start: Double): Double =
+        if (bar.tickPerDay > 0) bar.tickPerDay else -maxOf(0.0, start - END_LEVEL)
+
+    /** A good day's line at this point of the day: 100 on waking, falling to END_LEVEL at 23:00 (HP stays at 100). */
+    fun paceLine(bar: Vitals.Bar, dayShare: Double): Double =
+        if (bar.tickPerDay > 0) TOP else TOP - (TOP - END_LEVEL) * Vitals.awakeShare(dayShare)
+
+    class Result(val bars: List<Vitals.BarState>, val prime: Map<LocalDate, Boolean>, val condition: Map<LocalDate, Condition> = emptyMap())
 
     /** Past days apply in full; the last day only ticks by the share of it that has passed (0 to 1). */
     fun run(days: List<Vitals.DayInput>, todayElapsed: Double = 1.0): Result {
         val values = BARS.associate { it.key to Vitals.START_VALUE }.toMutableMap()
         val last = mutableMapOf<String, Triple<Double, Double, List<Vitals.Effect>>>()
         val prime = linkedMapOf<LocalDate, Boolean>()
+        val conditions = linkedMapOf<LocalDate, Condition>()
+        val dayTicks = mutableMapOf<String, Double>()
+        var lastShare = 1.0
         var yesterday: Map<String, Double> = emptyMap()
         days.forEachIndexed { i, d ->
             val m = d.metrics
@@ -260,21 +316,34 @@ object VitalsB {
                     if (sleep >= SLEEP_FULL_MINUTES) "7.5 h sleep +20" else null,
                     if (deepRemOk(m, sleep)) "deep + REM +25" else null,
                 ).joinToString("") { ", $it" }
+            } else {
+                // Missing data is not a bad night: start from a neutral 70 (Mana its usual 52) rather than last night's low.
+                for (k in listOf("hp", "stamina", "focus")) {
+                    start[k] = NO_SLEEP_START
+                    resets[k] = "No sleep logged: starts at ${NO_SLEEP_START.toInt()}"
+                }
+                start["mana"] = MANA_RESET
+                resets["mana"] = "No sleep logged: morning reset to ${MANA_RESET.toInt()}"
             }
             val fx = effects(m, d.youtubeMinutes, yesterday)
             for ((k, label) in resets) fx.getValue(k).add(0, Vitals.Effect(label, 0.0))
             yesterday = m
 
-            // Prime Condition is judged on how you woke up: every bar at 70+ after the morning reset. It then lasts the day.
-            prime[d.date] = BARS.all { start.getValue(it.key) >= TestB.PRIME_MIN }
+            // The day's condition is judged on how you woke up, after the morning reset. It then lasts the day.
+            val cond = condition(start, sleep != null && sleep != 0.0)
+            conditions[d.date] = cond
+            prime[d.date] = cond == Condition.PRIME
+            lastShare = share
             for (bar in BARS) {
                 val all = fx.getValue(bar.key)
                 val gained = all.sumOf { it.points }
                 // The sugar rush shows on its own day but has worn off by the next.
                 val lasting = gained - all.filter { it.temporary }.sumOf { it.points }
                 val s = start.getValue(bar.key)
-                values[bar.key] = endValue(bar.key, s, if (isToday) gained else lasting, bar.tickPerDay * tickShare(bar, share))
+                val tick = dayTick(bar, s)
+                values[bar.key] = endValue(bar.key, s, if (isToday) gained else lasting, tick * tickShare(bar, share))
                 last[bar.key] = Triple(s, gained, all)
+                dayTicks[bar.key] = tick
             }
         }
         val bars = BARS.map { bar ->
@@ -282,11 +351,12 @@ object VitalsB {
             val value = values.getValue(bar.key)
             Vitals.BarState(
                 key = bar.key, name = bar.name, about = bar.about, value = Math.rint(value).toInt(),
-                low = value <= LOW, top = topOf(bar.key),
+                low = value < LOW_PACE * paceLine(bar, lastShare), top = topOf(bar.key),
                 startOfDay = Math.rint(start * 10) / 10, gainedToday = Math.rint(gained * 10) / 10,
-                endOfDay = Math.rint(endValue(bar.key, start, gained, bar.tickPerDay)).toInt(), today = fx,
+                endOfDay = Math.rint(endValue(bar.key, start, gained, dayTicks[bar.key] ?: bar.tickPerDay)).toInt(), today = fx,
+                tickPerDay = Math.rint((dayTicks[bar.key] ?: bar.tickPerDay) * 10) / 10,
             )
         }
-        return Result(bars, prime)
+        return Result(bars, prime, conditions)
     }
 }

@@ -67,7 +67,7 @@ object GameJson {
     }
 
     private fun vital(v: Vitals.BarState, bars: List<Vitals.Bar>): JSONObject {
-        val tick = bars.first { it.key == v.key }.tickPerDay
+        val tick = v.tickPerDay ?: bars.first { it.key == v.key }.tickPerDay
         return obj(
             "key" to v.key, "name" to v.name, "about" to v.about, "value" to v.value, "max" to Vitals.TOP, "low" to v.low,
             "tick_per_day" to tick,
