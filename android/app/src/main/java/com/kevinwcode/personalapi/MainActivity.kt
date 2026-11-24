@@ -269,7 +269,7 @@ class MainActivity : AppCompatActivity() {
         })
         val cutChoices = listOfNotNull(
             if (p.socialCut == null) null to "Fixed 30 minutes (the old rule)" else null,
-            0 to "Hold: don't go up",
+            0 to "Contain: don't go up",
             5 to "Trim 5% (+5% XP on days under it)",
             10 to "Cut 10% (+10% XP on days under it)",
             15 to "Cut 15% (+15% XP on days under it)",

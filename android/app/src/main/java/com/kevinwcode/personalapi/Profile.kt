@@ -30,7 +30,7 @@ data class Profile(
     /** Daily water target in litres, for the Fuel card. */
     val waterTarget: Double = DEFAULT_WATER,
     /**
-     * Social media target: null = the fixed 30 minutes (Kevin's rule until he picks); 0 = hold at your 90-day
+     * Social media target: null = the fixed 30 minutes (Kevin's rule until he picks); 0 = contain at your 90-day
      * average; 5, 10 or 15 = that % under it, for the same % XP bonus on days you stay under it.
      */
     val socialCut: Int? = null,
