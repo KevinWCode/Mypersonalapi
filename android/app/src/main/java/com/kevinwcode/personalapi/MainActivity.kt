@@ -106,7 +106,7 @@ class MainActivity : AppCompatActivity() {
                 "2. Allow Health Connect access (sleep, steps, heart rate and workouts from your watch or phone).\n" +
                 "3. Allow usage access, so screen time and social media minutes can be counted.\n" +
                 "4. Keep syncing in the background.\n" +
-                "GitHub, Alpaca and the PC server are optional. Everything stays on this phone."
+                "GitHub and Alpaca are optional. Everything stays on this phone."
             textSize = 16f
             setLineSpacing(0f, 1.2f)
             setPadding(0, 16, 0, 8)
@@ -120,12 +120,12 @@ class MainActivity : AppCompatActivity() {
         button("Back up phone data to a file") { saveBackup.launch("personal-api-backup-${LocalDate.now()}.json") }
         button("Restore from a backup file") { restoreBackup.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }
 
-        heading("GitHub and Alpaca")
+        heading("GitHub and Alpaca (optional)")
         root.addView(TextView(this).apply {
             text = "Read straight from GitHub and Alpaca on each sync. The keys stay on this phone and are left out of cloud backups. " +
                 "Alpaca is read only: the app can't place trades."
         })
-        val github = field("GitHub token (GITHUB_TOKEN from the PC's .env)", settings.githubToken, secret = true)
+        val github = field("GitHub token that can read your contributions (github.com > Settings > Developer settings)", settings.githubToken, secret = true)
         val alpaca = field("Alpaca keys: KEY_ID SECRET, then the next account's pair", settings.alpacaKeys, secret = true)
         val live = CheckBox(this).apply {
             text = "Alpaca live account (off = paper accounts)"
@@ -142,7 +142,13 @@ class MainActivity : AppCompatActivity() {
             syncNow()
         }
 
-        heading("PC server (optional)")
+        // The PC server is Kevin's own set-up from before the phone app ran on its own. Hidden unless it's in use.
+        val advancedButton = Button(this).also { root.addView(it) }
+        val advancedFrom = root.childCount
+        heading("Advanced: PC server")
+        root.addView(TextView(this).apply {
+            text = "Only for a home PC running the Personal API server. Most people can leave this alone: the app works fully on its own."
+        })
         button("Open PC dashboard") {
             if (settings.serverUrl.isEmpty()) toast("Enter the server address below first")
             else startActivity(OpenDashboardActivity.browserIntent(settings))
@@ -171,6 +177,38 @@ class MainActivity : AppCompatActivity() {
             settings.serverUrl = url.text.toString()
             settings.token = token.text.toString()
             toast("Saved")
+        }
+
+        val advanced = (advancedFrom until root.childCount).map(root::getChildAt)
+        fun showAdvanced(on: Boolean) {
+            advanced.forEach { it.visibility = if (on) View.VISIBLE else View.GONE }
+            advancedButton.text = if (on) "Hide advanced settings" else "Show advanced settings (PC server)"
+        }
+        showAdvanced(settings.serverEnabled || settings.serverUrl.isNotEmpty())
+        advancedButton.setOnClickListener { showAdvanced(advanced.first().visibility != View.VISIBLE) }
+
+        heading("Main health app")
+        root.addView(TextView(this).apply {
+            text = "Sleep, steps, heart rate and workouts come from Health Connect, which Samsung Health, Fitbit, Pixel Watch, " +
+                "Garmin, Oura, Whoop, Withings, Polar and others can write to (turn on Health Connect in that app). " +
+                "If more than one app writes, pick your main one so nothing is counted twice."
+        })
+        val sourceGroup = RadioGroup(this).also { root.addView(it) }
+        fun sourceButton(pkg: String, label: String) = sourceGroup.addView(RadioButton(this).apply {
+            id = View.generateViewId()
+            tag = pkg
+            text = label
+            isChecked = settings.healthSource == pkg
+        })
+        sourceButton("", "Automatic: the app with the most sleep each night")
+        if (settings.healthSource.isNotEmpty()) sourceButton(settings.healthSource, HealthSources.name(settings.healthSource))
+        sourceGroup.setOnCheckedChangeListener { g, id ->
+            settings.healthSource = g.findViewById<RadioButton>(id)?.tag as? String ?: ""
+        }
+        if (Health.available(this)) lifecycleScope.launch {
+            val found = runCatching { Health.recentSources(this@MainActivity) }.getOrDefault(emptySet())
+            found.filter { it != settings.healthSource }.sortedBy { HealthSources.name(it) }
+                .forEach { sourceButton(it, HealthSources.name(it)) }
         }
 
         heading("Permissions")

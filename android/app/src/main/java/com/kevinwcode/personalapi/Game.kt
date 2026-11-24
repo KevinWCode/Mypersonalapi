@@ -106,7 +106,7 @@ object Game {
             val base = ctx.hrvBase
             if (base == null || hrv!! > base) xp += 35
             parts += "HRV ${f0(hrv!!)} ms"
-        } else parts += "no HRV from Samsung"
+        } else parts += "no HRV from your health app"
         lines += Line("heart", "Heart rate & HRV", "CON", xp, 75, parts.joinToString(", "))
 
         val steps = m["health.steps"] ?: 0.0
