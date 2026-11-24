@@ -40,14 +40,14 @@ class TestBTest {
         // HP 88: social (8 min past the free 10) -1, YouTube -1, sugar 4 g over the buffer -2, workout +5, then regen.
         assertEquals(1.0, b.getValue("hp").gainedToday, 0.0)
         assertEquals(97, b.getValue("hp").value)
-        // Stamina 88: sugar rush +15 (capped), water +10, workout -25, then 8.5 of 16 waking hours of a 78 drain (88 to 10).
-        assertEquals(47, b.getValue("stamina").value)
-        assertEquals(-78.0, b.getValue("stamina").tickPerDay!!, 0.0)
-        // Mana 52: social -1, YouTube -1, reading +15, study -10 = 55, then the 42 drain (52 to 10) so far.
-        assertEquals(33, b.getValue("mana").value)
+        // Stamina 88: sugar rush +15 (capped), water +10, workout -25, then 8.5 of 16 waking hours of the 90 drain.
+        assertEquals(40, b.getValue("stamina").value)
+        assertEquals(-90.0, b.getValue("stamina").tickPerDay!!, 0.0)
+        // Mana 52: social -1, YouTube -1, reading +15, study -10 = 55, then the 62 drain so far.
+        assertEquals(22, b.getValue("mana").value)
         assertTrue(b.getValue("mana").today.any { it.label == "Study" && it.points == -10.0 })
         assertFalse(b.getValue("hp").today.any { it.label.startsWith("Brain Fog") })
-        assertEquals(69, b.getValue("focus").value)
+        assertEquals(62, b.getValue("focus").value)
         assertEquals(110.0, b.getValue("focus").top, 0.0)
     }
 
@@ -102,7 +102,7 @@ class TestBTest {
         assertEquals("test_b", json.getString("rules"))
         val mana = (0 until 4).map { json.getJSONArray("vitals").getJSONObject(it) }.first { it.getString("key") == "mana" }
         assertEquals("Brain Fog", mana.getJSONObject("debuff").getString("name"))
-        assertEquals(-42.0, mana.getDouble("tick_per_day"), 0.0)
+        assertEquals(-62.0, mana.getDouble("tick_per_day"), 0.0)
         assertEquals(-60.0, Vitals.BARS.first { it.key == "mana" }.tickPerDay, 0.0)
     }
 
@@ -137,11 +137,11 @@ class TestBTest {
     }
 
     @Test
-    fun restDayDrainsMoreGentlyAndNoSleepStartsAt70() {
-        // 5 h sleep: Stamina wakes at 67 and only drains 57, so it still ends at 10 rather than hitting 0 by evening.
+    fun restDayDrainsAtTheUsualPaceAndNoSleepStartsAt70() {
+        // 5 h sleep: Stamina wakes at 67 but still drains the usual 90 (no gentler Rest Day drain), so it runs out by evening.
         val b = bars(listOf(mapOf("sleep.total_minutes" to 300.0)), elapsed = 19.0 / 24)
-        assertEquals(-56.7, b.getValue("stamina").tickPerDay!!, 0.05)
-        assertTrue(b.getValue("stamina").value > 10)
+        assertEquals(-90.0, b.getValue("stamina").tickPerDay!!, 0.0)
+        assertEquals(0, bars(listOf(mapOf("sleep.total_minutes" to 300.0))).getValue("stamina").value)
         // Missing sleep is not a bad night: bars start at 70 (Mana 52), not from yesterday's near-empty evening.
         val n = bars(listOf(mapOf("sleep.total_minutes" to 450.0), emptyMap()), elapsed = 7.0 / 24)
         assertEquals(70.0, n.getValue("focus").startOfDay, 0.0)

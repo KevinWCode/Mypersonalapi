@@ -13,7 +13,7 @@ import java.time.LocalDateTime
  *    waking drains, a 30 g sugar buffer, food, workout and study as spend-and-reward, and named debuffs;
  *  - "Prime Condition": on a day all four bars wake up at 70+ (and HP, Stamina and Focus at 80+, so 6 h of sleep or
  *    more), kettlebell, commits and journal XP get +10%. The other end of the scale is a "Rest Day": HP, Stamina or Focus
- *    woke under 80 (under 6 h of sleep). It costs no XP; the bars simply have less to drain, so they fall more gently.
+ *    woke under 80 (under 6 h of sleep). It costs no XP. The drain is the same every day, so a low start runs out sooner.
  */
 object TestB {
     const val PRIME_MIN = 70.0
@@ -78,9 +78,9 @@ object TestB {
  *  - Sleep sets HP, Stamina and Focus to 100 x minutes / 450 up to 7.5 h, then on up to 110 at 8 h ("Overcharge").
  *  - Sleep sets Mana to 52, +20 for 7.5 h or more, +25 when deep + REM is 35% or more of the night.
  *  - No sleep logged: HP, Stamina and Focus start the day at 70 and Mana at 52 (missing data is not a bad night).
- *  - Over the waking day (07:00 to 23:00) Stamina, Mana and Focus drain from where they woke down to 10 by 23:00, so
- *    a day ends close to empty however it started; what you gain (water, study...) and lose (screens...) on the way
- *    moves that end up or down. HP regenerates 12 a day up to 100.
+ *  - Over the waking day (07:00 to 23:00) Stamina and Focus drain 90 and Mana 62: the same every day, so a full
+ *    night's start (100, Mana 72) ends close to empty at 10, and a short night runs out sooner. What you gain (water,
+ *    study...) and lose (screens...) on the way moves that end up or down. HP regenerates 12 a day up to 100.
  *  - Sugar: -1 HP per 2 g above a 30 g buffer; a sugar rush of +1 Stamina per 2 g (up to +15, that day only).
  *  - Food: +10 HP for 135 g protein or more; +8 HP for 2,150 kcal or less over at least two meals.
  *  - Water +2 Stamina and +2 Focus per 250 ml. Coffee +3 Focus a cup (first 2); cups 3 and on cost 6 HP each.
@@ -110,9 +110,9 @@ object VitalsB {
 
     val BARS = listOf(
         Vitals.Bar("hp", "HP", "Sleep sets it (7.5 h = 100, 8 h = 110); regenerates 12 a day; sugar over 30 g, coffee after 2 cups and screens lower it; protein, sensible calories and workouts raise it", 12.0),
-        Vitals.Bar("stamina", "Stamina", "Sleep sets it (7.5 h = 100, 8 h = 110); drains to about 10 by 23:00; workouts spend it today and pay it back tomorrow; water and a sugar rush top it up", -90.0),
-        Vitals.Bar("mana", "Mana", "Resets to 52 each morning (+20 for 7.5 h sleep, +25 for deep + REM 35%); drains to about 10 by 23:00; study spends it, reading and journal refill it", -90.0),
-        Vitals.Bar("focus", "Focus", "Sleep sets it (7.5 h = 100, 8 h = 110); drains to about 10 by 23:00; study, reading, water, workouts and a calm social day yesterday raise it", -90.0),
+        Vitals.Bar("stamina", "Stamina", "Sleep sets it (7.5 h = 100, 8 h = 110); drains 90 over the waking day (100 down to 10); workouts spend it today and pay it back tomorrow; water and a sugar rush top it up", -90.0),
+        Vitals.Bar("mana", "Mana", "Resets to 52 each morning (+20 for 7.5 h sleep, +25 for deep + REM 35%); drains 62 over the waking day (72 down to 10); study spends it, reading and journal refill it", -62.0),
+        Vitals.Bar("focus", "Focus", "Sleep sets it (7.5 h = 100, 8 h = 110); drains 90 over the waking day (100 down to 10); study, reading, water, workouts and a calm social day yesterday raise it", -90.0),
     )
 
     fun topOf(key: String) = if (key == "mana") TOP else OVERCHARGE_TOP
@@ -266,7 +266,7 @@ object VitalsB {
         companion object {
             val PRIME = Condition("prime", "Prime Condition", "You woke up with all four bars at 70+: kettlebell, commits and journal earn +10% XP all day.")
             val STEADY = Condition("steady", "Steady", "A fair start. Wake up with all four bars at 70+ (about 7.5 h of good sleep) for Prime Condition: +10% XP on kettlebell, commits and journal.")
-            val REST = Condition("rest", "Rest Day", "A short night (under 6 h), so your bars started low. No XP is lost and they drain more gently today. Go easy, drink water, and an early night brings Prime back.")
+            val REST = Condition("rest", "Rest Day", "A short night (under 6 h), so your bars started low. No XP is lost, but they drain at the usual pace, so they run low sooner today. Top up with water, go easy, and an early night brings Prime back.")
             val NO_SLEEP = Condition("unknown", "Steady", "No sleep logged yet, so the bars start at 70. Sync your watch to see today's real condition.")
         }
     }
@@ -278,9 +278,8 @@ object VitalsB {
         else -> Condition.STEADY
     }
 
-    /** The day's tick: HP regenerates as before; the others drain from their waking value down to [END_LEVEL]. */
-    fun dayTick(bar: Vitals.Bar, start: Double): Double =
-        if (bar.tickPerDay > 0) bar.tickPerDay else -maxOf(0.0, start - END_LEVEL)
+    /** The day's tick: the same every day, whatever the start (no gentler drain on a Rest Day). */
+    fun dayTick(bar: Vitals.Bar): Double = bar.tickPerDay
 
     /** A good day's line at this point of the day: 100 on waking, falling to END_LEVEL at 23:00 (HP stays at 100). */
     fun paceLine(bar: Vitals.Bar, dayShare: Double): Double =
@@ -340,7 +339,7 @@ object VitalsB {
                 // The sugar rush shows on its own day but has worn off by the next.
                 val lasting = gained - all.filter { it.temporary }.sumOf { it.points }
                 val s = start.getValue(bar.key)
-                val tick = dayTick(bar, s)
+                val tick = dayTick(bar)
                 values[bar.key] = endValue(bar.key, s, if (isToday) gained else lasting, tick * tickShare(bar, share))
                 last[bar.key] = Triple(s, gained, all)
                 dayTicks[bar.key] = tick
