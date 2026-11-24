@@ -59,8 +59,14 @@ class DashboardActivity : Activity() {
         if (settings.setupPending) {
             settings.setupPending = false
             scope.launch {
-                withContext(Dispatchers.IO) { settings.gameStart(LocalStore.get(this@DashboardActivity).span().second) }
-                if (!ScreenTime.hasAccess(this@DashboardActivity)) {
+                val fresh = withContext(Dispatchers.IO) {
+                    val span = LocalStore.get(this@DashboardActivity).span()
+                    settings.gameStart(span.second)
+                    span.first == 0
+                }
+                // A brand new install starts with Kevin-only parts off; the setup screen asks for the rest.
+                if (fresh && !settings.profileChosen) settings.profile = Profile.NEW_TESTER
+                if (fresh || !ScreenTime.hasAccess(this@DashboardActivity)) {
                     startActivity(Intent(this@DashboardActivity, MainActivity::class.java).putExtra(MainActivity.EXTRA_WELCOME, true))
                 }
             }
@@ -136,6 +142,7 @@ class DashboardActivity : Activity() {
         override fun lastUpdates() = store.lastUpdates()
         override fun trading() = store.trading()
         override fun gameStart() = settings.gameStart(store.span().second)
+        override fun profile() = settings.profile
 
         override fun log(day: LocalDate, entries: List<ManualLog.Entry>): Map<String, Double> {
             manual.log(day, *entries.toTypedArray())

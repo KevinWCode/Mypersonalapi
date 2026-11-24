@@ -61,7 +61,7 @@ object Vitals {
     }
 
     fun workedOut(m: Map<String, Double>): Boolean =
-        (m["workout.counted_sessions"] ?: 0.0) > 0 ||
+        (m["workout.counted_sessions"] ?: 0.0) > 0 || (m[Profile.STRENGTH_DONE] ?: 0.0) > 0 ||
             m.any { (k, v) -> v > 0 && k.startsWith("kb.") && (k.endsWith(".sets") || k.endsWith(".done")) }
 
     fun afterSleep(minutes: Double): Map<String, Double> {
@@ -156,7 +156,7 @@ object Vitals {
         var yesterday: Map<String, Double> = emptyMap()
         days.forEachIndexed { i, d ->
             val m = d.metrics
-            val calm = "screen.total_minutes" in yesterday &&
+            val calm = "screen.total_minutes" in yesterday && Profile.SOCIAL_OFF !in yesterday &&
                 (yesterday["screen.social_media_minutes"] ?: 0.0) < CALM_SOCIAL_MINUTES
             val fx = effects(m, d.youtubeMinutes, workedOut(yesterday), calm)
             yesterday = m

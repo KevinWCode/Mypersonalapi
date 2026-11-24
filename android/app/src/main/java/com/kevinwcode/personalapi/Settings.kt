@@ -44,6 +44,17 @@ class Settings(context: Context) {
         get() = !prefs.getBoolean("setup_shown", false)
         set(v) = prefs.edit().putBoolean("setup_shown", !v).apply()
 
+    /**
+     * What this person does and tracks. An install from before the setup screen existed has no saved choice and
+     * keeps the old behaviour ([Profile.ALL]: kettlebell, everything on).
+     */
+    var profile: Profile
+        get() = Profile.decode(prefs.getString("profile", null)) ?: Profile.ALL
+        set(v) = prefs.edit().putString("profile", v.encode()).apply()
+
+    /** True once the person has saved their activities on the setup screen. */
+    val profileChosen: Boolean get() = prefs.contains("profile")
+
     var lastSync: String
         get() = prefs.getString("last_sync", "never")!!
         set(v) = prefs.edit().putString("last_sync", v).apply()

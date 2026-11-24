@@ -44,17 +44,18 @@ object GameJson {
                 "score" to it.score, "modifier" to it.modifier, "level_xp" to it.levelXp, "level_cost" to it.levelCost,
                 "xp_to_next" to it.xpToNext)
         }),
-        "groups" to arr(g.groups.map(::group)),
+        "groups" to arr(g.groups.map { group(it, g.profile) }),
         "history" to arr(g.history.map {
             obj("date" to it.date.toString(), "xp" to it.xp, "well_rested" to it.wellRested, "social_ok" to it.socialOk,
                 "committed" to it.committed)
         }),
     )
 
-    private fun group(s: Game.GroupSheet): JSONObject {
+    private fun group(s: Game.GroupSheet, profile: Profile): JSONObject {
         val g = Perks.GROUPS.getValue(s.key)
         return obj(
-            "key" to s.key, "name" to s.name, "ability" to s.ability, "stats" to arr(g.stats), "level" to s.level,
+            // Only the stats this person tracks show under the group.
+            "key" to s.key, "name" to s.name, "ability" to s.ability, "stats" to arr(g.stats.filter(profile::lineOn)), "level" to s.level,
             "tier" to s.tier, "score" to s.score, "modifier" to s.modifier, "title" to s.title, "next_tier_level" to s.nextTierLevel,
             "perks" to arr(Perks.TIERS.map { (t, rankUnlock) ->
                 val (rank, unlock) = rankUnlock

@@ -12,6 +12,8 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
@@ -100,15 +102,18 @@ class MainActivity : AppCompatActivity() {
         })
         if (intent.getBooleanExtra(EXTRA_WELCOME, false)) root.addView(TextView(this).apply {
             text = "Welcome! To get started:\n" +
-                "1. Allow Health Connect access (sleep, steps, heart rate and workouts from your watch or phone).\n" +
-                "2. Allow usage access, so screen time and social media minutes can be counted.\n" +
-                "3. Keep syncing in the background.\n" +
+                "1. Pick your activities below: your strength training, and switch off anything you don't track.\n" +
+                "2. Allow Health Connect access (sleep, steps, heart rate and workouts from your watch or phone).\n" +
+                "3. Allow usage access, so screen time and social media minutes can be counted.\n" +
+                "4. Keep syncing in the background.\n" +
                 "GitHub, Alpaca and the PC server are optional. Everything stays on this phone."
             textSize = 16f
             setLineSpacing(0f, 1.2f)
             setPadding(0, 16, 0, 8)
         })
         button("Back to the dashboard") { finish() }
+
+        activities()
 
         heading("Sync and backup")
         button("Sync now") { syncNow() }
@@ -197,6 +202,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        val kbFrom = root.childCount
         heading("Kettlebell set")
         val move = Spinner(this).apply {
             adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, MOVES.keys.toList())
@@ -212,6 +218,8 @@ class MainActivity : AppCompatActivity() {
             afterLog("Set added")
         }
 
+        kettlebellViews = (kbFrom until root.childCount).map(root::getChildAt)
+        val catchFrom = root.childCount
         heading("Flag football")
         val catch = field("Longest reliable catch today (yards)", "", number = true)
         button("Save catch distance") {
@@ -220,8 +228,75 @@ class MainActivity : AppCompatActivity() {
             catch.text.clear()
             afterLog("Catch distance saved")
         }
+        catchViews = (catchFrom until root.childCount).map(root::getChildAt)
+        showChosen()
 
         SyncWorker.schedule(this)
+    }
+
+    private var kettlebellViews: List<View> = emptyList()
+    private var catchViews: List<View> = emptyList()
+
+    /**
+     * "Your activities": the strength training this person does and what they track. Saved on every change; the
+     * dashboard and the game read it the next time they load.
+     */
+    private fun activities() {
+        heading("Your activities")
+        root.addView(TextView(this).apply {
+            text = "Only what you pick here earns XP and shows in Daily quests. Anything switched off is ignored, " +
+                "so not doing it never counts against you. You can change this any time."
+        })
+        root.addView(TextView(this).apply {
+            text = "Strength training"
+            textSize = 16f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(0, 24, 0, 0)
+        })
+        val types = Profile.STRENGTH_TYPES.entries.toList()
+        val group = RadioGroup(this).apply {
+            types.forEach { (key, names) ->
+                addView(RadioButton(this@MainActivity).apply {
+                    id = View.generateViewId()
+                    tag = key
+                    text = names.first
+                    isChecked = settings.profile.strength == key
+                })
+            }
+        }.also { root.addView(it) }
+        group.setOnCheckedChangeListener { g, checkedId ->
+            val key = g.findViewById<RadioButton>(checkedId)?.tag as? String ?: return@setOnCheckedChangeListener
+            settings.profile = settings.profile.copy(strength = key)
+            showChosen()
+        }
+        root.addView(TextView(this).apply {
+            text = "Workouts from your watch count either way. The Workout done tile on Daily quests logs a session by hand."
+            setPadding(0, 0, 0, 16)
+        })
+        root.addView(TextView(this).apply {
+            text = "What you track"
+            textSize = 16f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(0, 16, 0, 0)
+        })
+        for (item in Profile.ITEMS) {
+            root.addView(CheckBox(this).apply {
+                text = "${item.label}\n${item.about}"
+                isChecked = settings.profile.isOn(item.key)
+                setOnCheckedChangeListener { _, on ->
+                    val p = settings.profile
+                    settings.profile = p.copy(off = if (on) p.off - item.key else p.off + item.key)
+                    showChosen()
+                }
+            })
+        }
+    }
+
+    /** Shows the kettlebell and catch drill entries only to people who do them. */
+    private fun showChosen() {
+        val p = settings.profile
+        kettlebellViews.forEach { it.visibility = if (p.kettlebell) View.VISIBLE else View.GONE }
+        catchViews.forEach { it.visibility = if (p.isOn("catch")) View.VISIBLE else View.GONE }
     }
 
     override fun onResume() {

@@ -24,14 +24,15 @@ object TestB {
     /** The day's character with the Test B vitals and Prime Condition. Same arguments as [Game.build]. */
     fun build(
         days: Map<LocalDate, Map<String, Double>>, day: LocalDate, gameStart: LocalDate = Game.DEFAULT_GAME_START,
-        now: LocalDateTime = LocalDateTime.now(),
-    ): Game.State = buildWithCondition(days, day, gameStart, now).first
+        now: LocalDateTime = LocalDateTime.now(), profile: Profile = Profile.ALL,
+    ): Game.State = buildWithCondition(days, day, gameStart, now, profile).first
 
     /** [build], plus the day's condition (Prime Condition, Steady or Rest Day) for the badge. */
     fun buildWithCondition(
-        days: Map<LocalDate, Map<String, Double>>, day: LocalDate, gameStart: LocalDate = Game.DEFAULT_GAME_START,
-        now: LocalDateTime = LocalDateTime.now(),
+        allDays: Map<LocalDate, Map<String, Double>>, day: LocalDate, gameStart: LocalDate = Game.DEFAULT_GAME_START,
+        now: LocalDateTime = LocalDateTime.now(), profile: Profile = Profile.ALL,
     ): Pair<Game.State, VitalsB.Condition> {
+        val days = profile.stripDays(allDays)
         val inputs = mutableListOf<Vitals.DayInput>()
         var d = gameStart
         while (d <= day) {
@@ -41,7 +42,7 @@ object TestB {
         }
         val result = VitalsB.run(inputs, Game.todayElapsed(day, now))
         val g = Game.build(
-            days, day, gameStart, now,
+            days, day, gameStart, now, profile,
             extraBuff = { date, lines -> if (result.prime[date] == true) primeBuff(lines) else null },
             vitalsRun = { _, _ -> result.bars },
         )
@@ -249,7 +250,7 @@ object VitalsB {
             add("focus", "Flow State (study)", STUDY_FOCUS * blocks)
         }
 
-        val calm = "screen.total_minutes" in yesterday && (yesterday["screen.social_media_minutes"] ?: 0.0) < CALM_SOCIAL_MINUTES
+        val calm = "screen.total_minutes" in yesterday && Profile.SOCIAL_OFF !in yesterday && (yesterday["screen.social_media_minutes"] ?: 0.0) < CALM_SOCIAL_MINUTES
         if (calm) add("focus", "Social media under ${CALM_SOCIAL_MINUTES.toInt()} min yesterday", CALM_NEXT_DAY_FOCUS)
         return out
     }
