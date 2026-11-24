@@ -36,11 +36,12 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:usesCleartextTraffic="true">
 
-        <!-- The app's settings screen (sync, keys, backup, permissions), opened from the dashboard's cog. -->
+        <!-- Forwards to the dashboard's Settings tab, where all settings live now. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="Settings">
+            android:label="Settings"
+            android:theme="@android:style/Theme.NoDisplay">
             <!-- Health Connect shows this when you tap "privacy policy" on the permission screen (Android 13 and below). -->
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />

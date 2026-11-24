@@ -144,7 +144,7 @@ thead th { font-size: 13px; font-weight: 500; color: var(--muted); text-align: l
 .food-busy { opacity: .6; pointer-events: none; }
 .auth { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--muted); }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
-input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1px solid var(--axis); border-radius: 12px; padding: 10px 12px; font: 14px Inter, system-ui, sans-serif; color: var(--ink); background: var(--card); resize: vertical; }
+input[type="password"], input[type="text"], input[type="number"], select, textarea { flex: 1 1 220px; min-height: 44px; border: 1px solid var(--axis); border-radius: 12px; padding: 10px 12px; font: 14px Inter, system-ui, sans-serif; color: var(--ink); background: var(--card); resize: vertical; }
 .btn { min-height: 44px; padding: 0 18px; border-radius: 22px; border: 1px solid var(--raised); background: var(--raised); color: var(--on-raised); font: 500 14px Inter, sans-serif; cursor: pointer; }
 .btn:disabled { opacity: .5; cursor: default; }
 .fuel { flex-direction: row; flex-wrap: wrap; gap: 28px; }
@@ -342,6 +342,40 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 #tip b { font-weight: 600; }
 #tip .name { color: var(--muted); }
 
+/* ---- Settings tab (inside the phone app): grouped choices, one tap each, saved as you go ---- */
+.set-group { display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
+.set-group:first-of-type { border-top: 0; padding-top: 0; }
+.set-group > input { flex: none; }
+.set-label { font-weight: 600; font-size: 15px; }
+.set-hint { font-size: 13px; color: var(--muted); line-height: 1.4; }
+.picks { display: flex; flex-wrap: wrap; gap: 8px; }
+.pick { min-height: 44px; padding: 0 16px; border-radius: 22px; border: 1px solid var(--axis); background: var(--card); color: var(--ink); font: 500 14px var(--font-body); cursor: pointer; }
+.pick[aria-pressed="true"] { background: var(--soft); border: 2px solid var(--accent); color: var(--soft-ink); font-weight: 600; }
+.pick.add { border-style: dashed; color: var(--muted); }
+.pick.day { min-width: 52px; padding: 0 10px; }
+.pick .x { margin-left: 6px; opacity: .7; }
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 4px 0; }
+.set-row .what { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.set-row .what b { font-weight: 600; font-size: 15px; }
+.set-row .what span { font-size: 13px; color: var(--muted); }
+.step-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; min-height: 52px; }
+.stepper { display: flex; align-items: center; gap: 4px; }
+.stepper button { width: 44px; height: 44px; border-radius: 22px; border: 1px solid var(--axis); background: var(--card); color: var(--ink); font: 600 20px var(--font-body); cursor: pointer; }
+.stepper output { min-width: 84px; text-align: center; font: 700 18px var(--font-head); }
+.status-dot { width: 26px; height: 26px; flex: none; border-radius: 13px; display: flex; align-items: center; justify-content: center; font: 700 14px var(--font-body); color: #FFFFFF; background: var(--warn); }
+.status-dot.ok { background: var(--good); }
+.set-row .lead { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.switch { position: relative; width: 52px; height: 32px; flex: none; border-radius: 16px; border: 0; background: var(--axis); cursor: pointer; }
+.switch::after { content: ''; position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 12px; background: #FFFFFF; transition: left .15s; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"]::after { left: 24px; }
+.btn.ghost { background: var(--card); color: var(--ink); border-color: var(--axis); }
+.set-more summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.set-more[open] summary { margin-bottom: 8px; }
+.set-more > div { display: flex; flex-direction: column; gap: 12px; }
+.set-more > div.log-row, .log-row { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; align-items: center; }
+.log-row input, .log-row select { flex: 1 1 90px; min-width: 0; height: 44px; }
+
 /* ---- Themes: picked at the bottom of the page, remembered in this browser ---- */
 .themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
 .theme-btn { min-height: 64px; border-radius: 14px; border: 2px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 10px 12px; font: 600 14px var(--font-body); text-align: left; }
@@ -428,7 +462,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     <p class="eyebrow" id="eyebrow">Personal API · Last 7 days</p>
     <h1 id="title">Freedom gained this week</h1>
   </div>
-  <button type="button" class="gear" id="info-btn" aria-label="Settings and info" aria-pressed="false">
+  <button type="button" class="gear" id="info-btn" aria-label="Settings" aria-pressed="false">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
   </button>
 </header>
@@ -572,7 +606,8 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       <span class="note" id="kb-week"></span>
     </div>
     <div class="scroll"><table class="kb" id="kb"></table></div>
-    <p class="note">Ticks come from Workout done, a tap on the next box, or sets logged in the app's settings.</p>
+    <p class="note">Ticks come from Workout done, a tap on the next box, or a set logged here.</p>
+    <div id="set-log" hidden></div>
   </div>
   <div class="card">
     <div class="card-head">
@@ -627,23 +662,20 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     <span class="note" id="catch-goal">Goal: 20 yd</span>
   </div>
   <div id="ch-catch"></div>
+  <div id="best-log" hidden></div>
 </div>
 
 
 
-<section aria-labelledby="app-h" class="card" style="gap:12px" data-tab="info" id="app-card" hidden>
-  <div class="card-head"><h2 id="app-h">Phone app</h2><span class="note">Sync, keys, backup and permissions</span></div>
-  <p class="note" id="app-status" style="white-space:pre-line;font-size:14px"></p>
-  <div class="row">
-    <button class="btn" type="button" id="app-sync">Sync now</button>
-    <button class="btn" type="button" id="app-settings">Open app settings</button>
-  </div>
-</section>
+<!-- Settings: only inside the phone app, which adds window.PhoneApp. Built by renderApp(). -->
+<div id="set-top" data-tab="info" class="grid" hidden></div>
 
 <section aria-labelledby="theme-h" class="card" data-tab="info">
   <div class="card-head"><h2 id="theme-h">Theme</h2><span class="note">Remembered on this device</span></div>
   <div class="themes" id="themes"></div>
 </section>
+
+<div id="set-rest" data-tab="info" class="grid" hidden></div>
 
 <section aria-label="Data sources" class="card" style="gap:14px" data-tab="info">
   <div class="card-head">
@@ -657,7 +689,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     <span class="chip auto"><span class="dot"></span>Alpaca (optional) · P/L, positions, trades</span>
     <span class="chip manual"><span class="dot"></span>Food tab or a pasted food AI line · calories, protein, carbs, sugar, fat (manual)</span>
     <span class="chip manual"><span class="dot"></span>Quick log buttons · water, reading, study, coffee, workout done, journal entry (manual)</span>
-    <span class="chip manual"><span class="dot"></span>App settings · training sets, your best on the thing you're improving (manual)</span>
+    <span class="chip manual"><span class="dot"></span>Today tab · training sets, your best on the thing you're improving (manual)</span>
   </div>
 </section>
 
@@ -920,7 +952,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     { id: 'board', name: 'Quest Board', sample: 'linear-gradient(135deg,#7A4F2A,#EEDDB5)', font: 'IM+Fell+English&family=Crimson+Pro:wght@400;600' }
   ];
   var BASE_COLOR = { accent: COLOR.accent, ink: COLOR.ink, muted: COLOR.muted, good: COLOR.good, warn: COLOR.warn };
-  var VIEW_TITLES = { quests: 'Daily quests', food: 'Food', money: 'Money', char: 'Character', testb: 'Character', info: 'Settings and info' };
+  var VIEW_TITLES = { quests: 'Daily quests', food: 'Food', money: 'Money', char: 'Character', testb: 'Character', info: 'Settings' };
   function setView(view) {
     state.view = view;
     $('wrap').dataset.view = view;
@@ -929,7 +961,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     if (view !== 'info') store('view', view);
     $('title').textContent = VIEW_TITLES[view] || RANGES[state.range].title;
     window.scrollTo(0, 0);
-    if (view === 'info') renderApp();
+    if (view === 'info') renderApp(true);
   }
 
   function applyTheme(id) {
@@ -1491,11 +1523,340 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     }) : [el('li', null, el('div', { class: 'what' }, el('span', null, 'Nothing logged yet today. Tap a meal above.')))]);
   }
 
-  // ---- Phone app card in Settings: only inside the app, which adds window.PhoneApp ----
-  function renderApp() {
-    if (!window.PhoneApp) return;
-    $('app-card').hidden = false;
-    try { $('app-status').textContent = window.PhoneApp.status(); } catch (e) { $('app-status').textContent = ''; }
+  // ---- Settings tab: only inside the phone app, which adds window.PhoneApp ----
+  // Everything is one tap where it can be, and saves as you go. The app checks each change (SettingsForm.kt).
+  var TRAININGS = ['Kettlebell', 'Gym', 'Running', 'Cycling', 'Swimming', 'Yoga', 'Bodyweight'];
+  var EXERCISE_IDEAS = {
+    Kettlebell: ['Swing', 'Clean', 'Clean & press', 'Goblet squat', 'Snatch', 'Turkish get-up'],
+    Gym: ['Squat', 'Bench press', 'Deadlift', 'Overhead press', 'Row', 'Pull-up'],
+    Bodyweight: ['Push-up', 'Pull-up', 'Squat', 'Lunge', 'Plank', 'Dip'],
+    Running: ['Easy run', 'Intervals', 'Long run'], Cycling: ['Easy ride', 'Intervals', 'Long ride'],
+    Swimming: ['Freestyle', 'Breaststroke', 'Drills'], Yoga: ['Flow', 'Stretch', 'Balance']
+  };
+  var GOAL_IDEAS = [['Longest reliable catch', 'yd'], ['Push-ups in one set', 'reps'], ['Plank hold', 'seconds'],
+    ['Heaviest deadlift', 'kg'], ['Longest run', 'km']];
+  var UNITS = ['reps', 'kg', 'lb', 'yd', 'm', 'km', 'seconds', 'minutes'];
+  var DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  // A spread of days for each number of sessions, used when switching from "Any days" to set days.
+  var DAY_SPREAD = { 1: [0], 2: [0, 3], 3: [0, 2, 4], 4: [0, 1, 3, 4], 5: [0, 1, 2, 3, 4], 6: [0, 1, 2, 3, 4, 5], 7: [0, 1, 2, 3, 4, 5, 6] };
+  var SOCIAL_CHOICES = [[0, "Contain: don't go up"], [5, 'Trim 5%'], [10, 'Cut 10%'], [15, 'Cut 15%']];
+  var SET = null, setUi = { other: false, newGoal: false, keys: '' }, stepTimers = {};
+
+  function sessionsAreDays(list) { return list.length > 0 && list.every(function (x) { return DAYS.indexOf(x) >= 0; }); }
+  function plainNum(v) { return String(+(+v).toFixed(2)); }
+
+  function setGroup(label, hint) {
+    var kids = [].slice.call(arguments, 2);
+    return el('div', { class: 'set-group' }, label ? el('p', { class: 'set-label' }, label) : null,
+      hint ? el('p', { class: 'set-hint' }, hint) : null, kids);
+  }
+  function pick(text, on, onClick, cls) {
+    var b = el('button', { type: 'button', class: 'pick' + (cls ? ' ' + cls : ''), 'aria-pressed': on ? 'true' : 'false' }, text);
+    b.addEventListener('click', onClick);
+    return b;
+  }
+  function sw(label, on, onChange) {
+    var b = el('button', { type: 'button', class: 'switch', role: 'switch', 'aria-checked': on ? 'true' : 'false', 'aria-label': label });
+    b.addEventListener('click', function () { onChange(b.getAttribute('aria-checked') !== 'true'); });
+    return b;
+  }
+  function btn(text, onClick, ghost) {
+    var b = el('button', { type: 'button', class: 'btn' + (ghost ? ' ghost' : '') }, text);
+    b.addEventListener('click', onClick);
+    return b;
+  }
+  function textInput(attrs, onSave) {
+    var i = el('input', Object.assign({ type: 'text', autocomplete: 'off' }, attrs));
+    if (onSave) {
+      i.addEventListener('change', function () { onSave(i.value.trim()); });
+      i.addEventListener('keydown', function (e) { if (e.key === 'Enter') i.blur(); });
+    }
+    return i;
+  }
+  // − value +, saved a moment after the last tap so a few taps make one save.
+  function stepper(key, label, value, step, min, max, fmt) {
+    var out = el('output', null, fmt(value));
+    function go(dir) {
+      value = Math.min(max, Math.max(min, Math.round((value + dir * step) / step) * step));
+      out.textContent = fmt(value);
+      clearTimeout(stepTimers[key]);
+      stepTimers[key] = setTimeout(function () { var c = {}; c[key] = +value.toFixed(2); saveSetting(c, label + ': ' + fmt(value)); }, 700);
+    }
+    var minus = el('button', { type: 'button', 'aria-label': 'Less ' + label.toLowerCase() }, '−');
+    var plus = el('button', { type: 'button', 'aria-label': 'More ' + label.toLowerCase() }, '+');
+    minus.addEventListener('click', function () { go(-1); });
+    plus.addEventListener('click', function () { go(1); });
+    return el('div', { class: 'step-row' }, el('span', { class: 'set-label' }, label), el('div', { class: 'stepper' }, minus, out, plus));
+  }
+
+  function saveSetting(change, message, undo) {
+    var err = window.PhoneApp.saveProfile(JSON.stringify(change));
+    if (err) { toast(err); renderApp(true); return false; }
+    toast(message || 'Saved', undo);
+    renderApp(true);
+    // The dashboard's tabs follow straight away (training tracker, Fuel targets, Money tab...).
+    loadProfile().then(load);
+    return true;
+  }
+
+  function setupCard() {
+    var h = SET.health, healthOk = h.available && h.granted >= h.total - 1;
+    function step(ok, title, sub, onAllow) {
+      return el('div', { class: 'set-row' },
+        el('div', { class: 'lead' }, el('span', { class: 'status-dot' + (ok ? ' ok' : ''), 'aria-hidden': 'true' }, ok ? '✓' : '!'),
+          el('div', { class: 'what' }, el('b', null, title), el('span', null, sub))),
+        ok || !onAllow ? null : btn('Allow', onAllow));
+    }
+    var steps = [
+      step(healthOk, 'Health Connect', !h.available ? "Not available on this phone" : healthOk ? 'Sleep, steps, heart rate and workouts' : h.granted + ' of ' + h.total + ' allowed. Sleep, steps, heart rate, workouts',
+        h.available ? function () { window.PhoneApp.allowHealth(); } : null),
+      step(SET.usage, 'Screen time', SET.usage ? 'Social media and YouTube minutes' : 'Lets the app count social media minutes', function () { window.PhoneApp.allowUsage(); }),
+      step(SET.background, 'Background sync', SET.background ? 'Every 15 min, ' + SET.sync_hours : 'So the phone keeps syncing while the app is closed', function () { window.PhoneApp.allowBackground(); })
+    ];
+    var allSet = healthOk && SET.usage && SET.background;
+    var sources = SET.health_sources || [];
+    var kids = [
+      el('div', { class: 'card-head' }, el('h2', null, SET.welcome ? 'Welcome! Get set up' : 'Phone setup'),
+        el('span', { class: 'note' }, allSet ? 'All set' : 'Everything stays on this phone')),
+      SET.welcome ? el('p', { class: 'set-hint' }, 'Allow these three, then pick your training and targets below. Each choice saves straight away.') : null,
+      el('div', null, steps),
+      sources.length > 1 || SET.health_source ? setGroup('Main health app', 'When more than one app writes to Health Connect, sleep and workouts come from this one so nothing counts twice.',
+        el('div', { class: 'picks' }, [pick('Automatic', !SET.health_source, function () { window.PhoneApp.setHealthSource(''); toast('Main health app: automatic'); renderApp(true); })]
+          .concat(sources.map(function (x) {
+            return pick(x.name, SET.health_source === x.id, function () { window.PhoneApp.setHealthSource(x.id); toast('Main health app: ' + x.name); renderApp(true); });
+          })))) : null,
+      setGroup(null, 'Last sync ' + SET.last_sync + '. ' +
+        (SET.stored_days ? SET.stored_days + ' days stored on this phone since ' + SET.stored_since + '.' : 'Nothing stored yet.'),
+        el('div', { class: 'row' }, btn('Sync now', function () { toast('Syncing…'); window.PhoneApp.syncNow(); }, true)))
+    ];
+    return el('section', { class: 'card', 'aria-label': 'Phone setup' }, kids);
+  }
+
+  function trainingCard() {
+    var p = SET.profile, t = p.training || '';
+    var known = TRAININGS.indexOf(t) >= 0, other = setUi.other || (t && !known);
+    var choices = TRAININGS.map(function (name) {
+      return pick(name, t === name && !setUi.other, function () { setUi.other = false; saveSetting({ training: name }, 'Training: ' + name); });
+    });
+    choices.push(pick('Other', other, function () { setUi.other = true; renderApp(true); var i = $('set-training'); if (i) i.focus(); }));
+    choices.push(pick('None', !t && !setUi.other, function () { setUi.other = false; saveSetting({ training: '' }, 'No training tracked'); }));
+    var groups = [setGroup('What do you train?', 'Names your weekly tracker on Today and your training quest. Watch workouts count either way.',
+      el('div', { class: 'picks' }, choices),
+      other ? textInput({ id: 'set-training', value: known ? '' : t, placeholder: 'e.g. Spin class, Climbing', 'aria-label': 'Your training' },
+        function (v) { if (v) { setUi.other = false; saveSetting({ training: v }, 'Training: ' + v); } }) : null)];
+    if (t) {
+      var byDay = sessionsAreDays(p.sessions);
+      var mode = el('div', { class: 'picks' },
+        pick('Set days', byDay, function () {
+          if (byDay) return;
+          var n = Math.min(7, Math.max(1, p.sessions.length));
+          saveSetting({ sessions: DAY_SPREAD[n].map(function (i) { return DAYS[i]; }) }, 'Sessions on set days');
+        }),
+        pick('Any days', !byDay, function () {
+          if (!byDay) return;
+          saveSetting({ sessions: p.sessions.map(function (x, i) { return 'Session ' + (i + 1); }) }, 'Sessions on any days');
+        }));
+      var detail;
+      if (byDay) {
+        detail = el('div', { class: 'picks' }, DAYS.map(function (d) {
+          var on = p.sessions.indexOf(d) >= 0;
+          return pick(d.slice(0, 3), on, function () {
+            var next = DAYS.filter(function (x) { return x === d ? !on : p.sessions.indexOf(x) >= 0; });
+            if (!next.length) { toast('Pick at least one day'); return; }
+            saveSetting({ sessions: next }, next.length + ' session' + (next.length === 1 ? '' : 's') + ' a week');
+          }, 'day');
+        }));
+      } else {
+        var n = p.sessions.length;
+        detail = stepperSessions(n);
+      }
+      groups.push(setGroup('Sessions each week', byDay ? 'Tap the days you train.' : 'The tracker fills a box per session, in order.', mode, detail));
+
+      var names = p.exercises.map(function (x) { return x.name; });
+      var ideas = (EXERCISE_IDEAS[t] || []).filter(function (x) { return names.map(function (n) { return n.toLowerCase(); }).indexOf(x.toLowerCase()) < 0; });
+      var add = textInput({ placeholder: 'Add your own', 'aria-label': 'Add an exercise' }, function (v) {
+        if (v) saveSetting({ exercises: names.concat([v]) }, 'Added ' + v);
+      });
+      groups.push(setGroup('Exercises (optional)', 'Each gets a row on the tracker. Workout done ticks them all. Tap one to take it off.',
+        el('div', { class: 'picks' },
+          names.map(function (n) {
+            return pick(el('span', null, n, el('span', { class: 'x', 'aria-hidden': 'true' }, '×')), true, function () {
+              saveSetting({ exercises: names.filter(function (x) { return x !== n; }) }, 'Removed ' + n,
+                function () { saveSetting({ exercises: names }, 'Put back ' + n); });
+            });
+          }),
+          ideas.map(function (x) { return pick('+ ' + x, false, function () { saveSetting({ exercises: names.concat([x]) }, 'Added ' + x); }, 'add'); })),
+        add));
+    }
+    return el('section', { class: 'card', 'aria-label': 'Your training' },
+      el('div', { class: 'card-head' }, el('h2', null, 'Your training')), groups);
+  }
+
+  function stepperSessions(n) {
+    var out = el('output', null, String(n));
+    function go(dir) {
+      var next = Math.min(7, Math.max(1, n + dir));
+      if (next === n) return;
+      saveSetting({ sessions: Array.from({ length: next }, function (x, i) { return 'Session ' + (i + 1); }) }, next + ' session' + (next === 1 ? '' : 's') + ' a week');
+    }
+    var minus = el('button', { type: 'button', 'aria-label': 'Fewer sessions' }, '−');
+    var plus = el('button', { type: 'button', 'aria-label': 'More sessions' }, '+');
+    minus.addEventListener('click', function () { go(-1); });
+    plus.addEventListener('click', function () { go(1); });
+    return el('div', { class: 'step-row' }, el('span', { class: 'set-label' }, 'Sessions a week'), el('div', { class: 'stepper' }, minus, out, plus));
+  }
+
+  function targetsCard() {
+    var p = SET.profile;
+    var social = SOCIAL_CHOICES.slice();
+    if (p.social_cut === null) social.unshift([null, 'Fixed 30 min']);
+    return el('section', { class: 'card', 'aria-label': 'Daily targets' },
+      el('div', { class: 'card-head' }, el('h2', null, 'Daily targets'), el('span', { class: 'note' }, 'Used by Fuel today and your HP')),
+      el('div', null,
+        stepper('kcal_target', 'Calories', p.kcal_target, 50, 800, 6000, function (v) { return int(v) + ' kcal'; }),
+        stepper('protein_target', 'Protein', p.protein_target, 5, 20, 400, function (v) { return Math.round(v) + ' g'; }),
+        stepper('water_target', 'Water', p.water_target, 0.25, 0.5, 8, function (v) { return plainNum(v) + ' L'; })),
+      setGroup('Social media', 'Your target is your daily average over the last 90 days, worked out each Monday. Stay under it for 100 XP. A cut aims lower and gives the same % back as bonus XP on days you make it.',
+        el('div', { class: 'picks' }, social.map(function (c) {
+          return pick(c[1], p.social_cut === c[0], function () { saveSetting({ social_cut: c[0] }, 'Social media: ' + c[1]); });
+        }))));
+  }
+
+  function improveCard() {
+    var g = SET.profile.goal, kids = [el('div', { class: 'card-head' }, el('h2', null, "Something you'd like to improve"),
+      el('span', { class: 'note' }, 'Optional'))];
+    if (!g && !setUi.newGoal) {
+      kids.push(setGroup(null, 'Pick one, or your own. Log your best on the Today tab; higher is better.',
+        el('div', { class: 'picks' }, GOAL_IDEAS.map(function (x) {
+          return pick(x[0], false, function () { saveSetting({ goal: { name: x[0], unit: x[1], target: null } }, 'Improving: ' + x[0]); });
+        }).concat([pick('Something else', false, function () { setUi.newGoal = true; renderApp(true); var i = $('set-goal'); if (i) i.focus(); }, 'add')]))));
+    } else {
+      var cur = g || { name: '', unit: '', target: null };
+      function save(change, msg) {
+        var next = Object.assign({ name: cur.name, unit: cur.unit, target: cur.target }, change);
+        if (!next.name) { toast('Give it a name first'); return; }
+        setUi.newGoal = false;
+        saveSetting({ goal: next }, msg);
+      }
+      var units = UNITS.indexOf(cur.unit) >= 0 || !cur.unit ? UNITS : UNITS.concat([cur.unit]);
+      kids.push(
+        setGroup('Name', null, textInput({ id: 'set-goal', value: cur.name, placeholder: 'e.g. Push-ups in one set', 'aria-label': 'What you are improving' },
+          function (v) { if (v) save({ name: v }, 'Saved: ' + v); })),
+        setGroup('Unit', null, el('div', { class: 'picks' }, units.map(function (u) {
+          return pick(u, cur.unit === u, function () { save({ unit: u }, 'Unit: ' + u); });
+        }))),
+        setGroup('Target (optional)', null, textInput({ type: 'number', inputmode: 'decimal', value: cur.target === null ? '' : plainNum(cur.target), placeholder: 'e.g. 20', 'aria-label': 'Target' },
+          function (v) { save({ target: v === '' ? null : +v }, v === '' ? 'No target' : 'Target: ' + v); })),
+        g ? el('div', { class: 'row' }, btn('Stop tracking this', function () {
+          saveSetting({ goal: null }, 'Stopped tracking ' + g.name, function () { saveSetting({ goal: g }, 'Put back ' + g.name); });
+        }, true)) : null);
+    }
+    return el('section', { class: 'card', 'aria-label': "Something you'd like to improve" }, kids);
+  }
+
+  function connectionsCard() {
+    var p = SET.profile, off = p.off || [];
+    function setOn(key, on, label) {
+      var next = off.filter(function (x) { return x !== key; });
+      if (!on) next.push(key);
+      saveSetting({ off: next }, label + (on ? ' on' : ' off'));
+    }
+    var gh = off.indexOf('github') < 0, money = off.indexOf('money') < 0;
+    function keyBox(placeholder, saved, onSave) {
+      var i = el('input', { type: 'password', autocomplete: 'off', placeholder: saved ? 'Saved. Paste a new one to change it' : placeholder, 'aria-label': placeholder });
+      return el('div', { class: 'row' }, i, btn('Save', function () { var m = onSave(i.value.trim()); i.value = ''; toast(m); renderApp(true); }));
+    }
+    return el('section', { class: 'card', 'aria-label': 'Connections' },
+      el('div', { class: 'card-head' }, el('h2', null, 'Connections'), el('span', { class: 'note' }, 'Optional. Keys stay on this phone')),
+      el('div', { class: 'set-row' }, el('div', { class: 'what' }, el('b', null, 'GitHub commits'), el('span', null, gh ? (SET.github ? 'Connected' : 'Needs a token') : 'Off')),
+        sw('GitHub commits', gh, function (on) { setOn('github', on, 'GitHub'); })),
+      gh ? setGroup(null, 'A token that can read your contributions (github.com › Settings › Developer settings).',
+        keyBox('GitHub token', SET.github, function (v) { return window.PhoneApp.saveGithub(v); })) : null,
+      el('div', { class: 'set-row' }, el('div', { class: 'what' }, el('b', null, 'Money tab'),
+        el('span', null, money ? (SET.alpaca_accounts ? SET.alpaca_accounts + ' Alpaca account(s), ' + (SET.alpaca_live ? 'live' : 'paper') : 'Needs Alpaca keys') : 'Off')),
+        sw('Money tab', money, function (on) { setOn('money', on, 'Money tab'); })),
+      money ? setGroup(null, 'Alpaca, read only: the app can\'t place trades. Paste KEY_ID SECRET, then the next account\'s pair.',
+        keyBox('Alpaca keys', SET.alpaca_accounts > 0, function (v) { return window.PhoneApp.saveAlpaca(v, SET.alpaca_live); }),
+        el('div', { class: 'set-row' }, el('span', null, 'Live account (off = paper)'),
+          sw('Alpaca live account', SET.alpaca_live, function (on) { window.PhoneApp.setAlpacaLive(on); toast(on ? 'Alpaca: live' : 'Alpaca: paper'); window.PhoneApp.syncNow(); renderApp(true); }))) : null);
+  }
+
+  function dataCard() {
+    var srv = SET.server;
+    var url = textInput({ value: srv.url, placeholder: 'http://100.x.x.x:8000', 'aria-label': 'Server address' });
+    var token = el('input', { type: 'password', autocomplete: 'off', placeholder: srv.has_token ? 'Upload token saved' : 'Upload token (INGEST_TOKEN)', 'aria-label': 'Upload token' });
+    var details = el('details', { class: 'set-more' }, el('summary', null, 'Advanced' + (srv.enabled ? ' · PC server on' : '')),
+      el('div', null,
+        el('div', { class: 'set-row' }, el('div', { class: 'what' }, el('b', null, 'Also send my data to my PC server'),
+          el('span', null, 'Only for a home PC running the Personal API server. The app works fully without it.')),
+          sw('Send to PC server', srv.enabled, function (on) { window.PhoneApp.setServerEnabled(on); toast(on ? 'PC upload on' : 'PC upload off'); renderApp(true); })),
+        srv.enabled || srv.url ? el('div', { class: 'row' }, url, token,
+          btn('Save', function () { toast(window.PhoneApp.saveServer(url.value.trim(), token.value.trim())); renderApp(true); })) : null,
+        srv.enabled || srv.url ? el('div', { class: 'row' },
+          btn('Copy my history from the PC', function () { toast('Copying from the PC…'); window.PhoneApp.copyHistory(); }, true),
+          btn('Open PC dashboard', function () { window.PhoneApp.openPcDashboard(); }, true)) : null,
+        el('div', { class: 'set-row' }, el('div', { class: 'what' }, el('b', null, "Clear today's manual entries"),
+          el('span', null, SET.manual_today + ' today: quick log taps, sets and bests. Meals and watch data stay.')),
+          btn('Clear', function () { window.PhoneApp.clearToday(); }, true))));
+    if (srv.enabled) details.open = true;
+    return el('section', { class: 'card', 'aria-label': 'Backup' },
+      el('div', { class: 'card-head' }, el('h2', null, 'Backup'), el('span', { class: 'note' }, 'You pick where the file goes')),
+      el('div', { class: 'row' }, btn('Back up to a file', function () { window.PhoneApp.backup(); }), btn('Restore from a file', function () { window.PhoneApp.restore(); }, true)),
+      details);
+  }
+
+  function renderApp(force) {
+    if (!window.PhoneApp || !window.PhoneApp.state) return;
+    renderLogForms();
+    if (state.view !== 'info') return;
+    // Don't redraw under someone typing (the page refreshes every minute).
+    var typing = document.activeElement && document.activeElement.closest && document.activeElement.closest('#set-top, #set-rest');
+    if (typing && !force) return;
+    try { SET = JSON.parse(window.PhoneApp.state()); } catch (e) { return; }
+    var y = window.scrollY;
+    $('set-top').hidden = false;
+    $('set-rest').hidden = false;
+    $('set-top').replaceChildren(setupCard());
+    $('set-rest').replaceChildren(trainingCard(), targetsCard(), improveCard(), connectionsCard(), dataCard());
+    window.scrollTo(0, y);
+  }
+
+  // Logging a set and today's best sit with their charts on Today (they were on the old settings screen).
+  var logFormsFor = '';
+  function renderLogForms() {
+    // Only rebuilt when the exercises or the goal change, so a half-typed set survives the page's refreshes.
+    var sig = JSON.stringify([PROFILE.tracked, PROFILE.goal]);
+    if (sig === logFormsFor) return;
+    logFormsFor = sig;
+    var host = $('set-log'), tracked = PROFILE.tracked || [];
+    host.hidden = !tracked.length;
+    if (tracked.length) {
+      var ex = el('select', { 'aria-label': 'Exercise' }, tracked.map(function (x) { return el('option', { value: x.key }, x.name); }));
+      var reps = el('input', { type: 'number', inputmode: 'numeric', placeholder: 'Reps', 'aria-label': 'Reps' });
+      var lb = el('input', { type: 'number', inputmode: 'decimal', placeholder: 'lb', 'aria-label': 'Weight in lb' });
+      var prev = host.querySelector('select');
+      if (prev) ex.value = prev.value;
+      host.replaceChildren(el('details', { class: 'set-more' }, el('summary', null, 'Log a set'),
+        el('div', { class: 'log-row' }, ex, reps, lb, btn('Add', function () {
+          var err = window.PhoneApp.addSet(ex.value, reps.value, lb.value);
+          if (err) { toast(err); return; }
+          reps.value = '';
+          toast('Set added');
+          refreshToday().catch(function () {});
+        }))));
+    }
+    var best = $('best-log'), g = PROFILE.goal;
+    best.hidden = !g;
+    if (g) {
+      var v = el('input', { type: 'number', inputmode: 'decimal', placeholder: "Today's best" + (g.unit ? ' (' + g.unit + ')' : ''), 'aria-label': "Today's best" });
+      best.replaceChildren(el('div', { class: 'log-row' }, v, btn('Save', function () {
+        var err = window.PhoneApp.saveBest(v.value);
+        if (err) { toast(err); return; }
+        toast(g.name + ' saved');
+        v.value = '';
+        load();
+      })));
+    }
   }
 
   function removeMeal(ml) {
@@ -2023,7 +2384,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     }
     barChart($('ch-catch'), { series: [{ name: 'Best', color: COLOR.accent }], points: blocks, height: 160, xName: '3 weeks',
       goal: goal.target ? { value: goal.target, label: goal.target + unit + ' goal' } : null, fmt: function (v) { return v + unit; },
-      note: blocks.some(function (b) { return b.values; }) ? null : 'Nothing logged yet. Log your best in the app\'s settings.' });
+      note: blocks.some(function (b) { return b.values; }) ? null : 'Nothing logged yet. Log your best below.' });
   }
 
   function renderSync() {
@@ -2128,19 +2489,26 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     b.addEventListener('click', function () { setView(b.dataset.view); });
   });
   $('char-mini').addEventListener('click', function () { setView('testb'); });
-  $('app-sync').addEventListener('click', function () {
-    $('app-status').textContent = 'Syncing…';
-    window.PhoneApp.syncNow();
-  });
-  $('app-settings').addEventListener('click', function () { window.PhoneApp.openSettings(); });
-  // The app calls this after a sync and when it comes back from its settings screen.
+  // The app calls this after a sync and when it comes back to the front (e.g. from a permission screen).
   window.dashboardReload = function () { loadProfile().then(load); };
+  // The app opens Settings on first launch and from its Settings shortcut, and reports results (backup, permissions).
+  window.openSettings = function () {
+    if (window.PhoneApp && window.PhoneApp.takeWelcome) window.PhoneApp.takeWelcome();
+    if (state.view !== 'info') setView('info'); else renderApp(true);
+  };
+  window.appEvent = function (message) { toast(message); renderApp(true); };
+  window.goBack = function () {
+    if (state.view !== 'info') return false;
+    setView(store('view') || 'today');
+    return true;
+  };
   $('info-btn').addEventListener('click', function () { setView(state.view === 'info' ? (store('view') || 'today') : 'info'); });
   var savedView = store('view');
   // Rework app: the old Character tab is gone and Test B is shown as Character, so a saved 'char' opens it.
   if (savedView === 'char') savedView = 'testb';
   if (savedView === 'food') savedView = 'quests';
   if (savedView === 'money' || savedView === 'testb' || savedView === 'quests') setView(savedView);
+  if (window.PhoneApp && window.PhoneApp.takeWelcome && window.PhoneApp.takeWelcome()) setView('info');
   var saved = +store('range');
   if (RANGES[saved]) state.range = saved;
   loadProfile().then(load);
