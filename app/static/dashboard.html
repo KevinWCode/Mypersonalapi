@@ -1647,7 +1647,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       }
       if (st) {
         var tag = { over: '★ Overcharge', prime: '★ Prime', steady: 'Steady', low: deb ? deb.name : 'Low' }[st];
-        var drainTxt = v.tick_per_day >= 0 ? tickText(v) : 'drains to about ' + g.pace.end_level + ' by 23:00 (' + signed(Math.round(v.tick_per_day)) + ' today)';
+        var drainTxt = v.tick_per_day >= 0 ? tickText(v) : 'drains ' + Math.round(-v.tick_per_day) + ' from 07:00 to 23:00';
         return el('div', { class: 'vital' + (low ? ' low' : '') + (st === 'prime' || st === 'over' ? ' vprime' : ''), title: v.about, style: '--c:' + VITAL_COLOR[v.key] },
           el('div', { class: 'top' }, el('b', { style: '--c:' + VITAL_COLOR[v.key] }, v.name, el('i', { class: 'vstate ' + (st === 'over' ? 'prime' : st) }, tag)),
             el('span', null, now + ' / ' + v.max)),
