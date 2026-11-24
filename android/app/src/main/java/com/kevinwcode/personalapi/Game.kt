@@ -73,7 +73,11 @@ object Game {
     private fun f0(v: Double) = String.format(Locale.UK, "%.0f", Math.rint(v))
 
     /** One line per stat. m is the day's metrics from [DayMetrics.build]; ctx holds baselines from earlier days. */
-    fun scoreDay(m: Map<String, Double>, ctx: Ctx): List<Line> {
+    fun scoreDay(m: Map<String, Double>, ctx: Ctx, profile: Profile = Profile.KEVIN): List<Line> =
+        allLines(m, ctx, profile).filter { profile.lineOn(it.key) }
+
+    /** Every line, switched on or not. The kettlebell line is the strength line, named after the person's training. */
+    private fun allLines(m: Map<String, Double>, ctx: Ctx, profile: Profile = Profile.KEVIN): List<Line> {
         val lines = mutableListOf<Line>()
 
         // Sleep: 7.5 h asleep, plus deep and REM together making up 35% or more of it.
@@ -114,11 +118,18 @@ object Game {
             if (sessions != 0.0) "${f0(sessions)} session(s), ${f0(minutes)} min" else "No workout")
 
         val kb = m.any { (k, v) -> v > 0 && k.startsWith("kb.") && (k.endsWith(".sets") || k.endsWith(".done")) }
-        lines += Line("kettlebell", "Kettlebell", "STR", if (kb) 75 else 0, 75, if (kb) "Session logged" else "No session")
+        lines += Line("kettlebell", profile.training.ifBlank { "Training" }, "STR", if (kb) 75 else 0, 75, if (kb) "Session logged" else "No session")
 
-        val catch = m["football.max_catch_yards"]
-        lines += Line("catch", "Catch drill", "STR", if (truthy(catch)) 50 else 0, 50,
-            if (truthy(catch)) "${f0(catch!!)} yd" else "No drill")
+        // Something to improve (Kevin's catch drill): 50 XP on a day a best is logged.
+        val goal = profile.goal
+        val isCatch = goal == null || goal.metric == Profile.CATCH_METRIC
+        val best = m[goal?.metric ?: Profile.CATCH_METRIC]
+        lines += Line("catch", if (isCatch) "Catch drill" else goal!!.name, "STR", if (truthy(best)) 50 else 0, 50,
+            when {
+                truthy(best) -> "${f0(best!!)} ${goal?.unit ?: "yd"}".trimEnd()
+                isCatch -> "No drill"
+                else -> "Nothing logged yet"
+            })
 
         // INT: study and GitHub. Study is 25 XP per 30 minutes, up to 2 hours.
         val study = m["study.minutes"] ?: 0.0
@@ -156,7 +167,11 @@ object Game {
         return lines
     }
 
-    val DAILY_MAX: Int = scoreDay(emptyMap(), Ctx()).sumOf { it.max }
+    /** The whole day's max with everything on. Each stat's level curve is scaled against it, whatever is switched off. */
+    val DAILY_MAX: Int = allLines(emptyMap(), Ctx()).sumOf { it.max }
+
+    /** The day's max for what this person tracks. */
+    fun dailyMax(profile: Profile): Int = scoreDay(emptyMap(), Ctx(), profile).sumOf { it.max }
 
     const val WELL_RESTED_MINUTES = 450.0
     const val WELL_RESTED_BONUS = 0.10
@@ -173,8 +188,8 @@ object Game {
             score, mod, lv.levelXp, lv.levelCost, lv.xpToNext)
     }
 
-    private fun sheets(statXp: Map<String, Double>): List<StatSheet> =
-        scoreDay(emptyMap(), Ctx()).map { statSheet(it.key, it.label, it.stat, statXp[it.key] ?: 0.0, it.max) }
+    private fun sheets(statXp: Map<String, Double>, profile: Profile = Profile.KEVIN): List<StatSheet> =
+        allLines(emptyMap(), Ctx(), profile).map { statSheet(it.key, it.label, it.stat, statXp[it.key] ?: 0.0, it.max) }
 
     private val POWER_ORDER = compareBy<Pair<Int, Int>>({ it.first }, { it.second })
 
@@ -261,7 +276,7 @@ object Game {
         val characterClass: CharacterClass, val title: String?, val todayXp: Int, val dailyMax: Int,
         val buffs: List<Buff>, val lines: List<Line>, val avgDailyXp14d: Int?, val daysToMaxLevel: Int?,
         val streaks: List<Streak>, val vitals: List<Vitals.BarState>, val stats: List<StatSheet>,
-        val groups: List<GroupSheet>, val history: List<HistoryDay>,
+        val groups: List<GroupSheet>, val history: List<HistoryDay>, val profile: Profile = Profile.KEVIN,
     )
 
     private fun avg(values: List<Double>): Double? = if (values.isEmpty()) null else values.sum() / values.size
@@ -270,12 +285,15 @@ object Game {
      * Scores every day from [gameStart] to [day]. [days] maps a date to that day's metrics (from [DayMetrics.build]).
      */
     fun build(
-        days: Map<LocalDate, Map<String, Double>>, day: LocalDate, gameStart: LocalDate = DEFAULT_GAME_START,
+        allDays: Map<LocalDate, Map<String, Double>>, day: LocalDate, gameStart: LocalDate = DEFAULT_GAME_START,
         now: LocalDateTime = LocalDateTime.now(),
+        // What this person tracks: switched-off activities are left out of the XP and the vitals.
+        profile: Profile = Profile.KEVIN,
         // Test B hooks: an extra XP buff for a day, and a different vitals engine. The defaults are the live rules.
         extraBuff: ((LocalDate, List<Line>) -> Buff?)? = null,
         vitalsRun: (List<Vitals.DayInput>, Double) -> List<Vitals.BarState> = Vitals::run,
     ): State {
+        val days = profile.stripDays(allDays)
         val lookback = gameStart.minusDays(30)
         val sortedDates = days.keys.sorted()
 
@@ -298,7 +316,7 @@ object Game {
             val m = days[d] ?: emptyMap()
             val youtube = m["screen.youtube_minutes"] ?: 0.0
             if (d >= gameStart) {
-                val power = groupPower(sheets(statXp))
+                val power = groupPower(sheets(statXp, profile))
                 for ((gt, on) in logged) {
                     if (on == d && gt !in claims && power.getValue(gt.first).first >= Perks.TIERS.getValue(gt.second).second) {
                         claims[gt] = d
@@ -312,12 +330,12 @@ object Game {
                     rhrBase = avg(rhrSeen.takeLast(30)), hrvBase = avg(hrvSeen.takeLast(30)),
                     youtube = youtube,
                 )
-                val lines = scoreDay(m, ctx)
+                val lines = scoreDay(m, ctx, profile)
                 vitalDays += Vitals.DayInput(d, m, youtube)
                 val byKey = lines.associateBy { it.key }
                 if (("per" to 1) in active) {
-                    byKey.getValue("social").xp = maxOf(0, byKey.getValue("social").xp)
-                    byKey.getValue("youtube").xp = byKey.getValue("youtube").max
+                    byKey["social"]?.let { it.xp = maxOf(0, it.xp) }
+                    byKey["youtube"]?.let { it.xp = it.max }
                     buffs += Buff("Unrestricted Media Pass", "Social media and YouTube can't cost XP today", 0)
                 }
 
@@ -361,7 +379,7 @@ object Game {
 
         val total = history.sumOf { it.xp }
         val vitalBars = vitalsRun(vitalDays, todayElapsed(day, now))
-        val stats = sheets(statXp)
+        val stats = sheets(statXp, profile)
         val groups = groupSheets(stats, claims.mapValues { it.value.toString() })
         val top = groups.maxWithOrNull(compareBy<GroupSheet>({ it.tier }, { it.level }))!!
         val recent = avg(history.takeLast(14).map { it.xp.toDouble() })
@@ -374,10 +392,10 @@ object Game {
         return State(
             date = day, level = levelFor(total.toDouble()), totalXp = total, dayNumber = history.size,
             characterClass = characterClass(stats), title = top.title,
-            todayXp = history.lastOrNull()?.xp ?: 0, dailyMax = DAILY_MAX, buffs = todayBuffs, lines = todayLines,
+            todayXp = history.lastOrNull()?.xp ?: 0, dailyMax = dailyMax(profile), buffs = todayBuffs, lines = todayLines,
             avgDailyXp14d = recent?.let { pyRound(it) }, daysToMaxLevel = daysLeft,
             streaks = streaks(history), vitals = vitalBars, stats = stats, groups = groups,
-            history = history.takeLast(30),
+            history = history.takeLast(30), profile = profile,
         )
     }
 }

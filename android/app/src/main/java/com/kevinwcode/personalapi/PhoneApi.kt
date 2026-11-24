@@ -7,7 +7,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 /**
- * Answers the dashboard page's requests (GET /days, /game, /game-b, /meals, /trading, /status, /food/presets, POST /log, POST /meals and
+ * Answers the dashboard page's requests (GET /days, /game, /game-b, /meals, /trading, /status, /profile, /food/presets, POST /log, POST /meals and
  * DELETE /meals/<id>) from the phone's own data, in the same shapes as the PC server, so the page runs unchanged
  * inside the app. Kept apart from Android so it can be unit tested.
  */
@@ -28,6 +28,8 @@ class PhoneApi(private val data: Data, private val today: () -> LocalDate = Loca
         fun gameStart(): LocalDate = Game.DEFAULT_GAME_START
         /** Saved Alpaca fills and positions. */
         fun trading(): Trading = Trading.EMPTY
+        /** What this person does and tracks (setup screen). */
+        fun profile(): Profile = Profile.KEVIN
     }
 
     class Answer(val status: Int, val body: JSONObject)
@@ -51,12 +53,12 @@ class PhoneApi(private val data: Data, private val today: () -> LocalDate = Loca
             }
             method == "GET" && path == "/game" -> {
                 val day = date("date") ?: today()
-                Answer(200, GameJson.toJson(Game.build(data.days(), day, gameStart = data.gameStart(), now = now())))
+                Answer(200, GameJson.toJson(Game.build(data.days(), day, gameStart = data.gameStart(), now = now(), profile = data.profile())))
             }
             // Test B: the same character with the trial vitals rules (TestB.kt), for the Test B tab.
             method == "GET" && path == "/game-b" -> {
                 val day = date("date") ?: today()
-                TestB.buildWithCondition(data.days(), day, gameStart = data.gameStart(), now = now()).let { (g, c) -> Answer(200, TestB.toJson(g, c)) }
+                TestB.buildWithCondition(data.days(), day, gameStart = data.gameStart(), now = now(), profile = data.profile()).let { (g, c) -> Answer(200, TestB.toJson(g, c)) }
             }
             method == "GET" && path == "/summary" -> Answer(200, JSONObject().put("date", (date("date") ?: today()).toString()))
             method == "GET" && path == "/trading" -> Answer(200, tradingJson(data.days(), today(), data.trading()))
@@ -76,6 +78,7 @@ class PhoneApi(private val data: Data, private val today: () -> LocalDate = Loca
                 val id = URLDecoder.decode(path.removePrefix("/meals/"), "UTF-8")
                 if (data.removeMeal(id)) Answer(200, JSONObject().put("ok", true)) else error(404, "no such meal")
             }
+            method == "GET" && path == "/profile" -> Answer(200, data.profile().toJson())
             method == "GET" && path == "/food/presets" -> Answer(200, JSONObject().put("presets", presetsJson()))
             method == "GET" && path == "/health" -> Answer(200, JSONObject().put("ok", true))
             else -> error(404, "Not Found")

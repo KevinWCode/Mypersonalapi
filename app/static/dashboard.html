@@ -559,20 +559,20 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     <h2>Steps</h2>
     <div id="ch-steps"></div>
   </div>
-  <div class="card">
+  <div class="card" id="commits-card">
     <h2>GitHub commits</h2>
     <div id="ch-commits"></div>
   </div>
 </section>
 
 <section aria-label="Training" class="grid two" data-tab="today">
-  <div class="card">
+  <div class="card" id="kb-card">
     <div class="card-head">
-      <h2>Kettlebell this week</h2>
+      <h2 id="kb-title">Kettlebell this week</h2>
       <span class="note" id="kb-week"></span>
     </div>
     <div class="scroll"><table class="kb" id="kb"></table></div>
-    <p class="note">Ticks come from Workout done, a tap on the next box, or sets logged in the phone app.</p>
+    <p class="note">Ticks come from Workout done, a tap on the next box, or sets logged in the app's settings.</p>
   </div>
   <div class="card">
     <div class="card-head">
@@ -621,10 +621,10 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   </div>
 </section>
 
-<div class="card" data-tab="today">
+<div class="card" data-tab="today" id="catch-card">
   <div class="card-head">
-    <h2>Max reliable catch, every 3 weeks</h2>
-    <span class="note">Goal: 20 yds</span>
+    <h2 id="catch-title">Max reliable catch, every 3 weeks</h2>
+    <span class="note" id="catch-goal">Goal: 20 yd</span>
   </div>
   <div id="ch-catch"></div>
 </div>
@@ -675,7 +675,6 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   var GOALS = { kcal: 2000, protein_g: 150, water_l: 3.0, caffeine_mg: 400 };
   var CAFFEINE_PER_CUP = 95;
   var MEALS = ['breakfast', 'lunch', 'dinner', 'snack'];
-  var KB_MOVES = [['swing', 'Swing'], ['clean', 'Clean'], ['clean_press', 'Clean & press'], ['ballistic_row', 'Ballistic row']];
   var RANGES = {
     7: { eyebrow: 'Last 7 days', title: 'Freedom gained this week', period: 'This week', prev: 'Last week', vs: 'vs last week', prevs: "last week's", unit: 'week' },
     30: { eyebrow: 'Last 30 days', title: 'Freedom gained this month', period: 'Last 30 days', prev: '30 days before', vs: 'vs the 30 days before', prevs: "the previous 30 days'", unit: '30 days' },
@@ -687,6 +686,31 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   var WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   var state = { view: 'today', range: 7, byDate: {}, trading: null, status: null, today: new Date(), token: '', meals: [] };
+  // What this person does and tracks, from the app's setup screen (GET /profile). The PC server has no /profile,
+  // so there it stays as before: kettlebell, everything on.
+  var PROFILE = { training: 'Kettlebell', sessions: ['Monday', 'Tuesday', 'Friday'],
+    tracked: [{ key: 'swing', name: 'Swing' }, { key: 'clean', name: 'Clean' }, { key: 'clean_press', name: 'Clean & press' }],
+    goal: { name: 'Longest reliable catch', unit: 'yd', target: 20, metric: 'football.max_catch_yards' }, off: [] };
+  function tracks(item) { return PROFILE.off.indexOf(item) < 0; }
+  function applyProfile() {
+    $('commits-card').hidden = !tracks('github');
+    $('catch-card').hidden = !PROFILE.goal;
+    $('kb-card').hidden = !PROFILE.training;
+    $('kb-title').textContent = PROFILE.training + ' this week';
+    if (PROFILE.goal) {
+      $('catch-title').textContent = (PROFILE.goal.metric === 'football.max_catch_yards' ? 'Max reliable catch' : PROFILE.goal.name) + ', every 3 weeks';
+      $('catch-goal').textContent = PROFILE.goal.target ? 'Goal: ' + PROFILE.goal.target + (PROFILE.goal.unit ? ' ' + PROFILE.goal.unit : '') : '';
+    }
+    var money = document.querySelector('#tabs button[data-view="money"]');
+    if (money) money.hidden = !tracks('money');
+    if (!tracks('money') && state.view === 'money') setView('today');
+  }
+  function loadProfile() {
+    return getJSON('/profile').then(function (p) {
+      if (p && p.sessions) PROFILE = { training: p.training || '', sessions: p.sessions, tracked: p.tracked || [], goal: p.goal || null, off: p.off || [] };
+      if (p && p.kcal_target) GOALS.kcal = p.kcal_target;
+    }, function () {}).then(applyProfile);
+  }
 
   // ---- small helpers ----
   function $(id) { return document.getElementById(id); }
@@ -1061,17 +1085,19 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     var today = iso(state.today), sun = addDays(state.today, -state.today.getDay()), sat = addDays(sun, 6);
     $('kb-week').textContent = longDay(sun) + ' – ' + longDay(sat) + ' · resets Sunday';
     var week = thisWeek();
-    var rows = KB_MOVES.map(function (mv) {
-      var sessions = week.filter(function (day) { return moveDone(day, mv[0]); }).length;
+    // Rows are the person's exercises and columns their sessions, from Your activities. Boxes fill in order.
+    var names = PROFILE.sessions, n = names.length;
+    var rows = PROFILE.tracked.map(function (mv) {
+      var sessions = week.filter(function (day) { return moveDone(day, mv.key); }).length;
       // The next open box ticks today; today's own tick (if made here) can be tapped again to undo it.
-      var tap = !moveDone(today, mv[0]) ? sessions : (ticked(today, mv[0]) && !setsLogged(today, mv[0]) ? sessions - 1 : -1);
-      return { key: mv[0], name: mv[1], sessions: sessions, tap: tap, always: mv[0] !== 'ballistic_row' };
-    }).filter(function (r) { return r.always || r.sessions > 0; });
-    var head = el('thead', null, el('tr', null, el('th', { scope: 'col' }, 'Move'), [1, 2, 3].map(function (i) { return el('th', { scope: 'col', class: 'c' }, 'Session ' + i); })));
+      var tap = !moveDone(today, mv.key) ? sessions : (ticked(today, mv.key) && !setsLogged(today, mv.key) ? sessions - 1 : -1);
+      return { key: mv.key, name: mv.name, sessions: sessions, tap: tap };
+    });
+    var head = el('thead', null, el('tr', null, el('th', { scope: 'col' }, 'Exercise'), names.map(function (nm) { return el('th', { scope: 'col', class: 'c' }, nm); })));
     var body = el('tbody', null, rows.map(function (r) {
-      return el('tr', null, el('th', { scope: 'row', style: 'font-weight:600;text-align:left' }, r.name, r.sessions > 3 ? el('span', { class: 'note' }, ' +' + (r.sessions - 3) + ' extra') : null),
-        [0, 1, 2].map(function (i) {
-          var done = i < r.sessions, label = r.name + ' session ' + (i + 1) + (done ? ': done' : ': not yet');
+      return el('tr', null, el('th', { scope: 'row', style: 'font-weight:600;text-align:left' }, r.name, r.sessions > n ? el('span', { class: 'note' }, ' +' + (r.sessions - n) + ' extra') : null),
+        names.map(function (nm, i) {
+          var done = i < r.sessions, label = r.name + ', ' + nm + (done ? ': done' : ': not yet');
           var box = el('span', { class: 'tick' + (done ? ' done' : '') }, done ? checkIcon() : null);
           if (i !== r.tap) {
             box.setAttribute('role', 'img'); box.setAttribute('aria-label', label);
@@ -1252,21 +1278,23 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   }
 
   function renderQuick() {
-    var today = iso(state.today), main = KB_MOVES.slice(0, 3).map(function (mv) { return mv[0]; });
-    var allTicked = main.every(function (mv) { return ticked(today, mv); });
-    var fewest = Math.min.apply(null, main.map(function (mv) { return thisWeek().filter(function (d) { return moveDone(d, mv); }).length; }));
-    var cups = tv('coffee.cups'), read = tv('reading.minutes') / 60;
+    var today = iso(state.today), main = PROFILE.tracked.map(function (mv) { return mv.key; });
+    var allTicked = main.length > 0 && main.every(function (mv) { return ticked(today, mv); });
+    var fewest = main.length ? Math.min.apply(null, main.map(function (mv) { return thisWeek().filter(function (d) { return moveDone(d, mv); }).length; })) : 0;
+    var cups = tv('coffee.cups'), read = tv('reading.minutes') / 60, n = PROFILE.sessions.length;
+    var moveNames = PROFILE.tracked.map(function (mv) { return mv.name; });
+    var workout = { item: 'training', label: 'Workout done', icon: ICONS.workout, pressed: allTicked,
+        sub: allTicked ? 'Done today · tap to undo' : fewest >= n ? 'All ' + n + ' done this week' : fewest + ' of ' + n + ' this week',
+        tap: function () {
+          send(main.map(function (mv) { return { metric: 'kb.' + mv + '.done', value: allTicked ? 0 : 1, unit: 'count', mode: 'set' }; }),
+            allTicked ? "Removed today's workout" : 'Ticked ' + (moveNames.length > 1 ? moveNames.slice(0, -1).join(', ') + ' and ' + moveNames.slice(-1) : moveNames[0]) + ' for today');
+        } };
     var buttons = [
       { label: '+250 ml water', icon: ICONS.water, sub: litres(tv('water.ml')) + ' today',
         tap: function () { send([{ metric: 'water.ml', value: 250, unit: 'ml' }], 'Added 250 ml water'); } },
       { label: '+1 hour reading', icon: ICONS.reading, sub: +read.toFixed(1) + (read === 1 ? ' hour' : ' hours') + ' today',
         tap: function () { send([{ metric: 'reading.minutes', value: 60, unit: 'minutes' }], 'Added 1 hour of reading'); } },
-      { label: 'Workout done', icon: ICONS.workout, pressed: allTicked,
-        sub: allTicked ? 'Done today · tap to undo' : fewest >= 3 ? 'All 3 done this week' : fewest + ' of 3 this week',
-        tap: function () {
-          send(main.map(function (mv) { return { metric: 'kb.' + mv + '.done', value: allTicked ? 0 : 1, unit: 'count', mode: 'set' }; }),
-            allTicked ? "Removed today's workout" : 'Ticked Swing, Clean and Clean & press for today');
-        } },
+      workout,
       { label: 'Journal entry', icon: ICONS.journal, pressed: tv('journal.entries') > 0,
         sub: tv('journal.entries') ? tv('journal.entries') + (tv('journal.entries') === 1 ? ' entry' : ' entries') + ' today' : 'None yet today',
         tap: function () { send([{ metric: 'journal.entries', value: 1, unit: 'count' }], 'Journal entry logged · Mana and Focus up'); } },
@@ -1275,6 +1303,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
       { label: '+30 min study', icon: ICONS.study, sub: Math.round(tv('study.minutes')) + ' min today',
         tap: function () { send([{ metric: 'study.minutes', value: 30, unit: 'minutes' }], 'Added 30 min of study'); } }
     ];
+    buttons = buttons.filter(function (q) { return q.item !== 'training' || main.length > 0; });
     $('quick').replaceChildren.apply($('quick'), buttons.map(function (q) {
       var b = el('button', { type: 'button', class: 'qbtn', 'aria-pressed': q.pressed ? 'true' : 'false' },
         icon(q.icon), el('span', { class: 'l' }, q.label), el('span', { class: 's' }, q.sub));
@@ -1979,18 +2008,20 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
 
 
   function renderCatch() {
-    var blocks = [];
+    var goal = PROFILE.goal;
+    if (!goal) return;
+    var unit = goal.unit ? ' ' + goal.unit : '', blocks = [];
     for (var k = 4; k >= 0; k--) {
       var end = addDays(state.today, -21 * k), start = addDays(end, -20), days = [];
       for (var d = start; d <= end; d = addDays(d, 1)) days.push(iso(d));
-      var best = values(days, function (day) { var v = m(day, 'football.max_catch_yards'); return v > 0 ? v : null; });
+      var best = values(days, function (day) { var v = m(day, goal.metric); return v > 0 ? v : null; });
       var v = best.length ? Math.max.apply(null, best) : null;
       blocks.push({ label: md(start) + '\n– ' + md(end), title: md(start) + ' – ' + md(end), values: v === null ? null : [v],
-        rows: v === null ? [] : [{ text: v + ' yd', name: 'best catch' }] });
+        rows: v === null ? [] : [{ text: v + unit, name: 'best' }] });
     }
-    barChart($('ch-catch'), { series: [{ name: 'Best catch', color: COLOR.accent }], points: blocks, height: 160, xName: '3 weeks',
-      goal: { value: 20, label: '20 yd goal' }, fmt: function (v) { return v + ' yd'; },
-      note: blocks.some(function (b) { return b.values; }) ? null : 'No catches logged yet. Log your max reliable catch in the phone app settings.' });
+    barChart($('ch-catch'), { series: [{ name: 'Best', color: COLOR.accent }], points: blocks, height: 160, xName: '3 weeks',
+      goal: goal.target ? { value: goal.target, label: goal.target + unit + ' goal' } : null, fmt: function (v) { return v + unit; },
+      note: blocks.some(function (b) { return b.values; }) ? null : 'Nothing logged yet. Log your best in the app\'s settings.' });
   }
 
   function renderSync() {
@@ -2101,7 +2132,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   });
   $('app-settings').addEventListener('click', function () { window.PhoneApp.openSettings(); });
   // The app calls this after a sync and when it comes back from its settings screen.
-  window.dashboardReload = function () { load(); };
+  window.dashboardReload = function () { loadProfile().then(load); };
   $('info-btn').addEventListener('click', function () { setView(state.view === 'info' ? (store('view') || 'today') : 'info'); });
   var savedView = store('view');
   // Rework app: the old Character tab is gone and Test B is shown as Character, so a saved 'char' opens it.
@@ -2110,7 +2141,7 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
   if (savedView === 'money' || savedView === 'testb' || savedView === 'quests') setView(savedView);
   var saved = +store('range');
   if (RANGES[saved]) state.range = saved;
-  load();
+  loadProfile().then(load);
   loadPresets();
   function tick() {
     if (document.hidden) return;
