@@ -66,6 +66,8 @@ object Game {
 
     data class Ctx(
         val rhrBase: Double? = null, val hrvBase: Double? = null, val youtube: Double = 0.0,
+        /** Social media minutes to stay under for XP; over twice this costs 50. See [Profile.socialTarget]. */
+        val socialTarget: Double = Profile.SOCIAL_DEFAULT_TARGET,
     )
 
     private fun truthy(v: Double?) = v != null && v != 0.0
@@ -161,9 +163,10 @@ object Game {
             if (synced) "${f0(yt)} min (limit 60)" else "Phone not synced")
 
         val social = m["screen.social_media_minutes"] ?: 0.0
-        xp = if (!synced) 0 else if (social < 30) 100 else if (social > 60) -50 else 0
+        val target = ctx.socialTarget
+        xp = if (!synced) 0 else if (social < target) 100 else if (social > 2 * target) -50 else 0
         lines += Line("social", "Social media", "PER", xp, 100,
-            if (synced) "${f0(social)} min (under 30 earns XP, over 60 costs 50)" else "Phone not synced")
+            if (synced) "${f0(social)} min (under ${f0(target)} earns XP, over ${f0(2 * target)} costs 50)" else "Phone not synced")
         return lines
     }
 
@@ -328,7 +331,7 @@ object Game {
 
                 val ctx = Ctx(
                     rhrBase = avg(rhrSeen.takeLast(30)), hrvBase = avg(hrvSeen.takeLast(30)),
-                    youtube = youtube,
+                    youtube = youtube, socialTarget = profile.socialTarget(days, d),
                 )
                 val lines = scoreDay(m, ctx, profile)
                 vitalDays += Vitals.DayInput(d, m, youtube)
@@ -349,6 +352,14 @@ object Game {
                         if (passUsed != null && !rested) "$passUsed: +10% XP today" else "7.5 h+ sleep: +10% XP today", bonus)
                 }
                 var xp = base + bonus
+                // A chosen social media cut: stay under that lower target for a matching XP bonus.
+                val cut = profile.socialCut ?: 0
+                val social = m["screen.social_media_minutes"] ?: 0.0
+                if (cut > 0 && "screen.total_minutes" in m && social < ctx.socialTarget) {
+                    val extra = pyRound(base * cut / 100.0)
+                    buffs += Buff("Clear Mind", "Social media under your target (${f0(ctx.socialTarget)} min, $cut% cut): +$cut% XP", extra)
+                    xp += extra
+                }
                 extraBuff?.invoke(d, lines)?.let {
                     buffs += it
                     xp += it.xp
@@ -362,7 +373,7 @@ object Game {
                 }
                 val synced = "screen.total_minutes" in m
                 history += HistoryDay(d, xp, bonus != 0,
-                    synced && (m["screen.social_media_minutes"] ?: 0.0) < 30, (m["github.commits"] ?: 0.0) > 0)
+                    synced && (m["screen.social_media_minutes"] ?: 0.0) < ctx.socialTarget, (m["github.commits"] ?: 0.0) > 0)
                 for (line in lines) {
                     // A stat's XP never drops below 0, so a bad social media day can't undo levels.
                     statXp[line.key] = maxOf(0.0, (statXp[line.key] ?: 0.0) + line.xp)
@@ -394,7 +405,9 @@ object Game {
             characterClass = characterClass(stats), title = top.title,
             todayXp = history.lastOrNull()?.xp ?: 0, dailyMax = dailyMax(profile), buffs = todayBuffs, lines = todayLines,
             avgDailyXp14d = recent?.let { pyRound(it) }, daysToMaxLevel = daysLeft,
-            streaks = streaks(history), vitals = vitalBars, stats = stats, groups = groups,
+            streaks = streaks(history).map {
+                if (it.key == "social_ok" && profile.socialCut != null) it.copy(label = "social under target") else it
+            }, vitals = vitalBars, stats = stats, groups = groups,
             history = history.takeLast(30), profile = profile,
         )
     }

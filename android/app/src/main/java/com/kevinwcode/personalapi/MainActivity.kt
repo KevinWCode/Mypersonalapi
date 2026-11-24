@@ -12,6 +12,8 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
@@ -253,8 +255,34 @@ class MainActivity : AppCompatActivity() {
             text = "Workouts from your watch count either way. Workout done on Daily quests ticks all your exercises for today."
         })
 
-        subheading("Calorie target")
+        subheading("Daily targets")
+        root.addView(TextView(this).apply { text = "Calories (kcal), protein (g) and water (litres) a day." })
         val kcal = field("Calories a day, e.g. 2000", p.kcalTarget.toInt().toString(), number = true)
+        val protein = field("Protein a day in grams, e.g. 150", p.proteinTarget.toInt().toString(), number = true)
+        val water = field("Water a day in litres, e.g. 3", p.waterTarget.let { if (it % 1 == 0.0) it.toInt().toString() else it.toString() }, number = true)
+
+        subheading("Social media target")
+        root.addView(TextView(this).apply {
+            text = "Your target is your daily average over the last 90 days, worked out each Monday. Stay under it for " +
+                "100 XP. Pick a cut to aim lower: the same % comes back as bonus XP on days you make it. Small cuts add up, " +
+                "because next week's target follows your new average."
+        })
+        val cutChoices = listOfNotNull(
+            if (p.socialCut == null) null to "Fixed 30 minutes (the old rule)" else null,
+            0 to "Contain: don't go up",
+            5 to "Trim 5% (+5% XP on days under it)",
+            10 to "Cut 10% (+10% XP on days under it)",
+            15 to "Cut 15% (+15% XP on days under it)",
+        )
+        val cutGroup = RadioGroup(this).also { root.addView(it) }
+        cutChoices.forEach { (cut, label) ->
+            cutGroup.addView(RadioButton(this).apply {
+                id = View.generateViewId()
+                tag = cut ?: -1
+                text = label
+                isChecked = p.socialCut == cut
+            })
+        }
 
         subheading("Something you'd like to improve")
         root.addView(TextView(this).apply { text = "For example: ${Profile.GOAL_EXAMPLES}. Log your best each time, higher is better." })
@@ -272,6 +300,10 @@ class MainActivity : AppCompatActivity() {
         button("Save my activities") {
             val kcalTarget = kcal.text.toString().toDoubleOrNull()
             if (kcalTarget == null || kcalTarget < 800 || kcalTarget > 6000) return@button toast("Enter a calorie target from 800 to 6000")
+            val proteinTarget = protein.text.toString().toDoubleOrNull()
+            if (proteinTarget == null || proteinTarget < 20 || proteinTarget > 400) return@button toast("Enter a protein target from 20 to 400 g")
+            val waterTarget = water.text.toString().toDoubleOrNull()
+            if (waterTarget == null || waterTarget < 0.5 || waterTarget > 8) return@button toast("Enter a water target from 0.5 to 8 litres")
             val name = goalName.text.toString().trim()
             val goal = if (name.isEmpty()) null else Profile.Goal(
                 name, goalUnit.text.toString().trim(), goalTarget.text.toString().toDoubleOrNull(),
@@ -284,6 +316,10 @@ class MainActivity : AppCompatActivity() {
                 goal = goal,
                 off = boxes.filter { !it.second.isChecked }.map { it.first }.toSet(),
                 kcalTarget = kcalTarget,
+                proteinTarget = proteinTarget,
+                waterTarget = waterTarget,
+                socialCut = (cutGroup.findViewById<RadioButton>(cutGroup.checkedRadioButtonId)?.tag as? Int)
+                    ?.takeIf { it >= 0 } ?: p.socialCut.takeIf { cutGroup.checkedRadioButtonId == -1 },
             ).withExerciseNames(Profile.splitList(exercises.text.toString()))
             toast("Saved your activities")
             recreate()

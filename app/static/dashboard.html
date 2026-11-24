@@ -709,6 +709,8 @@ input[type="password"], textarea { flex: 1 1 220px; min-height: 44px; border: 1p
     return getJSON('/profile').then(function (p) {
       if (p && p.sessions) PROFILE = { training: p.training || '', sessions: p.sessions, tracked: p.tracked || [], goal: p.goal || null, off: p.off || [] };
       if (p && p.kcal_target) GOALS.kcal = p.kcal_target;
+      if (p && p.protein_target) GOALS.protein_g = p.protein_target;
+      if (p && p.water_target) GOALS.water_l = p.water_target;
     }, function () {}).then(applyProfile);
   }
 

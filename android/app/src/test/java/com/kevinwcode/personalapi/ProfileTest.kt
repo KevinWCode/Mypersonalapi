@@ -115,4 +115,59 @@ class ProfileTest {
         assertEquals(2500.0, Profile.decode(Profile.KEVIN.copy(kcalTarget = 2500.0).encode())!!.kcalTarget, 0.0)
         assertEquals(2000.0, Profile.decode("{}")!!.kcalTarget, 0.0)
     }
+
+    @Test
+    fun proteinAndWaterTargets() {
+        val m = mapOf("food.protein_g" to 120.0)
+        fun hp(p: Profile) = TestB.build(mapOf(day to m), day, day, evening, p).vitals.first { it.key == "hp" }.today
+        assertFalse(hp(Profile.KEVIN).any { it.label.startsWith("Protein") })
+        val lower = Profile.KEVIN.copy(proteinTarget = 130.0)
+        assertTrue(hp(lower).any { it.label == "Protein 117 g+" })
+        assertTrue(hp(Profile.KEVIN.copy(proteinTarget = 150.0)).none { it.label.startsWith("Protein") })
+        val kevin135 = TestB.build(mapOf(day to mapOf("food.protein_g" to 135.0)), day, day, evening, Profile.KEVIN).vitals.first { it.key == "hp" }.today
+        assertTrue(kevin135.any { it.label == "Protein 135 g+" })
+        val back = Profile.decode(Profile.KEVIN.copy(proteinTarget = 120.0, waterTarget = 2.5).encode())!!
+        assertEquals(120.0, back.proteinTarget, 0.0)
+        assertEquals(2.5, back.waterTarget, 0.0)
+        assertEquals(150.0, Profile.decode("{}")!!.proteinTarget, 0.0)
+    }
+
+    private fun socialDays(minutes: Double, from: LocalDate, count: Int) =
+        (0 until count).associate { from.plusDays(it.toLong()) to mapOf("screen.total_minutes" to 200.0, "screen.social_media_minutes" to minutes) }
+
+    @Test
+    fun socialTargetFollowsTheLast90Days() {
+        // Tuesday 24 Nov: the week starts Monday 23 Nov, so the window is the 90 days before it.
+        val days = socialDays(60.0, day.minusDays(40), 39)
+        assertEquals(30.0, Profile.KEVIN.socialTarget(days, day), 0.0)
+        assertEquals(60.0, Profile.KEVIN.copy(socialCut = 0).socialTarget(days, day), 0.0)
+        assertEquals(57.0, Profile.KEVIN.copy(socialCut = 5).socialTarget(days, day), 0.0)
+        assertEquals(51.0, Profile.KEVIN.copy(socialCut = 15).socialTarget(days, day), 0.0)
+        // Fewer than 7 days of data: 30 minutes. Never under 15.
+        assertEquals(30.0, Profile.KEVIN.copy(socialCut = 10).socialTarget(socialDays(60.0, day.minusDays(5), 4), day), 0.0)
+        assertEquals(15.0, Profile.KEVIN.copy(socialCut = 15).socialTarget(socialDays(5.0, day.minusDays(30), 29), day), 0.0)
+        // The same all week: today's own minutes don't move it.
+        val withToday = days + (day to mapOf("screen.total_minutes" to 300.0, "screen.social_media_minutes" to 200.0))
+        assertEquals(60.0, Profile.KEVIN.copy(socialCut = 0).socialTarget(withToday, day), 0.0)
+    }
+
+    @Test
+    fun underTheCutTargetEarnsTheBonus() {
+        val days = socialDays(60.0, day.minusDays(40), 39) +
+            (day to mapOf("screen.total_minutes" to 200.0, "screen.social_media_minutes" to 50.0, "health.steps" to 10000.0))
+        val p = Profile.KEVIN.copy(socialCut = 10)
+        val g = Game.build(days, day, day, evening, p)
+        val social = g.lines.first { it.key == "social" }
+        assertEquals(100, social.xp)
+        assertEquals("50 min (under 54 earns XP, over 108 costs 50)", social.detail)
+        val buff = g.buffs.first { it.name == "Clear Mind" }
+        val base = g.lines.sumOf { it.xp }
+        assertEquals(Game.pyRound(base * 0.10), buff.xp)
+        assertEquals("social under target", g.streaks.first { it.key == "social_ok" }.label)
+        // Hold: the XP line, no bonus. Kevin's fixed rule: 50 min is over 30, no XP.
+        assertTrue(Game.build(days, day, day, evening, Profile.KEVIN.copy(socialCut = 0)).buffs.none { it.name == "Clear Mind" })
+        assertEquals(0, Game.build(days, day, day, evening, Profile.KEVIN).lines.first { it.key == "social" }.xp)
+        assertEquals(10, Profile.decode(p.encode())!!.socialCut)
+        assertNull(Profile.decode(Profile.KEVIN.encode())!!.socialCut)
+    }
 }

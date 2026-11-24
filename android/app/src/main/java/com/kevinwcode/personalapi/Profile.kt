@@ -25,6 +25,15 @@ data class Profile(
     val off: Set<String> = emptySet(),
     /** Daily calorie target: the Fuel card's goal, and (+150) the most the HP calorie rule allows. */
     val kcalTarget: Double = DEFAULT_KCAL,
+    /** Daily protein target in grams: the Fuel card goal, and (x 0.9) what the HP protein rule needs. */
+    val proteinTarget: Double = DEFAULT_PROTEIN,
+    /** Daily water target in litres, for the Fuel card. */
+    val waterTarget: Double = DEFAULT_WATER,
+    /**
+     * Social media target: null = the fixed 30 minutes (Kevin's rule until he picks); 0 = contain at your 90-day
+     * average; 5, 10 or 15 = that % under it, for the same % XP bonus on days you stay under it.
+     */
+    val socialCut: Int? = null,
 ) {
     /** One exercise of the training. [key] names its metrics (kb.<key>.done, kb.<key>.sets), so it never changes. */
     data class Exercise(val key: String, val name: String)
@@ -69,8 +78,25 @@ data class Profile(
         } ?: JSONObject.NULL)
         .put("off", JSONArray(off.sorted()))
         .put("kcal_target", kcalTarget)
+        .put("protein_target", proteinTarget)
+        .put("water_target", waterTarget)
+        .put("social_cut", socialCut ?: JSONObject.NULL)
 
     fun encode(): String = toJson().toString()
+
+    /**
+     * The social media minutes to stay under on [day]. Worked out from the 90 days before that week's Monday, so it
+     * stays the same all week: the average of the days the phone recorded, less the chosen cut, never under 15
+     * minutes. With fewer than 7 recorded days (or no choice made) it is 30 minutes.
+     */
+    fun socialTarget(days: Map<LocalDate, Map<String, Double>>, day: LocalDate): Double {
+        val cut = socialCut ?: return SOCIAL_DEFAULT_TARGET
+        val monday = day.minusDays(day.dayOfWeek.value - 1L)
+        val seen = (1..SOCIAL_LOOKBACK_DAYS).mapNotNull { days[monday.minusDays(it.toLong())] }
+            .filter { "screen.total_minutes" in it }.map { it["screen.social_media_minutes"] ?: 0.0 }
+        if (seen.size < SOCIAL_MIN_DAYS) return SOCIAL_DEFAULT_TARGET
+        return maxOf(SOCIAL_MIN_TARGET, Math.rint(seen.average() * (100 - cut) / 100.0))
+    }
 
     /**
      * New exercise names typed in Settings, keeping the key of any exercise that keeps its name (so its history stays)
@@ -91,7 +117,16 @@ data class Profile(
     }
 
     companion object {
+        const val SOCIAL_DEFAULT_TARGET = 30.0
+        const val SOCIAL_MIN_TARGET = 15.0
+        const val SOCIAL_LOOKBACK_DAYS = 90
+        const val SOCIAL_MIN_DAYS = 7
+        /** The cuts people can pick; each gives the same % as an XP bonus on days under the target. */
+        val SOCIAL_CUTS = listOf(0, 5, 10, 15)
+
         const val DEFAULT_KCAL = 2000.0
+        const val DEFAULT_PROTEIN = 150.0
+        const val DEFAULT_WATER = 3.0
         val DEFAULT_SESSIONS = listOf("Session 1", "Session 2", "Session 3")
         const val GOAL_METRIC = "improve.best"
         const val CATCH_METRIC = "football.max_catch_yards"
@@ -105,7 +140,7 @@ data class Profile(
         )
 
         /** A new tester picks their own training and goal; GitHub and Money start off. */
-        val NEW_TESTER = Profile(off = setOf("github", "money"))
+        val NEW_TESTER = Profile(off = setOf("github", "money"), socialCut = 0)
 
         /** Examples shown under "Something you'd like to improve". */
         const val GOAL_EXAMPLES = "Longest reliable catch (yd), push-ups in one set, plank hold (seconds), " +
@@ -137,7 +172,9 @@ data class Profile(
                 }
                 val known = ITEMS.map { it.key }.toSet()
                 Profile(o.optString("training", ""), strings("sessions").ifEmpty { DEFAULT_SESSIONS }, ex, g,
-                    strings("off").filter { it in known }.toSet(), o.optDouble("kcal_target", DEFAULT_KCAL))
+                    strings("off").filter { it in known }.toSet(), o.optDouble("kcal_target", DEFAULT_KCAL),
+                    o.optDouble("protein_target", DEFAULT_PROTEIN), o.optDouble("water_target", DEFAULT_WATER),
+                    if (o.isNull("social_cut")) null else o.optInt("social_cut").takeIf { it in SOCIAL_CUTS })
             } catch (e: Exception) {
                 null
             }
