@@ -41,7 +41,7 @@ object TestB {
             d = d.plusDays(1)
         }
         val result = VitalsB.run(inputs, Game.todayElapsed(day, now), profile.kcalTarget + VitalsB.KCAL_MARGIN,
-            profile.proteinTarget * VitalsB.PROTEIN_SHARE)
+            profile.proteinTarget * VitalsB.PROTEIN_SHARE) { profile.socialTarget(days, it) }
         val g = Game.build(
             days, day, gameStart, now, profile,
             extraBuff = { date, lines -> if (result.prime[date] == true) primeBuff(lines) else null },
@@ -190,7 +190,7 @@ object VitalsB {
     /** The day's changes to each bar. */
     fun effects(
         m: Map<String, Double>, youtubeMinutes: Double, yesterday: Map<String, Double>,
-        kcalLimit: Double = KCAL_LIMIT, proteinMin: Double = PROTEIN_TARGET_G,
+        kcalLimit: Double = KCAL_LIMIT, proteinMin: Double = PROTEIN_TARGET_G, calmMinutes: Double = CALM_SOCIAL_MINUTES,
     ): Map<String, MutableList<Vitals.Effect>> {
         val out = BARS.associate { it.key to mutableListOf<Vitals.Effect>() }
         fun add(bar: String, label: String, points: Double, temporary: Boolean = false) {
@@ -256,8 +256,8 @@ object VitalsB {
             add("focus", "Flow State (study)", STUDY_FOCUS * blocks)
         }
 
-        val calm = "screen.total_minutes" in yesterday && (yesterday["screen.social_media_minutes"] ?: 0.0) < CALM_SOCIAL_MINUTES
-        if (calm) add("focus", "Social media under ${CALM_SOCIAL_MINUTES.toInt()} min yesterday", CALM_NEXT_DAY_FOCUS)
+        val calm = "screen.total_minutes" in yesterday && (yesterday["screen.social_media_minutes"] ?: 0.0) < calmMinutes
+        if (calm) add("focus", "Social media under ${Math.rint(calmMinutes).toInt()} min yesterday", CALM_NEXT_DAY_FOCUS)
         return out
     }
 
@@ -298,6 +298,8 @@ object VitalsB {
     fun run(
         days: List<Vitals.DayInput>, todayElapsed: Double = 1.0, kcalLimit: Double = KCAL_LIMIT,
         proteinMin: Double = PROTEIN_TARGET_G,
+        // Yesterday's social media target, for the calm day bonus (the person's own target, see Profile.socialTarget).
+        socialTarget: (LocalDate) -> Double = { CALM_SOCIAL_MINUTES },
     ): Result {
         val values = BARS.associate { it.key to Vitals.START_VALUE }.toMutableMap()
         val last = mutableMapOf<String, Triple<Double, Double, List<Vitals.Effect>>>()
@@ -334,7 +336,7 @@ object VitalsB {
                 start["mana"] = MANA_RESET
                 resets["mana"] = "No sleep logged: morning reset to ${MANA_RESET.toInt()}"
             }
-            val fx = effects(m, d.youtubeMinutes, yesterday, kcalLimit, proteinMin)
+            val fx = effects(m, d.youtubeMinutes, yesterday, kcalLimit, proteinMin, socialTarget(d.date.minusDays(1)))
             for ((k, label) in resets) fx.getValue(k).add(0, Vitals.Effect(label, 0.0))
             yesterday = m
 

@@ -12,6 +12,8 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
@@ -259,6 +261,29 @@ class MainActivity : AppCompatActivity() {
         val protein = field("Protein a day in grams, e.g. 150", p.proteinTarget.toInt().toString(), number = true)
         val water = field("Water a day in litres, e.g. 3", p.waterTarget.let { if (it % 1 == 0.0) it.toInt().toString() else it.toString() }, number = true)
 
+        subheading("Social media target")
+        root.addView(TextView(this).apply {
+            text = "Your target is your daily average over the last 90 days, worked out each Monday. Stay under it for " +
+                "100 XP. Pick a cut to aim lower: the same % comes back as bonus XP on days you make it. Small cuts add up, " +
+                "because next week's target follows your new average."
+        })
+        val cutChoices = listOfNotNull(
+            if (p.socialCut == null) null to "Fixed 30 minutes (the old rule)" else null,
+            0 to "Hold: don't go up",
+            5 to "Trim 5% (+5% XP on days under it)",
+            10 to "Cut 10% (+10% XP on days under it)",
+            15 to "Cut 15% (+15% XP on days under it)",
+        )
+        val cutGroup = RadioGroup(this).also { root.addView(it) }
+        cutChoices.forEach { (cut, label) ->
+            cutGroup.addView(RadioButton(this).apply {
+                id = View.generateViewId()
+                tag = cut ?: -1
+                text = label
+                isChecked = p.socialCut == cut
+            })
+        }
+
         subheading("Something you'd like to improve")
         root.addView(TextView(this).apply { text = "For example: ${Profile.GOAL_EXAMPLES}. Log your best each time, higher is better." })
         val goalName = field("What you're improving", p.goal?.name ?: "", plain = true)
@@ -293,6 +318,8 @@ class MainActivity : AppCompatActivity() {
                 kcalTarget = kcalTarget,
                 proteinTarget = proteinTarget,
                 waterTarget = waterTarget,
+                socialCut = (cutGroup.findViewById<RadioButton>(cutGroup.checkedRadioButtonId)?.tag as? Int)
+                    ?.takeIf { it >= 0 } ?: p.socialCut.takeIf { cutGroup.checkedRadioButtonId == -1 },
             ).withExerciseNames(Profile.splitList(exercises.text.toString()))
             toast("Saved your activities")
             recreate()
