@@ -4,6 +4,8 @@ on:
   push:
     branches: [main, rework]
   pull_request:
+  # A "Run workflow" button on the Actions tab, to rebuild a branch's download by hand (e.g. if GitHub skipped a push).
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -38,14 +40,14 @@ jobs:
           name: personal-api-apk
           path: android/personal-api.apk
       # On main, publish the APK as the "latest" release so the phone can download it directly.
-      - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest personal-api.apk --title "Phone app (latest)" --notes "Built from ${GITHUB_SHA::7}" --prerelease
       # On rework, publish its own "rework-latest" release so it never replaces the main app's download.
-      - if: github.event_name == 'push' && github.ref == 'refs/heads/rework'
+      - if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/rework'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
