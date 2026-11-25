@@ -170,6 +170,10 @@ class DashboardActivity : ComponentActivity() {
         private val context get() = this@DashboardActivity
         private val settings get() = Settings(context)
 
+        /** The page's chosen theme, so the home screen widgets match it. Called on every page load and theme change. */
+        @JavascriptInterface
+        fun setWidgetTheme(id: String) = Widgets.setTheme(context.applicationContext, id)
+
         @JavascriptInterface
         fun openSettings() = openSettingsTab()
 

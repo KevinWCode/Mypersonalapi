@@ -13,7 +13,6 @@ import android.graphics.RectF
 import android.os.Build
 import android.util.SizeF
 import android.widget.RemoteViews
-import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -68,6 +67,11 @@ class HomeWidget : AppWidgetProvider() {
             R.id.tile5_sub, R.id.tile6_sub, R.id.tile7_sub, R.id.tile8_sub,
         )
 
+        // The small names over the tiles (Food, Protein, ...), coloured with the theme too.
+        private val CAPTIONS = intArrayOf(
+            R.id.cap0, R.id.cap1, R.id.cap2, R.id.cap3, R.id.cap4, R.id.cap5, R.id.cap6, R.id.cap7, R.id.cap8,
+        )
+
         private val BAR_LABELS = intArrayOf(
             R.id.bar0_label, R.id.bar1_label, R.id.bar2_label, R.id.bar3_label, R.id.bar4_label, R.id.bar5_label, R.id.bar6_label,
         )
@@ -86,6 +90,8 @@ class HomeWidget : AppWidgetProvider() {
 
         /** Works out the latest numbers from the phone's data and redraws the widget. Does nothing if no widget is on the home screen. */
         suspend fun refresh(context: Context) {
+            // The other widgets (Vitals, Character, Food log, Quick log) redraw at the same moments.
+            withContext(Dispatchers.IO) { runCatching { Widgets.drawAll(context) } }
             val manager = AppWidgetManager.getInstance(context)
             if (manager.getAppWidgetIds(ComponentName(context, HomeWidget::class.java)).isEmpty()) return
             val text = withContext(Dispatchers.IO) {
@@ -130,27 +136,27 @@ class HomeWidget : AppWidgetProvider() {
             )
         }
 
-        private fun color(context: Context, level: Level) = ContextCompat.getColor(context, when (level) {
-            Level.GOOD -> R.color.widget_good
-            Level.WARN -> R.color.widget_warn
-            Level.OVER -> R.color.widget_bad
-            Level.NONE -> R.color.widget_empty
-        })
+        private fun color(t: WidgetTheme, level: Level) = when (level) {
+            Level.GOOD -> t.good
+            Level.WARN -> t.warn
+            Level.OVER -> t.bad
+            Level.NONE -> t.empty
+        }
 
         /** Seven rounded bars in equal slots, matching the seven day labels under them, and a line at the limit. */
-        private fun chart(context: Context, bars: List<Bar>, limitAt: Double): Bitmap {
+        private fun chart(t: WidgetTheme, bars: List<Bar>, limitAt: Double): Bitmap {
             val bitmap = Bitmap.createBitmap(CHART_W, CHART_H, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             val paint = Paint(Paint.ANTI_ALIAS_FLAG)
             val slot = CHART_W / bars.size.toFloat()
             val minH = 6f
             bars.forEachIndexed { i, bar ->
-                paint.color = color(context, bar.level)
+                paint.color = color(t, bar.level)
                 val h = maxOf(minH, (bar.height * CHART_H).toFloat())
                 val left = i * slot + slot * 0.2f
                 canvas.drawRoundRect(RectF(left, CHART_H - h, left + slot * 0.6f, CHART_H.toFloat()), 8f, 8f, paint)
             }
-            paint.color = ContextCompat.getColor(context, R.color.widget_sub)
+            paint.color = t.sub
             paint.strokeWidth = 3f
             val y = (CHART_H - limitAt * CHART_H).toFloat()
             var x = 0f
@@ -170,18 +176,24 @@ class HomeWidget : AppWidgetProvider() {
                 ?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDateTime() }
             val t = WidgetText.lines(summary, LocalDate.now(), fetchedAt, cache.getBoolean("offline", false))
 
-            val full = fill(context, RemoteViews(context.packageName, R.layout.home_widget), t, updating, compact = false)
+            val theme = Widgets.theme(context)
+            val full = fill(context, RemoteViews(context.packageName, R.layout.home_widget), t, theme, updating, compact = false)
             // Android 12+ picks the layout that fits the widget's size; below a 4th row it gets the compact one.
             val views = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val compact = fill(context, RemoteViews(context.packageName, R.layout.home_widget_compact), t, updating, compact = true)
+                val compact = fill(context, RemoteViews(context.packageName, R.layout.home_widget_compact), t, theme, updating, compact = true)
                 RemoteViews(mapOf(SizeF(180f, 180f) to compact, SizeF(180f, COMPACT_BELOW_DP) to full))
             } else full
             AppWidgetManager.getInstance(context).updateAppWidget(ComponentName(context, HomeWidget::class.java), views)
         }
 
-        private fun fill(context: Context, views: RemoteViews, t: WidgetLines, updating: Boolean, compact: Boolean): RemoteViews {
+        private fun fill(context: Context, views: RemoteViews, t: WidgetLines, theme: WidgetTheme, updating: Boolean, compact: Boolean): RemoteViews {
+            // The app's theme: its background, and every line in its colours.
+            views.setInt(R.id.root, "setBackgroundResource", Widgets.background(theme))
+            (listOf(R.id.label, R.id.note) + BAR_LABELS.toList() + TILE_SUBS.toList() + CAPTIONS.toList()).forEach { views.setTextColor(it, theme.sub) }
+            (TILE_VALUES.toList() + R.id.trade).forEach { views.setTextColor(it, theme.ink) }
+            views.setInt(R.id.refresh, "setColorFilter", theme.sub)
             views.setTextViewText(R.id.label, t.label)
-            views.setImageViewBitmap(R.id.chart, chart(context, t.bars, t.limitAt))
+            views.setImageViewBitmap(R.id.chart, chart(theme, t.bars, t.limitAt))
             // The compact layout has room for the day names only.
             t.bars.forEachIndexed { i, bar -> views.setTextViewText(BAR_LABELS[i], if (compact) bar.label.substringAfter("\n") else bar.label) }
             views.setTextViewText(R.id.note, t.note)
@@ -189,11 +201,10 @@ class HomeWidget : AppWidgetProvider() {
                 views.setTextViewText(TILE_VALUES[i], tile.value)
                 views.setTextViewText(TILE_SUBS[i], tile.sub)
             }
-            val pl = when (t.plUp) { true -> R.color.widget_good; false -> R.color.widget_warn; null -> R.color.widget_text }
-            views.setTextColor(TILE_VALUES[8], ContextCompat.getColor(context, pl))
+            views.setTextColor(TILE_VALUES[8], when (t.plUp) { true -> theme.good; false -> theme.warn; null -> theme.ink })
             views.setTextViewText(R.id.trade, t.trade)
             views.setTextViewText(R.id.updated, if (updating) "Updating…" else t.updated)
-            views.setTextColor(R.id.updated, ContextCompat.getColor(context, if (t.offline && !updating) R.color.widget_warn else R.color.widget_sub))
+            views.setTextColor(R.id.updated, if (t.offline && !updating) theme.warn else theme.sub)
 
             val open = Intent(context, DashboardActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             views.setOnClickPendingIntent(R.id.root, PendingIntent.getActivity(context, 0, open, PendingIntent.FLAG_IMMUTABLE))

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The widgets' background in the glass theme (see WidgetTheme). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient android:angle="270" android:startColor="#C7FFFFFF" android:endColor="#A6F3EEFF" />
+    <stroke android:width="1dp" android:color="#E6FFFFFF" />
+    <corners android:radius="28dp" />
+</shape>
