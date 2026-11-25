@@ -976,6 +976,8 @@ input[type="password"], input[type="text"], input[type="number"], select, textar
       var v = css.getPropertyValue('--' + k).trim();
       COLOR[k] = t.id === 'light' || !v ? BASE_COLOR[k] : v;
     });
+    // In the phone app, the home screen widgets follow the theme too.
+    try { if (window.PhoneApp && PhoneApp.setWidgetTheme) PhoneApp.setWidgetTheme(t.id); } catch (e) {}
     $('themes').replaceChildren.apply($('themes'), THEMES.map(function (x) {
       var b = el('button', { type: 'button', class: 'theme-btn', 'aria-pressed': x.id === t.id ? 'true' : 'false' },
         el('span', { class: 'sample', style: 'background:' + x.sample, 'aria-hidden': 'true' }), x.name);

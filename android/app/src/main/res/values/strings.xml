@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="widget_description">Time reclaimed from social media, food, sleep and steps</string>
+    <string name="widget_vitals_description">HP, Stamina, Mana and Focus, and whether today is a Prime day</string>
+    <string name="widget_character_description">Your level, XP to the next one and today\'s quests</string>
+    <string name="widget_food_description">Log a meal in two taps: the meal, then how it was</string>
+    <string name="widget_quick_description">One tap for water, a coffee or a journal entry</string>
 </resources>

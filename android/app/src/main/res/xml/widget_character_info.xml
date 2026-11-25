@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 4 x 2 by default; make it taller to see the next quests. Widgets redraws it, so updatePeriodMillis is 0. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_character_description"
+    android:initialLayout="@layout/widget_character"
+    android:minHeight="110dp"
+    android:minResizeHeight="90dp"
+    android:minResizeWidth="180dp"
+    android:minWidth="250dp"
+    android:previewLayout="@layout/widget_character"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellHeight="2"
+    android:targetCellWidth="4"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

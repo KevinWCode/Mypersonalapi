@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Quick log widget: one tap adds water, a coffee or a journal entry for today, like the Quick log on Daily quests. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg_dark"
+    android:orientation="vertical"
+    android:paddingStart="6dp"
+    android:paddingTop="6dp"
+    android:paddingEnd="6dp"
+    android:paddingBottom="6dp">
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/k0"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_margin="3dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_tile_dark"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:paddingStart="10dp"
+            android:paddingEnd="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/k0_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="+250 ml"
+                    android:textColor="@color/widget_text"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/k0_sub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Water 1.25 / 3 L"
+                android:textColor="@color/widget_sub"
+                android:textSize="11sp" />
+
+        <ImageView
+            android:id="@+id/k0_bar"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:layout_marginTop="4dp"
+            android:contentDescription="@null"
+            android:scaleType="fitXY"
+            android:src="@drawable/widget_bar_preview" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/k1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_margin="3dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_tile_dark"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:paddingStart="10dp"
+            android:paddingEnd="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/k1_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="+1 coffee"
+                    android:textColor="@color/widget_text"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/k1_sub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="2 cups"
+                android:textColor="@color/widget_sub"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/k2"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_margin="3dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_tile_dark"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:paddingStart="10dp"
+            android:paddingEnd="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/k2_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="Journal"
+                    android:textColor="@color/widget_text"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/k2_sub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="None yet"
+                android:textColor="@color/widget_sub"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+</LinearLayout>

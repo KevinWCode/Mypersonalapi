@@ -163,6 +163,7 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/cap0"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Food"
@@ -198,6 +199,7 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/cap1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Protein"
@@ -233,6 +235,7 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/cap2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Sleep"
@@ -276,6 +279,7 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/cap3"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Steps"
@@ -311,6 +315,7 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/cap4"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Resting HR"
@@ -346,6 +351,7 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/cap5"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Workouts"
@@ -389,6 +395,7 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/cap6"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Study"
@@ -424,6 +431,7 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/cap7"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Reading"
@@ -459,6 +467,7 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/cap8"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="P/L"
